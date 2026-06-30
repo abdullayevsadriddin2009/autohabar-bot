@@ -31,8 +31,14 @@ API_HASH = "f49729d10c144035c40f579b596d15b1"
 BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 
-# Papkalarni yaratish (Muhim: inglizcha nomlar bilan)
+# Papkalarni yaratish (Muhim: xatoliklarning oldini oluvchi aqlli moslashuv)
 SESSIONS_DIR = "sessions"
+if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
+    try:
+        os.remove(SESSIONS_DIR) # Agar 'sessions' nomli fayl bo'lsa, uni o'chiramiz
+    except Exception as e:
+        logging.error(f"Eski noto'g'ri faylni o'chirishda xato: {e}")
+
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 
@@ -275,7 +281,7 @@ async def show_message_settings(message: types.Message, user_id: int):
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
 
-# ================= AD REKLAMA EDIT HANDLERS (YANGI 🛠️) =================
+# ================= AD REKLAMA EDIT HANDLERS =================
 
 @router.callback_query(F.data == "edit_text")
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
@@ -303,11 +309,9 @@ async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMCon
 @router.message(StateFilter(TextStates.waiting_photo), F.photo)
 async def message_receive_photo(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
-    # Eng yuqori sifatli rasmni olamiz
     photo = message.photo[-1]
     file_info = await bot.get_file(photo.file_id)
     
-    # Yuklab olinadigan downloads papkasini yaratamiz
     downloads_dir = "downloads"
     os.makedirs(downloads_dir, exist_ok=True)
     local_path = os.path.join(downloads_dir, f"reklama_{user_id}.jpg")
@@ -329,7 +333,6 @@ async def message_receive_photo_invalid(message: types.Message):
 async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     if user_id in db_users:
-        # Eski rasmni xavfsiz o'chirib yuborish
         old_path = db_users[user_id].get("reklama_rasm")
         if old_path and os.path.exists(old_path):
             try:
