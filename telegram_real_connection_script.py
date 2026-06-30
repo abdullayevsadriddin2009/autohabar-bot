@@ -317,7 +317,7 @@ async def message_receive_photo(message: types.Message, state: FSMContext):
     if user_id in db_users:
         db_users[user_id]["reklama_rasm"] = local_path
         save_db()
-        await message.answer("✅ <b>Reklama rasmi muvaffaqiyatli saqlandi va ulandi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await message.answer("✅ <b>Reklama rasmi muvaffaqiyatli saqlandi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
         await show_message_settings(message, user_id)
     await state.clear()
 
