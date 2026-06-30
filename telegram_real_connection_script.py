@@ -2,10 +2,11 @@
 """
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
-tizimlarini yagona asinxron motor va JSON ma'lumotlar bazasi orqali birlashtiradi.
+tizimlarini yagona asinxron motor, xavfsiz JSON ma'lumotlar bazasi va Render.com
+uchun soxta Web Server orqali birlashtiradi.
 
 Ishga tushirishdan oldin terminalda:
-pip install aiogram telethon
+pip install aiogram telethon aiohttp
 """
 
 import asyncio
@@ -22,6 +23,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import StateFilter, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telethon import TelegramClient, errors, Button
+from aiohttp import web
 
 # ================= CONFIGURATION =================
 API_ID = 37104311
@@ -49,34 +51,32 @@ def load_db():
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                # Kalitlarni integer ko'rinishiga keltirish
                 return {int(k): v for k, v in data.items()}
         except Exception as e:
             logging.error(f"Bazani o'qishda xato: {e}")
     
-    # Boshlang'ich baza (agar fayl yo'q bo'lsa)
     return {
         ADMIN_ID: {
-            "balans": 150000,       # Admin sinov balansi
+            "balans": 150000,
             "stars": 150,
             "is_pro": True,
             "referrals": 3,
             "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
-            "reklama_rasm": None,       # Reklama rasmi (Mahalliy yuklangan fayl yo'li)
-            "inline_buttons": [],       # Reklama tugmalari
-            "interval": 15,         # daqiqa
-            "next_run_timestamp": 0,    # Navbatdagi yuborish vaqti
+            "reklama_rasm": None,
+            "inline_buttons": [],
+            "interval": 15,
+            "next_run_timestamp": 0,
             "active_phone": None,
             "active_name": "Admin",
             "active_username": "@admin",
             "is_sending": False,
-            "groups_choice": "custom",  # "all" yoki "custom"
-            "selected_groups": [],      # Tanlangan guruh IDlari
-            "cached_groups": [],        # Keshga olingan guruhlar ro'yxati
+            "groups_choice": "custom",
+            "selected_groups": [],
+            "cached_groups": [],
             "joined_time": datetime.now().strftime("%H:%M"),
             "today_sent": 0,
             "total_sent": 0,
-            "channels": ["@autoxabarc_news", "@autoxabar_chat"] # Master majburiy obunalar ro'yxati
+            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
         }
     }
 
@@ -110,7 +110,6 @@ class AdminStates(StatesGroup):
 
 # ================= CLIENT RECOVERY ENGINE =================
 async def get_client(user_id):
-    """ Ulanish uzilib qolishini butunlay oldini oluvchi asinxron ulanish motori """
     client = active_clients.get(user_id)
     session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}")
     
@@ -134,7 +133,7 @@ async def get_client(user_id):
         
     return client
 
-# ================= KEYBOARDS (RASMDAGI KABI) =================
+# ================= KEYBOARDS =================
 def get_main_keyboard(user_id):
     kb = [
         [KeyboardButton(text="⚪ Autohabar yuborish"), KeyboardButton(text="📝 Habar matni")],
@@ -147,7 +146,6 @@ def get_main_keyboard(user_id):
     
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-# Admin Panelning Asosiy Inline tugmalari
 def get_admin_main_markup():
     kb = [
         [
@@ -164,7 +162,6 @@ def get_admin_main_markup():
 
 # ================= BOT HANDLERS =================
 
-# /start komandasi
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
@@ -211,7 +208,6 @@ async def cmd_start(message: types.Message):
     await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await message.answer("Tizimdan foydalanish uchun quyidagi tugmani bosing:", reply_markup=inline_kb)
 
-# Autohabar yuborish bo'limi
 @router.message(F.text == "⚪ Autohabar yuborish")
 async def menu_autohabar(message: types.Message):
     user_id = message.from_user.id
@@ -249,7 +245,6 @@ async def menu_autohabar(message: types.Message):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-# Habar matni sozlash bo'limi (📸)
 @router.message(F.text == "📝 Habar matni")
 async def menu_habar_matni_msg(message: types.Message):
     user_id = message.from_user.id
@@ -279,7 +274,6 @@ async def show_message_settings(message: types.Message, user_id: int):
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
 
-# Kabinet bo'limi
 @router.message(F.text == "👤 Kabinet")
 async def menu_kabinet(message: types.Message):
     user_id = message.from_user.id
@@ -313,7 +307,6 @@ async def menu_kabinet(message: types.Message):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# Guruhlarni sozlash bo'limi
 @router.message(F.text == "💬 Guruhlarni sozlash")
 async def menu_guruhlar(message: types.Message):
     user_id = message.from_user.id
@@ -346,7 +339,6 @@ async def menu_guruhlar(message: types.Message):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# Profillar bo'limi
 @router.message(F.text == "👤 Profillar")
 async def menu_profillar(message: types.Message):
     user_id = message.from_user.id
@@ -367,7 +359,6 @@ async def menu_profillar(message: types.Message):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# Pro tarif bo'limi
 @router.message(F.text == "👑 Pro tarif")
 async def menu_pro_tarif(message: types.Message):
     text = (
@@ -387,7 +378,6 @@ async def menu_pro_tarif(message: types.Message):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# Intervalni sozlash
 @router.message(F.text == "⏱️ Interval")
 async def menu_interval(message: types.Message):
     user_id = message.from_user.id
@@ -408,7 +398,6 @@ async def menu_interval(message: types.Message):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# Sozlamalar bo'limi
 @router.message(F.text == "⚙️ Sozlamalar")
 async def menu_sozlamalar(message: types.Message):
     text = (
@@ -420,14 +409,12 @@ async def menu_sozlamalar(message: types.Message):
     await message.answer(text, parse_mode="HTML")
 
 
-# ================= ADMIN PANEL HANDLERS (YANGILANDI 🛡️) =================
+# ================= ADMIN PANEL HANDLERS =================
 
 @router.message(F.text == "🛡️ Admin Panel")
 async def cmd_admin(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
-    
-    # MUHIM: Bosh menyuga uzilishlarsiz kirish uchun FSM holatlarini to'liq tozalaymiz!
     await state.clear()
     
     text = (
@@ -436,7 +423,6 @@ async def cmd_admin(message: types.Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
 
-# Admin Bosh menyuga qaytish callbacki
 @router.callback_query(F.data == "adm_main_menu")
 async def callback_adm_main(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -447,7 +433,6 @@ async def callback_adm_main(callback_query: types.CallbackQuery, state: FSMConte
     await callback_query.message.edit_text(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
     await callback_query.answer()
 
-# 1. 📊 Bot Statistikasi Handler
 @router.callback_query(F.data == "adm_stats")
 async def callback_adm_stats(callback_query: types.CallbackQuery):
     total_users = len(db_users)
@@ -469,10 +454,9 @@ async def callback_adm_stats(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-# 2. 👤 Foydalanuvchini sozlash (Prompt)
 @router.callback_query(F.data == "adm_search_user")
 async def callback_adm_search_prompt(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.set_state(AdminStates.waiting_search_id) # Bu yerda holat faollashadi!
+    await state.set_state(AdminStates.waiting_search_id)
     text = (
         "👤 <b>Foydalanuvchini sozlash bo'limi</b>\n\n"
         "Iltimos, boshqarmoqchi bo'lgan foydalanuvchining <b>Telegram ID</b> raqamini kiriting:"
@@ -483,7 +467,6 @@ async def callback_adm_search_prompt(callback_query: types.CallbackQuery, state:
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-# Qidiruv ID raqami kelganda foydalanuvchini ko'rsatish
 @router.message(StateFilter(AdminStates.waiting_search_id))
 async def admin_user_search_process(message: types.Message, state: FSMContext):
     try:
@@ -506,7 +489,6 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
                 f"📤 Jami yuborgan xabarlari: <b>{user_data.get('total_sent', 0)} ta</b>"
             )
             
-            # Submenyu tugmalari
             inline_kb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(text="💰 Balans tahrirlash", callback_data=f"adm_chg_bal_{target_id}"),
@@ -520,13 +502,12 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
                 ]
             ])
             await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
-            await state.clear() # Faqat muvaffaqiyatli topilganda holat tozalanadi!
+            await state.clear()
         else:
             await message.answer("❌ Bunday IDga ega foydalanuvchi topilmadi! Qaytadan kiriting yoki ⬅️ Orqaga tugmasini bosing:")
     except ValueError:
         await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lishi kerak! Qaytadan kiriting:")
 
-# 💰 Balans tahrirlash prompti
 @router.callback_query(F.data.startswith("adm_chg_bal_"))
 async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     target_id = int(callback_query.data.split("_")[3])
@@ -541,7 +522,6 @@ async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state
     )
     await callback_query.answer()
 
-# Balansni hisoblash va yozish
 @router.message(StateFilter(AdminStates.waiting_add_balans))
 async def state_process_add_balans(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -565,7 +545,6 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
                 reply_markup=get_main_keyboard(message.from_user.id),
                 parse_mode="HTML"
             )
-            # Foydalanuvchini o'zini ham xabardor qilish
             try:
                 await bot.send_message(target_id, f"💰 Tizim administratori hisobingiz balansini o'zgartirdi!\nJoriy balans: <b>{new_bal:,} so'm</b>", parse_mode="HTML")
             except Exception:
@@ -576,7 +555,6 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
         await message.answer("❌ Noto'g'ri qiymat kiritildi. Faqat raqam yoki + / - belgisidan foydalaning (masalan: +25000):")
     await state.clear()
 
-# ⭐ Stars tahrirlash prompti
 @router.callback_query(F.data.startswith("adm_chg_stars_"))
 async def callback_adm_chg_stars_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     target_id = int(callback_query.data.split("_")[3])
@@ -591,7 +569,6 @@ async def callback_adm_chg_stars_prompt(callback_query: types.CallbackQuery, sta
     )
     await callback_query.answer()
 
-# Stars hisoblash va yozish
 @router.message(StateFilter(AdminStates.waiting_add_stars))
 async def state_process_add_stars(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -625,7 +602,6 @@ async def state_process_add_stars(message: types.Message, state: FSMContext):
         await message.answer("❌ Noto'g'ri format! Faqat son yozing (masalan: +10):")
     await state.clear()
 
-# 👑 PRO/FREE tarifni o'zgartirish (Toggle)
 @router.callback_query(F.data.startswith("adm_chg_tarif_"))
 async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
     target_id = int(callback_query.data.split("_")[3])
@@ -637,26 +613,18 @@ async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
         
         status_nomi = "PRO 👑" if new_status else "FREE 👤"
         await callback_query.answer(f"Tarif muvaffaqiyatli {status_nomi} ga o'zgartirildi!", show_alert=True)
-        
-        # Foydalanuvchiga bildirishnoma yuborish
         try:
             tabrik = "👑 <b>Tabriklaymiz! Tizim administratori sizga cheksiz PRO tarifini taqdim etdi!</b>\nEndi barcha yopiq xizmatlar siz uchun ochiq." if new_status else "⚠️ Hisobingizdagi PRO tarifi administrator tomonidan bekor qilindi va bepul rejimga qaytarildingiz."
             await bot.send_message(target_id, tabrik, parse_mode="HTML")
         except Exception:
             pass
-            
-        # Admin menyuga qaytarish
         await callback_adm_main(callback_query, FSMContext(storage=MemoryStorage(), key=None))
     else:
         await callback_query.answer("Foydalanuvchi topilmadi!", show_alert=True)
 
-
-# 3. 📢 Majburiy Obunani sozlash bo'limi
 @router.callback_query(F.data == "adm_mandatory_sub")
 async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
-    # Master kanallari ro'yxatini admin profilidan o'qiymiz
     channels = db_users[ADMIN_ID].get("channels", [])
-    
     text = (
         "📢 <b>Majburiy obuna kanallarini sozlash</b>\n\n"
         "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qilib ko'rsatiladi:\n\n"
@@ -677,7 +645,6 @@ async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-# Majburiy kanal qo'shish prompti
 @router.callback_query(F.data == "adm_sub_add_chan")
 async def callback_adm_add_chan_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     await state.set_state(AdminStates.waiting_add_channel)
@@ -691,7 +658,6 @@ async def callback_adm_add_chan_prompt(callback_query: types.CallbackQuery, stat
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-# Kanalni saqlash
 @router.message(StateFilter(AdminStates.waiting_add_channel))
 async def state_save_mandatory_channel(message: types.Message, state: FSMContext):
     chan_name = message.text.strip()
@@ -707,10 +673,8 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaffaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
     else:
         await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
-        
     await state.clear()
 
-# Majburiy obuna kanallarini tozalash
 @router.callback_query(F.data == "adm_sub_clear_chan")
 async def callback_adm_clear_chans(callback_query: types.CallbackQuery):
     db_users[ADMIN_ID]["channels"] = []
@@ -718,8 +682,6 @@ async def callback_adm_clear_chans(callback_query: types.CallbackQuery):
     await callback_query.answer("📢 Barcha majburiy kanallar olib tashlandi!", show_alert=True)
     await callback_adm_sub_menu(callback_query)
 
-
-# 4. ✉️ Ommaviy Reklama tarqatish bo'limi
 @router.callback_query(F.data == "adm_broadcast_prompt")
 async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     await state.set_state(AdminStates.waiting_broadcast_msg)
@@ -733,12 +695,9 @@ async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, sta
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-# Reklamani asinxron tarqatish
 @router.message(StateFilter(AdminStates.waiting_broadcast_msg))
 async def state_process_broadcast(message: types.Message, state: FSMContext):
     await state.clear()
-    
-    # Progress xabarini ko'rsatamiz
     progress_msg = await message.answer("🔄 <b>Ommaviy reklama tarqatish boshlandi...</b>", parse_mode="HTML")
     
     sent_count = 0
@@ -746,10 +705,9 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
     
     for u_id in list(db_users.keys()):
         try:
-            # Xabarni barcha foydalanuvchilarga nusxalab (copy_to) yuboramiz
             await message.copy_to(chat_id=u_id)
             sent_count += 1
-            await asyncio.sleep(0.05) # Telegram spam cheklovlaridan saqlanish
+            await asyncio.sleep(0.05)
         except Exception:
             fail_count += 1
             
@@ -764,7 +722,6 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 # =========================================================================
 
-# Matn va rasm yuklashni ko'rsatish
 @router.callback_query(F.data == "back_to_panel")
 async def callback_back_panel(callback_query: types.CallbackQuery):
     await callback_query.answer()
@@ -1320,7 +1277,7 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         save_db()
         
         await message.answer(
-            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaqraqiyatli bog'landi!</b>",
+            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi!</b>",
             reply_markup=get_main_keyboard(user_id),
             parse_mode="HTML"
         )
@@ -1329,6 +1286,29 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         await message.answer("❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.")
     except Exception as e:
         await message.answer(f"❌ Parol noto'g'ri: {str(e)}")
+
+
+# ================= SOXTA WEB SERVER (RENDER PORT BINDING UCHUN) =================
+
+async def handle_ping(request):
+    """ Render ping so'rovlariga javob qaytaruvchi soxta handler """
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    """ Render platformasida 'Port Binding' xatoligini bartaraf etuvchi asinxron soxta server """
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    app.router.add_get('/ping', handle_ping)
+    
+    # Render muhitidan portni o'qiydi (standart 10000 yoki o'zgaruvchi)
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Render uchun soxta veb-server {port}-portda muvaffaqiyatli ishga tushirildi!")
+
+# ==================================================================================
 
 
 # Mavjud sessiya fayllarini tekshirish va avtomatik ulanish
@@ -1399,6 +1379,9 @@ async def main():
     # Asinxron ishlovchi fon xizmatini yoqamiz
     asyncio.create_task(auto_sender_worker())
     logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
+    
+    # Render platformasining "Port Binding" tekshiruvini aldash uchun soxta serverni ishga tushiramiz!
+    asyncio.create_task(start_web_server())
     
     print("\n✅ BOT MUVAFFAQIYATLI ISHGA TUSHDI!")
     print("💬 Endi Telegram ilovangizni oching va botingizga kiring.")
