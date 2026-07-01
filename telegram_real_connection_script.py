@@ -3,7 +3,7 @@
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
-Render, Railway va va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
+Render, Railway va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
 """
 
 import asyncio
@@ -102,15 +102,22 @@ if FIREBASE_AVAILABLE:
         except Exception as e:
             logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
             
-    # 2. Agar Env bo'lmasa, local JSON fayldan o'qiydi
-    if not db and os.path.exists("firebase_credentials.json"):
-        try:
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            db = firestore.client()
-            logging.info("[Firebase] Local JSON fayl orqali muvaffaqiyatli ulandi!")
-        except Exception as e:
-            logging.error(f"[Firebase] Local JSON ulanishida xatolik: {e}")
+    # 2. Agar Env bo'lmasa, local JSON fayldan va Render Secret Path'dan o'qiydi (TUZATILDI)
+    if not db:
+        possible_paths = [
+            "firebase_credentials.json", 
+            "/etc/secrets/firebase_credentials.json"
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                try:
+                    cred = credentials.Certificate(path)
+                    firebase_admin.initialize_app(cred)
+                    db = firestore.client()
+                    logging.info(f"[Firebase] {path} maxfiy fayli orqali muvaffaqiyatli ulandi!")
+                    break
+                except Exception as e:
+                    logging.error(f"[Firebase] {path} faylidan ulanishda xatolik: {e}")
 
 # Boshlang'ich baza andozasi
 DEFAULT_DB = {
@@ -810,7 +817,7 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
             inline_kb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(text="💰 Balans tahrirlash", callback_data=f"adm_chg_bal_{target_id}"),
-                    InlineKeyboardButton(text="⭐️ Stars tahrirlash", callback_data=f"adm_chg_stars_{target_id}")
+                    InlineKeyboardButton(text="⭐️ Stars tahrirlash", callback_data=f"adm_chg_stars_{target_id}"),
                 ],
                 [
                     InlineKeyboardButton(text="👑 PRO / FREE o'tkazish", callback_data=f"adm_chg_tarif_{target_id}")
@@ -824,7 +831,7 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
         else:
             await message.answer("❌ Bunday IDga ega foydalanuvchi topilmadi! Qaytadan kiriting yoki ⬅️ Orqaga tugmasini bosing:")
     except ValueError:
-        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lishi kerak! Qaytadan kiriting:")
+        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lik kerak! Qaytadan kiriting:")
 
 @router.callback_query(F.data.startswith("adm_chg_bal_"))
 async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1632,6 +1639,8 @@ async def start_web_server():
 
 # Mavjud sessiya fayllarini tekshirish va avtomatik ulanish
 async def init_existing_sessions():
+    if not os.path.exists(SESSIONS_DIR):
+        return
     for file in os.listdir(SESSIONS_DIR):
         if file.endswith(".session"):
             user_id_str = file.replace("session_", "").replace(".session", "")
