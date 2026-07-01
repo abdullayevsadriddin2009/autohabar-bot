@@ -24,12 +24,14 @@ from telethon import TelegramClient, errors, Button
 from aiohttp import web
 
 # Google Firebase Admin SDK import qilish
+FIREBASE_AVAILABLE = False
 try:
     import firebase_admin
     from firebase_admin import credentials, firestore
     FIREBASE_AVAILABLE = True
-except ImportError:
-    FIREBASE_AVAILABLE = False
+    logging.info("[Firebase] Kutubxonalar muvaffaqiyatli import qilindi!")
+except ImportError as e:
+    logging.error(f"[Firebase] Kutubxona importida xatolik: {e}. Iltimos, requirements.txt yoki talablar.txt faylini tekshiring!")
 
 # ================= CONFIGURATION =================
 API_ID = 37104311
@@ -97,7 +99,9 @@ if FIREBASE_AVAILABLE:
         if os.path.exists(path):
             try:
                 cred = credentials.Certificate(path)
-                firebase_admin.initialize_app(cred)
+                # Agar Firebase allaqachon init qilingan bo'lsa, uni qaytadan qilmaymiz
+                if not firebase_admin._apps:
+                    firebase_admin.initialize_app(cred)
                 db = firestore.client()
                 logging.info(f"[Firebase] Maxfiy fayl ({path}) orqali muvaffaqiyatli ulandi!")
                 break
@@ -111,11 +115,14 @@ if FIREBASE_AVAILABLE:
             try:
                 cred_dict = json.loads(firebase_config_env)
                 cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
+                if not firebase_admin._apps:
+                    firebase_admin.initialize_app(cred)
                 db = firestore.client()
                 logging.info("[Firebase] Render Environment Variable orqali muvaffaqiyatli ulandi!")
             except Exception as e:
                 logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
+else:
+    logging.error("[Firebase] DIQQAT! Kutubxona mavjud emasligi sababli Firebase ulanishi bekor qilindi.")
 
 # Boshlang'ich baza andozasi
 DEFAULT_DB = {
@@ -175,6 +182,8 @@ def load_db():
                 return local_data
         except Exception as e:
             logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
+    else:
+        logging.warning("[Baza] Firebase ulanmaganligi sababli faqat mahalliy ma'lumotlar ishlatilmoqda.")
     
     return local_data
 
