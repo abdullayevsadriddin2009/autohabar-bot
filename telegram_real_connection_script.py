@@ -51,6 +51,36 @@ DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 # Loggerlarni sozlash
 logging.basicConfig(level=logging.INFO)
 
+# ================= AVTOMATIK NOM TAHRIRLASH (AQLLI REJIM) =================
+# 1. Agar ildiz papkada o'zbekcha 'sessiyalar' bo'lsa, uni inglizcha 'sessions' ga o'tkazamiz
+if os.path.exists("sessiyalar") and os.path.isdir("sessiyalar"):
+    try:
+        if os.path.exists("sessions"):
+            for file in os.listdir("sessiyalar"):
+                shutil.move(os.path.join("sessiyalar", file), os.path.join(SESSIONS_DIR, file))
+            shutil.rmtree("sessiyalar")
+        else:
+            os.rename("sessiyalar", SESSIONS_DIR)
+        logging.info("[Tizim] 'sessiyalar' papkasi nomi 'sessions'ga muvaffaqiyatli o'zgartirildi!")
+    except Exception as e:
+        logging.error(f"[Tizim] Papka nomini o'zgartirishda xatolik: {e}")
+
+# 2. 'sessions' papkasi ichidagi fayllarni avtomatik inglizcha nomga o'tkazamiz
+if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
+    for file in os.listdir(SESSIONS_DIR):
+        if "sessiya" in file or ".sessiya" in file or "-jurnali" in file:
+            old_path = os.path.join(SESSIONS_DIR, file)
+            new_file = file.replace("sessiya_", "session_").replace(".sessiya", ".session").replace("-jurnali", "-journal")
+            new_path = os.path.join(SESSIONS_DIR, new_file)
+            try:
+                if not os.path.exists(new_path):
+                    os.rename(old_path, new_path)
+                    logging.info(f"[Tizim] Fayl nomi to'g'rilandi: {file} -> {new_file}")
+                else:
+                    os.remove(old_path)
+            except Exception as e:
+                logging.error(f"[Tizim] Fayl nomini o'zgartirishda xatolik: {e}")
+
 # Bot va Dispatcherni standart va xavfsiz usulda yaratish
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -114,7 +144,6 @@ def load_db():
     """ Bulutli bazadan yoki mahalliy JSON fayldan foydalanuvchilar ma'lumotlarini yuklash """
     if db:
         try:
-            # Sandbox qoidalariga rioya etgan holda: /artifacts/{appId}/public/data/{collectionName}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc = doc_ref.get()
             if doc.exists:
@@ -164,7 +193,6 @@ async def backup_session_to_cloud(user_id):
             with open(session_path, "rb") as f:
                 encoded_data = base64.b64encode(f.read()).decode('utf-8')
             
-            # Shaxsiy ma'lumotlar uchun: /artifacts/{appId}/users/{userId}/{collectionName}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
             doc_ref.set({"binary_data": encoded_data, "updated_at": datetime.now().isoformat()})
             logging.info(f"[Sessiya] {user_id} uchun sessiya fayli bulutga zaxiralandi!")
@@ -176,7 +204,6 @@ async def restore_sessions_from_cloud():
     if not db:
         return
     try:
-        # Barcha foydalanuvchilar sessiyalarini tiklash
         users_ref = db.collection('artifacts').document('autohabar_pro').collection('users')
         users_docs = users_ref.stream()
         
@@ -262,6 +289,21 @@ def get_admin_main_markup():
             InlineKeyboardButton(text="✉️ Ommaviy Reklama", callback_data="adm_broadcast_prompt")
         ],
         [InlineKeyboardButton(text="❌ Yopish", callback_data="close_menu")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+# Dinamik tarzda interval klaviaturasini yaratish (Rasmdagidek)
+def get_interval_keyboard(user_interval):
+    def btn(val, label):
+        text = f"✓ {label}" if user_interval == val else label
+        return InlineKeyboardButton(text=text, callback_data=f"set_int_{val}")
+
+    kb = [
+        [btn(2, "2daq"), btn(3, "3daq"), btn(4, "4daq"), btn(5, "5daq"), btn(6, "6daq")],
+        [btn(7, "7daq"), btn(8, "8daq"), btn(9, "9daq"), btn(10, "10daq"), btn(11, "11daq")],
+        [btn(12, "12daq"), btn(13, "13daq"), btn(14, "14daq"), btn(15, "15daq")],
+        [btn(30, "30daq"), btn(60, "1 soat"), btn(90, "1.5 soat"), btn(120, "2 soat"), btn(180, "3 soat")],
+        [InlineKeyboardButton(text="⁉️ Interval nima", callback_data="explain_interval")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
@@ -598,26 +640,66 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
+# --- INTERVAL INTERFEYSI (Faqat 15 daqiqa qolib ketgan muammoni hal qilamiz) ---
 @router.message(F.text == "⏱️ Interval", state="*")
 async def menu_interval(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
+    current_interval = user_data.get('interval', 15)
     
+    # Daqiqa yoki soat matnini ko'rsatish
+    if current_interval >= 60:
+        hours = current_interval / 60
+        interval_text = f"{int(hours) if hours.is_integer() else hours} soat"
+    else:
+        interval_text = f"{current_interval} daqiqa"
+        
     text = (
-        "⏱️ <b>Habar oralig'i (Interval)</b>\n\n"
-        f"Joriy interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n\n"
-        "Har bir sikl yakunlangach, bot belgilangan muddat davomida to'xtab turadi."
+        "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
+        f"Joriy faol interval: <b>{interval_text}</b>\n\n"
+        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat davomida to'xtab (kutib) turadi."
     )
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="5daq", callback_data="set_int_5"),
-            InlineKeyboardButton(text="15daq", callback_data="set_int_15"),
-            InlineKeyboardButton(text="30daq", callback_data="set_int_30"),
-            InlineKeyboardButton(text="1 soat", callback_data="set_int_60")
-        ]
-    ])
-    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
+
+# Interval o'zgartirilgandagi asinxron ishlovchi (Callback query)
+@router.callback_query(F.data.startswith("set_int_"))
+async def callback_set_interval(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    val = int(callback_query.data.split("_")[2])
+
+    if user_id in db_users:
+        db_users[user_id]["interval"] = val
+        save_db()
+
+    if val >= 60:
+        hours = val / 60
+        interval_text = f"{int(hours) if hours.is_integer() else hours} soat"
+    else:
+        interval_text = f"{val} daqiqa"
+
+    await callback_query.answer(f"✓ Interval {interval_text} ga sozlandi!", show_alert=True)
+    
+    # Matnni va klaviaturani dinamik yangilaymiz
+    text = (
+        "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
+        f"Joriy faol interval: <b>{interval_text}</b>\n\n"
+        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat davomida to'xtab (kutib) turadi."
+    )
+    try:
+        await callback_query.message.edit_text(text, reply_markup=get_interval_keyboard(val), parse_mode="HTML")
+    except Exception:
+        pass
+
+@router.callback_query(F.data == "explain_interval")
+async def callback_explain_interval(callback_query: types.CallbackQuery):
+    explanation = (
+        "⁉️ <b>Interval nima va u nega kerak?</b>\n\n"
+        "<b>Interval</b> — bu siz ulatgan profilingiz barcha tanlangan guruhlarga reklama xabaringizni yuborib bo'lgandan so'ng, keyingi sikl boshlanguncha **qancha vaqt kutishini** belgilaydi.\n\n"
+        "💡 <i>Tavsiya: Telegram spam-filtrlaridan (Spam-blok) saqlanish uchun intervalni kamida 10-15 daqiqa qilib belgilash tavsiya etiladi.</i>"
+    )
+    await callback_query.message.answer(explanation, parse_mode="HTML")
+    await callback_query.answer()
 
 @router.message(F.text == "⚙️ Sozlamalar", state="*")
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
