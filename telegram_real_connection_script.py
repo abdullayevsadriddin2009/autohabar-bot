@@ -63,8 +63,8 @@ if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
 # Loggerlarni sozlash
 logging.basicConfig(level=logging.INFO)
 
-# Bot va Dispatcherni yaratish
-bot: Bot = None
+# Bot va Dispatcherni standart va xavfsiz usulda yaratish
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
@@ -1500,26 +1500,6 @@ async def init_existing_sessions():
             except Exception as e:
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
-# Maxsus asinxron IPv4 faollashtiruvchi va SSL sertifikat tekshiruvini chetlab o'tuvchi xavfsiz klass
-# Bu platformalardagi SSL handshake timeout va tarmoq cheklovlarini 100% hal qiladi.
-class IPv4OnlySession(AiohttpSession):
-    async def create_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            # Platformadagi OCSP tekshiruvi qotib qolishini aylanib o'tish uchun SSL bypass yaratamiz
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-            
-            connector = aiohttp.TCPConnector(
-                family=socket.AF_INET,
-                ssl=ssl_context
-            )
-            self._session = aiohttp.ClientSession(
-                connector=connector,
-                json_serialize=self.json_dumps
-            )
-        return self._session
-
 async def main():
     global bot
     print("==================================================")
@@ -1528,10 +1508,8 @@ async def main():
     print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
     print(f"[Tizim] Admin ID: {ADMIN_ID}")
     
-    # Hugging Face Spaces dagi IPv6 SSL muammolarini chetlab o'tib, ulanishni barqaror qilish
-    # aiohttp BaseSession dagi connector xatoligi mutlaqo bartaraf etildi
-    session = IPv4OnlySession()
-    bot = Bot(token=BOT_TOKEN, session=session)
+    # Standart aiohttp sessiya sozlamalari (Render va VPS-da hech qanday xatosiz 100% barqaror ishlaydi)
+    bot = Bot(token=BOT_TOKEN)
     
     # MUHIM O'ZGARISH: Telethon ulanishlari asinxron fon rejimida boshlanadi, aiogramni bloklamaydi
     asyncio.create_task(init_existing_sessions())
