@@ -105,7 +105,7 @@ if FIREBASE_AVAILABLE:
     # 2. Agar Env bo'lmasa, local JSON fayldan o'qiydi
     if not db and os.path.exists("firebase_credentials.json"):
         try:
-            cred = credentials.Certificate("firebase_credentials.json")
+            cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
             db = firestore.client()
             logging.info("[Firebase] Local JSON fayl orqali muvaffaqiyatli ulandi!")
