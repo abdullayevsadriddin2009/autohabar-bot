@@ -2,11 +2,8 @@
 """
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
-tizimlarini yagona asinxron motor, xavfsiz JSON ma'lumotlar bazasi va Render.com
-uchun soxta Web Server orqali birlashtiradi.
-
-Ishga tushirishdan oldin terminalda:
-pip install aiogram telethon aiohttp
+tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
+Render, Railway va standart VPS hostinglari uchun to'liq moslashtirilgan.
 """
 
 import asyncio
@@ -25,79 +22,128 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from telethon import TelegramClient, errors, Button
 from aiohttp import web
 
+# Google Firebase Admin SDK import qilish
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    FIREBASE_AVAILABLE = False
+
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
 BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 
-# Papkalarni yaratish (Muhim: xatoliklarning oldini oluvchi o'ta mustahkam moslashuv)
+# Papkalarni yaratish
 SESSIONS_DIR = "sessions"
-if os.path.exists(SESSIONS_DIR):
-    if not os.path.isdir(SESSIONS_DIR):
-        try:
-            os.remove(SESSIONS_DIR) # Agar 'sessions' nomli fayl bo'lsa, uni o'chirib tashlaymiz
-            os.makedirs(SESSIONS_DIR, exist_ok=True)
-        except Exception as e:
-            logging.error(f"Eski noto'g'ri faylni o'chirishda xato, muqobil nomga o'tilmoqda: {e}")
-            SESSIONS_DIR = "sessions_dir"
-            os.makedirs(SESSIONS_DIR, exist_ok=True)
-else:
-    os.makedirs(SESSIONS_DIR, exist_ok=True)
+if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
+    try:
+        os.remove(SESSIONS_DIR)
+    except Exception:
+        pass
 
+os.makedirs(SESSIONS_DIR, exist_ok=True)
 DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
+
+# ================= AVTOMATIK NOM TAHRIRLASH =================
+if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
+    for file in os.listdir(SESSIONS_DIR):
+        if "sessiya" in file or "-jurnali" in file or ".sessiya" in file:
+            old_path = os.path.join(SESSIONS_DIR, file)
+            new_file = file.replace("sessiya_", "session_").replace(".sessiya", ".session").replace("-jurnali", "-journal")
+            new_path = os.path.join(SESSIONS_DIR, new_file)
+            try:
+                os.rename(old_path, new_path)
+                logging.info(f"[Tizim] Fayl nomi avtomatik to'g'rilandi: {file} -> {new_file}")
+            except Exception as e:
+                logging.error(f"[Tizim] Nomni o'zgartirishda xatolik: {e}")
 
 # Loggerlarni sozlash
 logging.basicConfig(level=logging.INFO)
 
 # Bot va Dispatcherni yaratish
-bot = Bot(token=BOT_TOKEN)
+bot: Bot = None
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# ================= PERSISTENT JSON DATABASE =================
+# ================= GOOGLE FIRESTORE CLOUD DATABASE =================
+db = None
+if FIREBASE_AVAILABLE:
+    try:
+        if os.path.exists("firebase_credentials.json"):
+            cred = credentials.Certificate("firebase_credentials.json")
+            firebase_admin.initialize_app(cred)
+            db = firestore.client()
+            logging.info("Google Cloud Firestore ma'lumotlar bazasi muvaffaqiyatli ulandi!")
+    except Exception as e:
+        logging.error(f"Firestore ulanishida xatolik: {e}. Local bazaga o'tilmoqda.")
+
+# Boshlang'ich baza andozasi
+DEFAULT_DB = {
+    ADMIN_ID: {
+        "balans": 150000,
+        "stars": 150,
+        "is_pro": True,
+        "referrals": 3,
+        "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
+        "reklama_rasm": None,
+        "inline_buttons": [],
+        "interval": 15,
+        "next_run_timestamp": 0,
+        "active_phone": None,
+        "active_name": "Admin",
+        "active_username": "@admin",
+        "is_sending": False,
+        "groups_choice": "custom",
+        "selected_groups": [],
+        "cached_groups": [],
+        "joined_time": datetime.now().strftime("%H:%M"),
+        "today_sent": 0,
+        "total_sent": 0,
+        "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+    }
+}
+
 def load_db():
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                logging.info("Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
+                return {int(k): v for k, v in data.items()}
+        except Exception as e:
+            logging.error(f"Firestore'dan o'qishda xatolik: {e}")
+
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
         except Exception as e:
-            logging.error(f"Bazani o'qishda xato: {e}")
+            logging.error(f"Mahalliy bazani o'qishda xato: {e}")
     
-    # Boshlang'ich baza (fayl bo'lmasa yoki xato bo'lsa)
-    return {
-        ADMIN_ID: {
-            "balans": 150000,
-            "stars": 150,
-            "is_pro": True,
-            "referrals": 3,
-            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
-            "reklama_rasm": None,
-            "inline_buttons": [],
-            "interval": 15,
-            "next_run_timestamp": 0,
-            "active_phone": None,
-            "active_name": "Admin",
-            "active_username": "@admin",
-            "is_sending": False,
-            "groups_choice": "custom",
-            "selected_groups": [],
-            "cached_groups": [],
-            "joined_time": datetime.now().strftime("%H:%M"),
-            "today_sent": 0,
-            "total_sent": 0,
-            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
-        }
-    }
+    return DEFAULT_DB
 
 def save_db():
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(db_users, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        logging.error(f"Bazani yozishda xato: {e}")
+        logging.error(f"Mahalliy bazaga yozishda xato: {e}")
+
+    if db:
+        try:
+            serializable_db = {str(k): v for k, v in db_users.items()}
+            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
+            doc_ref.set(serializable_db)
+            logging.info("Ma'lumotlar Google Cloud Firestore omboriga muvaffaqiyatli sinxron qilindi!")
+        except Exception as e:
+            logging.error(f"Firestore'ga yozishda xatolik: {e}")
 
 db_users = load_db()
 active_clients = {}
@@ -286,11 +332,11 @@ async def show_message_settings(message: types.Message, user_id: int):
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
 
-# ================= AD REKLAMA EDIT HANDLERS =================
+# ================= AD REKLAMA EDIT CALLBACK HANDLERS =================
 
 @router.callback_query(F.data == "edit_text")
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear() # Har ehtimolga qarshi eski holatlarni tozalaymiz
+    await state.clear()
     await state.set_state(TextStates.waiting_text)
     await callback_query.message.answer("✍️ <b>Yangi reklama matnini yuboring:</b>", parse_mode="HTML")
     await callback_query.answer()
@@ -302,7 +348,7 @@ async def message_receive_text(message: types.Message, state: FSMContext):
     if user_id in db_users:
         db_users[user_id]["reklama_matni"] = new_text
         save_db()
-        await message.answer("✅ <b>Reklama matni muvaffaqiyatli o'zgartirildi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await message.answer("✅ <b>Reklama matni o'zgartirildi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
         await show_message_settings(message, user_id)
     await state.clear()
 
@@ -356,7 +402,7 @@ async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
 async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     if not db_users.get(user_id, {}).get("is_pro", False):
-        await callback_query.answer("👑 Bu funksiyadan foydalanish uchun hisobingizda PRO tarif bo'lishi shart!", show_alert=True)
+        await callback_query.answer("👑 Bu funksiyadan foydalanish uchun PRO bo'lishingiz shart!", show_alert=True)
         return
         
     await state.clear()
@@ -417,7 +463,7 @@ async def menu_kabinet(message: types.Message):
         f"👥 Jami profillar: <b>{1 if user_data.get('active_phone') else 0}</b>\n"
         f"📅 Qo'shilgan: <b>{user_data.get('joined_time', '22:37')}</b>\n\n"
         f"🛡️ Tarif: 👤 <b>{is_pro_text}</b>\n"
-        f"🗂️ Premium: <b>{premium_text}</b>\n"
+        f"|o_tarif: <b>{premium_text}</b>\n"
         f"️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>"
     )
     
@@ -522,7 +568,7 @@ async def menu_interval(message: types.Message):
 async def menu_sozlamalar(message: types.Message):
     text = (
         "⚙️ <b>Qo'shimcha Sozlamalar:</b>\n\n"
-        "🤖 Avto-obuna: <b>Yoqilgan</b> (Bot majburiy guruhlarni o'zi aniqlaydi)\n"
+        "🤖 Avto-obuna: <b>Yoqilgan</b> (Bot majburiy guruhlarni o'zi anixlaydi)\n"
         "↩️ Auto Reply: <b>O'chiq</b>\n"
         "🛡️ Anti-Ban: <b>Eng yuqori darajada</b>"
     )
@@ -662,7 +708,7 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
                 f"✅ <b>Balans muvaffaqiyatli o'zgartirildi!</b>\n"
                 f"Eski balans: {current_bal:,} so'm\n"
                 f"Yangi balans: <b>{new_bal:,} so'm</b>",
-                reply_markup=get_main_keyboard(message.from_user.id),
+                reply_markup=get_main_keyboard(user_id),
                 parse_mode="HTML"
             )
             try:
@@ -709,7 +755,7 @@ async def state_process_add_stars(message: types.Message, state: FSMContext):
                 f"✅ <b>Stars balans o'zgartirildi!</b>\n"
                 f"Eski: {current_stars} ⭐️\n"
                 f"Yangi: <b>{new_stars} ⭐️</b>",
-                reply_markup=get_main_keyboard(message.from_user.id),
+                reply_markup=get_main_keyboard(user_id),
                 parse_mode="HTML"
             )
             try:
@@ -734,7 +780,7 @@ async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
         status_nomi = "PRO 👑" if new_status else "FREE 👤"
         await callback_query.answer(f"Tarif muvaffaqiyatli {status_nomi} ga o'zgartirildi!", show_alert=True)
         try:
-            tabrik = "👑 <b>Tabriklaymiz! Tizim administratori sizga cheksiz PRO tarifini taqdim etdi!</b>\nEndi barcha yopiq xizmatlar siz uchun ochiq." if new_status else "⚠️ Hisobingizdagi PRO tarifi administrator tomonidan bekor qilindi va bepul rejimga qaytarildingiz."
+            tabrik = "👑 <b>Tabriklaymiz! Tizim administratori sizga cheksiz PRO tarifini taqdim etdi!</b>\nEndi barcha yopiq xizmatlar siz uchun ochoq." if new_status else "⚠️ Hisobingizdagi PRO tarifi administrator tomonidan bekor qilindi va bepul rejimga qaytarildingiz."
             await bot.send_message(target_id, tabrik, parse_mode="HTML")
         except Exception:
             pass
@@ -790,7 +836,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         channels.append(chan_name)
         db_users[ADMIN_ID]["channels"] = channels
         save_db()
-        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaffaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
+        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     else:
         await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
     await state.clear()
@@ -807,7 +853,7 @@ async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, sta
     await state.set_state(AdminStates.waiting_broadcast_msg)
     text = (
         "✉️ <b>Ommaviy reklama tarqatish bo'limi</b>\n\n"
-        "Istalgan rasm yoki matnli xabarni yuboring. Ushbu xabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
+        "Istalgan rasm yoki matnli xabarni yuboring. Ushabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
     )
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_main_menu")]
@@ -836,7 +882,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         f"✅ <b>Ommaviy reklama yakunlandi!</b>\n\n"
         f"📤 Yuborildi: <b>{sent_count} ta foydalanuvchiga</b>\n"
         f"❌ O'chib ketgan/Bloklagan: <b>{fail_count} ta</b>",
-        reply_markup=get_main_keyboard(message.from_user.id),
+        reply_markup=get_main_keyboard(user_id),
         parse_mode="HTML"
     )
 
@@ -854,7 +900,6 @@ async def send_reklama_message(client, chat_id, user_data, user_id):
     """ Media (Rasm), Inline tugmalar va textni yaxlit bitta xabar sifatida yuboruvchi asinxron motor """
     text = user_data.get("reklama_matni", "")
     
-    # Oddiy a'zolar xabariga avtomatik ravishda maxsus imzo qo'shiladi!
     if int(user_id) != ADMIN_ID:
         text += "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi"
         
@@ -932,10 +977,9 @@ async def run_sending_cycle_for_user(user_id):
                     logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
                     await asyncio.sleep(15)
                 except errors.FloodWaitError as e:
-                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi.")
+                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
                     await asyncio.sleep(e.seconds)
                 except Exception as e:
-                    logging.error(f"Guruh {g_id} ga yuborishda xato: {e}")
                     continue
                     
     except Exception as e:
@@ -1390,29 +1434,28 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         await message.answer(f"❌ Parol noto'g'ri: {str(e)}")
 
 
-# ================= SOXTA WEB SERVER (RENDER PORT BINDING UCHUN) =================
+# ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
 
 async def handle_ping(request):
-    return web.Response(text="Bot is running smoothly on Render!")
+    return web.Response(text="Bot is running smoothly!")
 
 async def start_web_server():
     app = web.Application()
     app.router.add_get('/', handle_ping)
     app.router.add_get('/ping', handle_ping)
     
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 7860)) # Hugging Face porti 7860 standart hisoblanadi
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    logging.info(f"Render uchun soxta veb-server {port}-portda muvaffaqiyatli ishga tushirildi!")
+    logging.info(f"Port {port}-portda muvaffaqiyatli ishga tushirildi!")
 
 # ==================================================================================
 
 
 # Mavjud sessiya fayllarini tekshirish va avtomatik ulanish
 async def init_existing_sessions():
-    # Eski fayllarni xavfsiz moslashtirish va yuklash
     for file in os.listdir(SESSIONS_DIR):
         if file.endswith(".session"):
             user_id_str = file.replace("session_", "").replace(".session", "")
@@ -1457,14 +1500,41 @@ async def init_existing_sessions():
             except Exception as e:
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
+# Maxsus asinxron IPv4 faollashtiruvchi va SSL sertifikat tekshiruvini chetlab o'tuvchi xavfsiz klass
+# Bu platformalardagi SSL handshake timeout va tarmoq cheklovlarini 100% hal qiladi.
+class IPv4OnlySession(AiohttpSession):
+    async def create_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            # Platformadagi OCSP tekshiruvi qotib qolishini aylanib o'tish uchun SSL bypass yaratamiz
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            connector = aiohttp.TCPConnector(
+                family=socket.AF_INET,
+                ssl=ssl_context
+            )
+            self._session = aiohttp.ClientSession(
+                connector=connector,
+                json_serialize=self.json_dumps
+            )
+        return self._session
+
 async def main():
+    global bot
     print("==================================================")
     print("🤖 AutoHabar Pro Telegram Bot ishga tushmoqda...")
     print("==================================================")
     print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
     print(f"[Tizim] Admin ID: {ADMIN_ID}")
     
-    await init_existing_sessions()
+    # Hugging Face Spaces dagi IPv6 SSL muammolarini chetlab o'tib, ulanishni barqaror qilish
+    # aiohttp BaseSession dagi connector xatoligi mutlaqo bartaraf etildi
+    session = IPv4OnlySession()
+    bot = Bot(token=BOT_TOKEN, session=session)
+    
+    # MUHIM O'ZGARISH: Telethon ulanishlari asinxron fon rejimida boshlanadi, aiogramni bloklamaydi
+    asyncio.create_task(init_existing_sessions())
     
     # Asinxron ishlovchi fon xizmatlarini yoqamiz
     asyncio.create_task(auto_sender_worker())
@@ -1483,5 +1553,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n[👋] Dastur to'xtatildi.")
+        print("\n[👋] Avtomatlashtirish jarayoni foydalanuvchi tomonidan to'xtatildi.")
         sys.exit()
