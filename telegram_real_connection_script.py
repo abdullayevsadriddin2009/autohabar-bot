@@ -142,26 +142,26 @@ DEFAULT_DB = {
 
 def load_db():
     """ Bulutli bazadan yoki mahalliy JSON fayldan foydalanuvchilar ma'lumotlarini yuklash """
+    loaded_data = DEFAULT_DB
     if db:
         try:
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc = doc_ref.get()
             if doc.exists:
-                data = doc.to_dict()
+                loaded_data = doc.to_dict()
                 logging.info("[Baza] Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
-                return {int(k): v for k, v in data.items()}
         except Exception as e:
             logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
-
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return {int(k): v for k, v in data.items()}
-        except Exception as e:
-            logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
+    else:
+        if os.path.exists(DB_FILE):
+            try:
+                with open(DB_FILE, "r", encoding="utf-8") as f:
+                    loaded_data = json.load(f)
+            except Exception as e:
+                logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
     
-    return DEFAULT_DB
+    # Barcha kalitlarni butun son (int) turiga normallashtirish (Muhim tuzatish!)
+    return {int(k): v for k, v in loaded_data.items()}
 
 def save_db():
     """ Ma'lumotlarni ham Google Cloud'ga, ham mahalliy faylga sinxron yozish """
@@ -668,8 +668,13 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     val = int(callback_query.data.split("_")[2])
 
-    if user_id in db_users:
-        db_users[user_id]["interval"] = val
+    # To'g'ridan-to'g'ri kalit mavjudligini xatosiz va type-insensitiv tekshirish
+    user_key = user_id
+    if user_key not in db_users and str(user_key) in db_users:
+        user_key = str(user_key)
+
+    if user_key in db_users:
+        db_users[user_key]["interval"] = val
         save_db()
 
     if val >= 60:
