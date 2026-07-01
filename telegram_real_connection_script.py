@@ -3,7 +3,7 @@
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
-Render, Railway va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
+Render, Railway va va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
 """
 
 import asyncio
@@ -184,6 +184,33 @@ def save_db():
 db_users = load_db()
 active_clients = {}
 
+def ensure_user(user_id: int):
+    """ Bazada KeyError bo'lmasligi uchun foydalanuvchini andoza bilan yaratish """
+    if user_id not in db_users:
+        db_users[user_id] = {
+            "balans": 0,
+            "stars": 0,
+            "is_pro": False,
+            "referrals": 0,
+            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
+            "reklama_rasm": None,
+            "inline_buttons": [],
+            "interval": 15,
+            "next_run_timestamp": 0,
+            "active_phone": None,
+            "active_name": "Foydalanuvchi",
+            "active_username": "@-",
+            "is_sending": False,
+            "groups_choice": "custom",
+            "selected_groups": [],
+            "cached_groups": [],
+            "joined_time": datetime.now().strftime("%H:%M"),
+            "today_sent": 0,
+            "total_sent": 0,
+            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+        }
+        save_db()
+
 async def backup_session_to_cloud(user_id):
     """ Telethon SQLite `.session` faylini shifrlab bulutga xavfsiz saqlash """
     if not db:
@@ -314,30 +341,7 @@ def get_interval_keyboard(user_interval):
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()  # FSM qotib qolishini oldini oladi
     user_id = message.from_user.id
-    if user_id not in db_users:
-        db_users[user_id] = {
-            "balans": 0,
-            "stars": 0,
-            "is_pro": False,
-            "referrals": 0,
-            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
-            "reklama_rasm": None,
-            "inline_buttons": [],
-            "interval": 15,
-            "next_run_timestamp": 0,
-            "active_phone": None,
-            "active_name": message.from_user.full_name,
-            "active_username": f"@{message.from_user.username}" if message.from_user.username else "@-",
-            "is_sending": False,
-            "groups_choice": "custom",
-            "selected_groups": [],
-            "cached_groups": [],
-            "joined_time": datetime.now().strftime("%H:%M"),
-            "today_sent": 0,
-            "total_sent": 0,
-            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
-        }
-        save_db()
+    ensure_user(user_id)
     
     text = (
         "📊 <b>Asosiy menyu:</b>\n"
@@ -361,7 +365,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     
     phone = user_data.get("active_phone")
     profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
@@ -399,10 +404,12 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
+    ensure_user(user_id)
     await show_message_settings(message, user_id)
 
 async def show_message_settings(message: types.Message, user_id: int):
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     
     reklama_rasm = "Bor 🖼️" if user_data.get("reklama_rasm") else "Yo'q ❌"
     tugmalar_soni = f"Bor ({len(user_data.get('inline_buttons', []))} ta) 🔘" if user_data.get("inline_buttons") else "Yo'q ❌"
@@ -437,12 +444,12 @@ async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMCont
 @router.message(StateFilter(TextStates.waiting_text))
 async def message_receive_text(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
+    ensure_user(user_id)
     new_text = message.text
-    if user_id in db_users:
-        db_users[user_id]["reklama_matni"] = new_text
-        save_db()
-        await message.answer("✅ <b>Reklama matni o'zgartirildi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
-        await show_message_settings(message, user_id)
+    db_users[user_id]["reklama_matni"] = new_text
+    save_db()
+    await message.answer("✅ <b>Reklama matni o'zgartirildi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+    await show_message_settings(message, user_id)
     await state.clear()
 
 @router.callback_query(F.data == "edit_photo")
@@ -455,6 +462,7 @@ async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMCon
 @router.message(StateFilter(TextStates.waiting_photo), F.photo)
 async def message_receive_photo(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
+    ensure_user(user_id)
     photo = message.photo[-1]
     file_info = await bot.get_file(photo.file_id)
     
@@ -464,11 +472,10 @@ async def message_receive_photo(message: types.Message, state: FSMContext):
     
     await bot.download_file(file_info.file_path, local_path)
     
-    if user_id in db_users:
-        db_users[user_id]["reklama_rasm"] = local_path
-        save_db()
-        await message.answer("✅ <b>Reklama rasmi muvaffaqiyatli saqlandi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
-        await show_message_settings(message, user_id)
+    db_users[user_id]["reklama_rasm"] = local_path
+    save_db()
+    await message.answer("✅ <b>Reklama rasmi muvaffaqiyatli saqlandi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+    await show_message_settings(message, user_id)
     await state.clear()
 
 @router.message(StateFilter(TextStates.waiting_photo))
@@ -478,22 +485,23 @@ async def message_receive_photo_invalid(message: types.Message):
 @router.callback_query(F.data == "clear_media_buttons")
 async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        old_path = db_users[user_id].get("reklama_rasm")
-        if old_path and os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except Exception:
-                pass
-        db_users[user_id]["reklama_rasm"] = None
-        db_users[user_id]["inline_buttons"] = []
-        save_db()
-        await callback_query.answer("❌ Barcha media va tugmalar olib tashlandi!", show_alert=True)
-        await show_message_settings(callback_query.message, user_id)
+    ensure_user(user_id)
+    old_path = db_users[user_id].get("reklama_rasm")
+    if old_path and os.path.exists(old_path):
+        try:
+            os.remove(old_path)
+        except Exception:
+            pass
+    db_users[user_id]["reklama_rasm"] = None
+    db_users[user_id]["inline_buttons"] = []
+    save_db()
+    await callback_query.answer("❌ Barcha media va tugmalar olib tashlandi!", show_alert=True)
+    await show_message_settings(callback_query.message, user_id)
 
 @router.callback_query(F.data == "edit_buttons_pro")
 async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
+    ensure_user(user_id)
     if not db_users.get(user_id, {}).get("is_pro", False):
         await callback_query.answer("👑 Bu funksiyadan foydalanish uchun PRO bo'lishingiz shart!", show_alert=True)
         return
@@ -511,6 +519,7 @@ async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: 
 @router.message(StateFilter(TextStates.waiting_buttons))
 async def message_receive_buttons(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
+    ensure_user(user_id)
     lines = message.text.strip().split("\n")
     buttons = []
     
@@ -537,7 +546,8 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 async def menu_kabinet(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     
     phone = user_data.get("active_phone") or "Profil ulanmagan"
     username = user_data.get("active_username") or "@-"
@@ -571,7 +581,8 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
 async def menu_guruhlar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     
     choice = user_data.get("groups_choice", "custom")
     hamma_check = "✓" if choice == "all" else " "
@@ -604,7 +615,8 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     phone = user_data.get("active_phone")
     
     text = "👥 <b>Ulangan Profillar:</b>\n\n"
@@ -646,7 +658,8 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
 async def menu_interval(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     current_interval = user_data.get('interval', 15)
     
     # Daqiqa yoki soat matnini ko'rsatish
@@ -669,14 +682,9 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     val = int(callback_query.data.split("_")[2])
 
-    # To'g'ridan-to'g'ri kalit mavjudligini xatosiz va type-insensitiv tekshirish
-    user_key = user_id
-    if user_key not in db_users and str(user_key) in db_users:
-        user_key = str(user_key)
-
-    if user_key in db_users:
-        db_users[user_key]["interval"] = val
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["interval"] = val
+    save_db()
 
     if val >= 60:
         hours = val / 60
@@ -1135,10 +1143,10 @@ async def run_sending_cycle_for_user(user_id):
 @router.callback_query(F.data == "disconnect_profile")
 async def callback_disconnect(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        db_users[user_id]["active_phone"] = None
-        db_users[user_id]["is_sending"] = False
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    save_db()
     
     if user_id in active_clients:
         try:
@@ -1165,9 +1173,9 @@ async def callback_groups_all(callback_query: types.CallbackQuery):
     except Exception:
         pass
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        db_users[user_id]["groups_choice"] = "all"
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["groups_choice"] = "all"
+    save_db()
     await callback_query.answer("✓ Hamma guruhlar tanlandi!", show_alert=True)
     await menu_guruhlar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
@@ -1178,9 +1186,9 @@ async def callback_groups_custom(callback_query: types.CallbackQuery):
     except Exception:
         pass
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        db_users[user_id]["groups_choice"] = "custom"
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["groups_choice"] = "custom"
+    save_db()
     await callback_query.answer("✓ Qo'lda tanlash rejimi faollashdi!", show_alert=True)
     await menu_guruhlar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
@@ -1191,15 +1199,16 @@ async def callback_clear_groups(callback_query: types.CallbackQuery):
     except Exception:
         pass
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        db_users[user_id]["selected_groups"] = []
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["selected_groups"] = []
+    save_db()
     await callback_query.answer("🚨 Barcha tanlangan guruhlar belgilanishi tozalandi!", show_alert=True)
     await callback_groups_list(callback_query)
 
 @router.callback_query(F.data == "refresh_groups_force")
 async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
+    ensure_user(user_id)
     try:
         await callback_query.answer("Kesh yangilanmoqda, kuting...", show_alert=False)
     except Exception:
@@ -1239,7 +1248,8 @@ async def callback_groups_list(callback_query: types.CallbackQuery):
         pass
 
     user_id = callback_query.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     parts = callback_query.data.split("_")
     page = 0
     if len(parts) >= 4:
@@ -1336,6 +1346,7 @@ async def callback_toggle_group(callback_query: types.CallbackQuery):
         pass
 
     user_id = callback_query.from_user.id
+    ensure_user(user_id)
     parts = callback_query.data.split("_")
     if len(parts) < 4:
         return
@@ -1346,7 +1357,7 @@ async def callback_toggle_group(callback_query: types.CallbackQuery):
     except (ValueError, IndexError):
         return
     
-    user_data = db_users.get(user_id, {})
+    user_data = db_users.get(user_id)
     selected_ids = [int(x) for x in user_data.get("selected_groups", [])]
     
     if group_id in selected_ids:
@@ -1354,7 +1365,7 @@ async def callback_toggle_group(callback_query: types.CallbackQuery):
     else:
         selected_ids.append(group_id)
         
-    user_data["selected_groups"] = selected_ids
+    db_users[user_id]["selected_groups"] = selected_ids
     save_db()
     await callback_groups_list(callback_query)
 
@@ -1366,7 +1377,8 @@ async def callback_select_all_groups(callback_query: types.CallbackQuery):
         pass
 
     user_id = callback_query.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     guruhlar = user_data.get("cached_groups", [])
     selected_ids = []
     
@@ -1389,9 +1401,9 @@ async def callback_deselect_all_groups(callback_query: types.CallbackQuery):
         pass
 
     user_id = callback_query.from_user.id
-    if user_id in db_users:
-        db_users[user_id]["selected_groups"] = []
-        save_db()
+    ensure_user(user_id)
+    db_users[user_id]["selected_groups"] = []
+    save_db()
     
     await callback_query.answer("Barcha guruhlar ro'yxatdan olib tashlandi! ❌", show_alert=True)
     await callback_groups_list(callback_query)
@@ -1403,7 +1415,8 @@ async def callback_save_groups(callback_query: types.CallbackQuery):
     except Exception:
         pass
     user_id = callback_query.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     user_data["selected_groups"] = [int(x) for x in user_data.get("selected_groups", [])]
     save_db()
     g_count = len(user_data["selected_groups"])
@@ -1416,7 +1429,8 @@ async def callback_save_groups(callback_query: types.CallbackQuery):
 @router.callback_query(F.data == "toggle_sending")
 async def callback_toggle_sending(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     
     if not user_data.get("active_phone"):
         await callback_query.answer("Avvalo profilingizni ulashingiz shart! 📱", show_alert=True)
@@ -1437,7 +1451,8 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery):
         asyncio.create_task(trigger_immediate_sending(user_id))
 
 async def trigger_immediate_sending(user_id):
-    user_data = db_users.get(user_id, {})
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
     if not user_data.get("is_sending"):
         return
     interval_minutes = user_data.get("interval", 15)
@@ -1453,6 +1468,7 @@ async def callback_add_account_wizard(callback_query: types.CallbackQuery, state
         pass
     
     user_id = callback_query.from_user.id
+    ensure_user(user_id)
     if user_id in active_clients:
         try:
             await active_clients[user_id].disconnect()
@@ -1511,13 +1527,14 @@ async def state_code_received(message: types.Message, state: FSMContext):
     data = await state.get_data()
     phone = data.get("phone")
     phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
     
     try:
-        client = await get_client(message.from_user.id)
+        client = await get_client(user_id)
         await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         
         me = await client.get_me()
-        user_id = message.from_user.id
         
         db_users[user_id]["active_phone"] = phone
         db_users[user_id]["active_name"] = me.first_name
@@ -1564,12 +1581,13 @@ async def state_code_received(message: types.Message, state: FSMContext):
 async def state_2fa_received(message: types.Message, state: FSMContext):
     password = message.text.strip()
     user_id = message.from_user.id
+    ensure_user(user_id)
     data = await state.get_data()
     phone = data.get("phone")
     
     try:
         client = await get_client(user_id)
-        await client.sign_in(password=password)
+        await client.sign_in(phone=phone, password=password)
         me = await client.get_me()
         
         db_users[user_id]["active_phone"] = phone
@@ -1589,7 +1607,7 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
     except errors.PasswordHashInvalidError:
         await message.answer("❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.")
     except Exception as e:
-        await message.answer(f"❌ Parol noto'g'ri: {str(e)}")
+        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
 
 
 # ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
