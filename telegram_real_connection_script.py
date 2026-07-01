@@ -221,7 +221,8 @@ def get_admin_main_markup():
 # ================= BOT HANDLERS =================
 
 @router.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()  # FSM qotib qolishini oldini oladi
     user_id = message.from_user.id
     if user_id not in db_users:
         db_users[user_id] = {
@@ -267,7 +268,8 @@ async def cmd_start(message: types.Message):
     await message.answer("Tizimdan foydalanish uchun quyidagi tugmani bosing:", reply_markup=inline_kb)
 
 @router.message(F.text == "⚪ Autohabar yuborish")
-async def menu_autohabar(message: types.Message):
+async def menu_autohabar(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
     
@@ -304,7 +306,8 @@ async def menu_autohabar(message: types.Message):
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "📝 Habar matni")
-async def menu_habar_matni_msg(message: types.Message):
+async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     await show_message_settings(message, user_id)
 
@@ -441,7 +444,8 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 # =======================================================================
 
 @router.message(F.text == "👤 Kabinet")
-async def menu_kabinet(message: types.Message):
+async def menu_kabinet(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
     
@@ -474,7 +478,8 @@ async def menu_kabinet(message: types.Message):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "💬 Guruhlarni sozlash")
-async def menu_guruhlar(message: types.Message):
+async def menu_guruhlar(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
     
@@ -506,7 +511,8 @@ async def menu_guruhlar(message: types.Message):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "👤 Profillar")
-async def menu_profillar(message: types.Message):
+async def menu_profillar(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
     phone = user_data.get("active_phone")
@@ -526,7 +532,8 @@ async def menu_profillar(message: types.Message):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "👑 Pro tarif")
-async def menu_pro_tarif(message: types.Message):
+async def menu_pro_tarif(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     text = (
         "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n"
         "👤 Ko'p profil: 5 tagacha akkaunt ulasiz\n"
@@ -545,7 +552,8 @@ async def menu_pro_tarif(message: types.Message):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "⏱️ Interval")
-async def menu_interval(message: types.Message):
+async def menu_interval(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
     user_data = db_users.get(user_id, {})
     
@@ -565,7 +573,8 @@ async def menu_interval(message: types.Message):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "⚙️ Sozlamalar")
-async def menu_sozlamalar(message: types.Message):
+async def menu_sozlamalar(message: types.Message, state: FSMContext):
+    await state.clear()  # Holatni tozalaymiz
     text = (
         "⚙️ <b>Qo'shimcha Sozlamalar:</b>\n\n"
         "🤖 Avto-obuna: <b>Yoqilgan</b> (Bot majburiy guruhlarni o'zi anixlaydi)\n"
@@ -708,7 +717,7 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
                 f"✅ <b>Balans muvaffaqiyatli o'zgartirildi!</b>\n"
                 f"Eski balans: {current_bal:,} so'm\n"
                 f"Yangi balans: <b>{new_bal:,} so'm</b>",
-                reply_markup=get_main_keyboard(user_id),
+                reply_markup=get_main_keyboard(target_id),
                 parse_mode="HTML"
             )
             try:
@@ -755,7 +764,7 @@ async def state_process_add_stars(message: types.Message, state: FSMContext):
                 f"✅ <b>Stars balans o'zgartirildi!</b>\n"
                 f"Eski: {current_stars} ⭐️\n"
                 f"Yangi: <b>{new_stars} ⭐️</b>",
-                reply_markup=get_main_keyboard(user_id),
+                reply_markup=get_main_keyboard(target_id),
                 parse_mode="HTML"
             )
             try:
@@ -836,7 +845,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         channels.append(chan_name)
         db_users[ADMIN_ID]["channels"] = channels
         save_db()
-        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
     else:
         await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
     await state.clear()
@@ -882,7 +891,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         f"✅ <b>Ommaviy reklama yakunlandi!</b>\n\n"
         f"📤 Yuborildi: <b>{sent_count} ta foydalanuvchiga</b>\n"
         f"❌ O'chib ketgan/Bloklagan: <b>{fail_count} ta</b>",
-        reply_markup=get_main_keyboard(user_id),
+        reply_markup=get_main_keyboard(message.from_user.id),
         parse_mode="HTML"
     )
 
@@ -1256,7 +1265,7 @@ async def callback_save_groups(callback_query: types.CallbackQuery):
     save_db()
     g_count = len(user_data["selected_groups"])
     await callback_query.answer(f"✓ Tanlangan {g_count} ta guruh muvaffaqiyatli saqlandi!", show_alert=True)
-    await menu_guruhlar(callback_query.message)
+    await menu_guruhlar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
 
 # ================= OTHER ACTIONS & LOGIN WIZARD =================
@@ -1278,7 +1287,7 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery):
         
     save_db()
     await callback_query.answer(f"Avto-xabar tarqatish muvaffaqiyatli {status_text}", show_alert=True)
-    await menu_autohabar(callback_query.message)
+    await menu_autohabar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
     
     if user_data["is_sending"]:
         logging.info(f"[Sender] Foydalanuvchi {user_id} uchun reklama tarqatish darhol ishga tushirildi!")
@@ -1444,7 +1453,7 @@ async def start_web_server():
     app.router.add_get('/', handle_ping)
     app.router.add_get('/ping', handle_ping)
     
-    port = int(os.environ.get("PORT", 7860)) # Hugging Face porti 7860 standart hisoblanadi
+    port = int(os.environ.get("PORT", 10000))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
@@ -1508,10 +1517,10 @@ async def main():
     print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
     print(f"[Tizim] Admin ID: {ADMIN_ID}")
     
-    # Standart aiohttp sessiya sozlamalari (Render va VPS-da hech qanday xatosiz 100% barqaror ishlaydi)
+    # Standart aiohttp sessiya sozlamalari
     bot = Bot(token=BOT_TOKEN)
     
-    # MUHIM O'ZGARISH: Telethon ulanishlari asinxron fon rejimida boshlanadi, aiogramni bloklamaydi
+    # Telethon ulanishlari asinxron fon rejimida boshlanadi
     asyncio.create_task(init_existing_sessions())
     
     # Asinxron ishlovchi fon xizmatlarini yoqamiz
