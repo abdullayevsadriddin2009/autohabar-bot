@@ -31,15 +31,20 @@ API_HASH = "f49729d10c144035c40f579b596d15b1"
 BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 
-# Papkalarni yaratish (Muhim: xatoliklarning oldini oluvchi aqlli moslashuv)
+# Papkalarni yaratish (Muhim: xatoliklarning oldini oluvchi o'ta mustahkam moslashuv)
 SESSIONS_DIR = "sessions"
-if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
-    try:
-        os.remove(SESSIONS_DIR) # Agar 'sessions' nomli fayl bo'lsa, uni o'chiramiz
-    except Exception as e:
-        logging.error(f"Eski noto'g'ri faylni o'chirishda xato: {e}")
+if os.path.exists(SESSIONS_DIR):
+    if not os.path.isdir(SESSIONS_DIR):
+        try:
+            os.remove(SESSIONS_DIR) # Agar 'sessions' nomli fayl bo'lsa, uni o'chirib tashlaymiz
+            os.makedirs(SESSIONS_DIR, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Eski noto'g'ri faylni o'chirishda xato, muqobil nomga o'tilmoqda: {e}")
+            SESSIONS_DIR = "sessions_dir"
+            os.makedirs(SESSIONS_DIR, exist_ok=True)
+else:
+    os.makedirs(SESSIONS_DIR, exist_ok=True)
 
-os.makedirs(SESSIONS_DIR, exist_ok=True)
 DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 
 # Loggerlarni sozlash
@@ -285,6 +290,7 @@ async def show_message_settings(message: types.Message, user_id: int):
 
 @router.callback_query(F.data == "edit_text")
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear() # Har ehtimolga qarshi eski holatlarni tozalaymiz
     await state.set_state(TextStates.waiting_text)
     await callback_query.message.answer("✍️ <b>Yangi reklama matnini yuboring:</b>", parse_mode="HTML")
     await callback_query.answer()
@@ -302,6 +308,7 @@ async def message_receive_text(message: types.Message, state: FSMContext):
 
 @router.callback_query(F.data == "edit_photo")
 async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
     await state.set_state(TextStates.waiting_photo)
     await callback_query.message.answer("🖼️ <b>Reklama uchun rasmni oddiy rasm ko'rinishida yuboring:</b>", parse_mode="HTML")
     await callback_query.answer()
@@ -352,6 +359,7 @@ async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: 
         await callback_query.answer("👑 Bu funksiyadan foydalanish uchun hisobingizda PRO tarif bo'lishi shart!", show_alert=True)
         return
         
+    await state.clear()
     await state.set_state(TextStates.waiting_buttons)
     await callback_query.message.answer(
         "🔘 <b>Tugmalarni quyidagi formatda yozib yuboring:</b>\n\n"
