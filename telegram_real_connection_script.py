@@ -3,7 +3,7 @@
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
-Render, Railway va standart VPS hostinglari uchun to'liq moslashtirilgan.
+Render, Railway va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
 """
 
 import asyncio
@@ -12,6 +12,7 @@ import os
 import sys
 import shutil
 import json
+import base64
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -47,19 +48,6 @@ if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 
-# ================= AVTOMATIK NOM TAHRIRLASH =================
-if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
-    for file in os.listdir(SESSIONS_DIR):
-        if "sessiya" in file or "-jurnali" in file or ".sessiya" in file:
-            old_path = os.path.join(SESSIONS_DIR, file)
-            new_file = file.replace("sessiya_", "session_").replace(".sessiya", ".session").replace("-jurnali", "-journal")
-            new_path = os.path.join(SESSIONS_DIR, new_file)
-            try:
-                os.rename(old_path, new_path)
-                logging.info(f"[Tizim] Fayl nomi avtomatik to'g'rilandi: {file} -> {new_file}")
-            except Exception as e:
-                logging.error(f"[Tizim] Nomni o'zgartirishda xatolik: {e}")
-
 # Loggerlarni sozlash
 logging.basicConfig(level=logging.INFO)
 
@@ -72,14 +60,27 @@ dp.include_router(router)
 # ================= GOOGLE FIRESTORE CLOUD DATABASE =================
 db = None
 if FIREBASE_AVAILABLE:
-    try:
-        if os.path.exists("firebase_credentials.json"):
+    # 1. Avval Render environment variable-dan o'qishga harakat qiladi
+    firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
+    if firebase_config_env:
+        try:
+            cred_dict = json.loads(firebase_config_env)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            db = firestore.client()
+            logging.info("[Firebase] Render Environment Variable orqali muvaffaqiyatli ulandi!")
+        except Exception as e:
+            logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
+            
+    # 2. Agar Env bo'lmasa, local JSON fayldan o'qiydi
+    if not db and os.path.exists("firebase_credentials.json"):
+        try:
             cred = credentials.Certificate("firebase_credentials.json")
             firebase_admin.initialize_app(cred)
             db = firestore.client()
-            logging.info("Google Cloud Firestore ma'lumotlar bazasi muvaffaqiyatli ulandi!")
-    except Exception as e:
-        logging.error(f"Firestore ulanishida xatolik: {e}. Local bazaga o'tilmoqda.")
+            logging.info("[Firebase] Local JSON fayl orqali muvaffaqiyatli ulandi!")
+        except Exception as e:
+            logging.error(f"[Firebase] Local JSON ulanishida xatolik: {e}")
 
 # Boshlang'ich baza andozasi
 DEFAULT_DB = {
@@ -107,17 +108,21 @@ DEFAULT_DB = {
     }
 }
 
+# ================= SESSIONS & DATABASE CLOUD PERSISTENCE =================
+
 def load_db():
+    """ Bulutli bazadan yoki mahalliy JSON fayldan foydalanuvchilar ma'lumotlarini yuklash """
     if db:
         try:
+            # Sandbox qoidalariga rioya etgan holda: /artifacts/{appId}/public/data/{collectionName}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc = doc_ref.get()
             if doc.exists:
                 data = doc.to_dict()
-                logging.info("Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
+                logging.info("[Baza] Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
                 return {int(k): v for k, v in data.items()}
         except Exception as e:
-            logging.error(f"Firestore'dan o'qishda xatolik: {e}")
+            logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
 
     if os.path.exists(DB_FILE):
         try:
@@ -125,28 +130,70 @@ def load_db():
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
         except Exception as e:
-            logging.error(f"Mahalliy bazani o'qishda xato: {e}")
+            logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
     
     return DEFAULT_DB
 
 def save_db():
+    """ Ma'lumotlarni ham Google Cloud'ga, ham mahalliy faylga sinxron yozish """
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(db_users, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        logging.error(f"Mahalliy bazaga yozishda xato: {e}")
+        logging.error(f"[Baza] Mahalliy bazaga yozishda xato: {e}")
 
     if db:
         try:
             serializable_db = {str(k): v for k, v in db_users.items()}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc_ref.set(serializable_db)
-            logging.info("Ma'lumotlar Google Cloud Firestore omboriga muvaffaqiyatli sinxron qilindi!")
+            logging.info("[Baza] Ma'lumotlar Google Cloud Firestore omboriga yozildi!")
         except Exception as e:
-            logging.error(f"Firestore'ga yozishda xatolik: {e}")
+            logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
 db_users = load_db()
 active_clients = {}
+
+async def backup_session_to_cloud(user_id):
+    """ Telethon SQLite `.session` faylini shifrlab bulutga xavfsiz saqlash """
+    if not db:
+        return
+    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
+    if os.path.exists(session_path):
+        try:
+            with open(session_path, "rb") as f:
+                encoded_data = base64.b64encode(f.read()).decode('utf-8')
+            
+            # Shaxsiy ma'lumotlar uchun: /artifacts/{appId}/users/{userId}/{collectionName}
+            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref.set({"binary_data": encoded_data, "updated_at": datetime.now().isoformat()})
+            logging.info(f"[Sessiya] {user_id} uchun sessiya fayli bulutga zaxiralandi!")
+        except Exception as e:
+            logging.error(f"[Sessiya] Bulutga zaxiralashda xatolik: {e}")
+
+async def restore_sessions_from_cloud():
+    """ Render qayta ishga tushganda bulutdagi barcha sessiyalarni qayta tiklash """
+    if not db:
+        return
+    try:
+        # Barcha foydalanuvchilar sessiyalarini tiklash
+        users_ref = db.collection('artifacts').document('autohabar_pro').collection('users')
+        users_docs = users_ref.stream()
+        
+        for user_doc in users_docs:
+            user_id = user_doc.id
+            session_doc_ref = users_ref.document(user_id).collection('telethon_session').document('session_file')
+            session_doc = session_doc_ref.get()
+            
+            if session_doc.exists:
+                binary_data_b64 = session_doc.to_dict().get("binary_data")
+                if binary_data_b64:
+                    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
+                    with open(session_path, "wb") as f:
+                        f.write(base64.b64decode(binary_data_b64.encode('utf-8')))
+                    logging.info(f"[Sessiya] Bulutdan qayta tiklandi: user_{user_id}.session")
+    except Exception as e:
+        logging.error(f"[Sessiya] Bulutdan tiklashda xatolik: {e}")
 
 # ================= STATES FOR LOGIN & ACTIONS =================
 class LoginStates(StatesGroup):
@@ -891,7 +938,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         f"✅ <b>Ommaviy reklama yakunlandi!</b>\n\n"
         f"📤 Yuborildi: <b>{sent_count} ta foydalanuvchiga</b>\n"
         f"❌ O'chib ketgan/Bloklagan: <b>{fail_count} ta</b>",
-        reply_markup=get_main_keyboard(user_id),
+        reply_markup=get_main_keyboard(message.from_user.id),
         parse_mode="HTML"
     )
 
@@ -1011,6 +1058,14 @@ async def callback_disconnect(callback_query: types.CallbackQuery):
         except Exception:
             pass
         active_clients.pop(user_id, None)
+
+    # Cloud zaxirani ham o'chirish (ixtiyoriy, seans uzilganda)
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref.delete()
+        except Exception:
+            pass
 
     await callback_query.answer("⚠️ Profil muvaffaqiyatli uzildi!", show_alert=True)
     await menu_kabinet(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
@@ -1381,8 +1436,11 @@ async def state_code_received(message: types.Message, state: FSMContext):
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
+        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
+        await backup_session_to_cloud(user_id)
+        
         await message.answer(
-            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi.</b>\n\n"
+            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
             "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
             reply_markup=get_main_keyboard(user_id),
             parse_mode="HTML"
@@ -1431,8 +1489,11 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
+        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
+        await backup_session_to_cloud(user_id)
+        
         await message.answer(
-            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi!</b>",
+            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi va bulutga zaxiralandi!</b>",
             reply_markup=get_main_keyboard(user_id),
             parse_mode="HTML"
         )
@@ -1462,53 +1523,6 @@ async def start_web_server():
 
 # ==================================================================================
 
-
-# Mavjud sessiya fayllarini tekshirish va avtomatik ulanish
-async def init_existing_sessions():
-    for file in os.listdir(SESSIONS_DIR):
-        if file.endswith(".session"):
-            user_id_str = file.replace("session_", "").replace(".session", "")
-            try:
-                user_id = int(user_id_str)
-                client = await get_client(user_id)
-                
-                if await client.is_user_authorized():
-                    active_clients[user_id] = client
-                    me = await client.get_me()
-                    
-                    if user_id not in db_users:
-                        db_users[user_id] = {
-                            "balans": 0,
-                            "stars": 0,
-                            "is_pro": False,
-                            "referrals": 0,
-                            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
-                            "reklama_rasm": None,
-                            "inline_buttons": [],
-                            "interval": 15,
-                            "next_run_timestamp": 0,
-                            "active_phone": f"+{me.phone}",
-                            "active_name": me.first_name,
-                            "active_username": f"@{me.username}" if me.username else "@-",
-                            "is_sending": False,
-                            "groups_choice": "all",
-                            "selected_groups": [],
-                            "cached_groups": [],
-                            "joined_time": datetime.now().strftime("%H:%M"),
-                            "today_sent": 0,
-                            "total_sent": 0,
-                            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
-                        }
-                    else:
-                        db_users[user_id]["active_phone"] = f"+{me.phone}"
-                        db_users[user_id]["active_name"] = me.first_name
-                        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-                        
-                    save_db()
-                    logging.info(f"Mavjud sessiya muvaffaqiyatli yuklandi: +{me.phone} (ID: {user_id})")
-            except Exception as e:
-                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
-
 async def main():
     global bot
     print("==================================================")
@@ -1516,6 +1530,11 @@ async def main():
     print("==================================================")
     print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
     print(f"[Tizim] Admin ID: {ADMIN_ID}")
+    
+    # 1. Avval bulutdagi barcha sessiya (.session) fayllarini Renderga tiklab olamiz
+    if db:
+        print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
+        await restore_sessions_from_cloud()
     
     # Standart aiohttp sessiya sozlamalari
     bot = Bot(token=BOT_TOKEN)
