@@ -148,20 +148,21 @@ def load_db():
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc = doc_ref.get()
             if doc.exists:
-                loaded_data = doc.to_dict()
+                data = doc.to_dict()
                 logging.info("[Baza] Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
+                return {int(k): v for k, v in data.items()}
         except Exception as e:
             logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
-    else:
-        if os.path.exists(DB_FILE):
-            try:
-                with open(DB_FILE, "r", encoding="utf-8") as f:
-                    loaded_data = json.load(f)
-            except Exception as e:
-                logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
+
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return {int(k): v for k, v in data.items()}
+        except Exception as e:
+            logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
     
-    # Barcha kalitlarni butun son (int) turiga normallashtirish (Muhim tuzatish!)
-    return {int(k): v for k, v in loaded_data.items()}
+    return DEFAULT_DB
 
 def save_db():
     """ Ma'lumotlarni ham Google Cloud'ga, ham mahalliy faylga sinxron yozish """
@@ -309,7 +310,7 @@ def get_interval_keyboard(user_interval):
 
 # ================= BOT HANDLERS =================
 
-@router.message(Command("start"), state="*")
+@router.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()  # FSM qotib qolishini oldini oladi
     user_id = message.from_user.id
@@ -356,7 +357,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await message.answer("Tizimdan foydalanish uchun quyidagi tugmani bosing:", reply_markup=inline_kb)
 
-@router.message(F.text == "⚪ Autohabar yuborish", state="*")
+@router.message(F.text == "⚪ Autohabar yuborish")
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -394,7 +395,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "📝 Habar matni", state="*")
+@router.message(F.text == "📝 Habar matni")
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -532,7 +533,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 
 # =======================================================================
 
-@router.message(F.text == "👤 Kabinet", state="*")
+@router.message(F.text == "👤 Kabinet")
 async def menu_kabinet(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -566,7 +567,7 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "💬 Guruhlarni sozlash", state="*")
+@router.message(F.text == "💬 Guruhlarni sozlash")
 async def menu_guruhlar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -599,7 +600,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "👤 Profillar", state="*")
+@router.message(F.text == "👤 Profillar")
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -620,7 +621,7 @@ async def menu_profillar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "👑 Pro tarif", state="*")
+@router.message(F.text == "👑 Pro tarif")
 async def menu_pro_tarif(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     text = (
@@ -641,7 +642,7 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 # --- INTERVAL INTERFEYSI (Faqat 15 daqiqa qolib ketgan muammoni hal qilamiz) ---
-@router.message(F.text == "⏱️ Interval", state="*")
+@router.message(F.text == "⏱️ Interval")
 async def menu_interval(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -706,7 +707,7 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
     await callback_query.message.answer(explanation, parse_mode="HTML")
     await callback_query.answer()
 
-@router.message(F.text == "⚙️ Sozlamalar", state="*")
+@router.message(F.text == "⚙️ Sozlamalar")
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     text = (
@@ -720,7 +721,7 @@ async def menu_sozlamalar(message: types.Message, state: FSMContext):
 
 # ================= ADMIN PANEL HANDLERS =================
 
-@router.message(F.text == "🛡️ Admin Panel", state="*")
+@router.message(F.text == "🛡️ Admin Panel")
 async def cmd_admin(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
