@@ -52,7 +52,6 @@ DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 logging.basicConfig(level=logging.INFO)
 
 # ================= AVTOMATIK NOM TAHRIRLASH (AQLLI REJIM) =================
-# 1. Agar ildiz papkada o'zbekcha 'sessiyalar' bo'lsa, uni inglizcha 'sessions' ga o'tkazamiz
 if os.path.exists("sessiyalar") and os.path.isdir("sessiyalar"):
     try:
         if os.path.exists("sessions"):
@@ -65,7 +64,6 @@ if os.path.exists("sessiyalar") and os.path.isdir("sessiyalar"):
     except Exception as e:
         logging.error(f"[Tizim] Papka nomini o'zgartirishda xatolik: {e}")
 
-# 2. 'sessions' papkasi ichidagi fayllarni avtomatik inglizcha nomga o'tkazamiz
 if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
     for file in os.listdir(SESSIONS_DIR):
         if "sessiya" in file or ".sessiya" in file or "-jurnali" in file:
@@ -81,7 +79,6 @@ if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
             except Exception as e:
                 logging.error(f"[Tizim] Fayl nomini o'zgartirishda xatolik: {e}")
 
-# Bot va Dispatcherni standart va xavfsiz usulda yaratish
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
@@ -90,34 +87,35 @@ dp.include_router(router)
 # ================= GOOGLE FIRESTORE CLOUD DATABASE =================
 db = None
 if FIREBASE_AVAILABLE:
-    # 1. Avval Render environment variable-dan o'qishga harakat qiladi
-    firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
-    if firebase_config_env:
-        try:
-            cred_dict = json.loads(firebase_config_env)
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            db = firestore.client()
-            logging.info("[Firebase] Render Environment Variable orqali muvaffaqiyatli ulandi!")
-        except Exception as e:
-            logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
-            
-    # 2. Agar Env bo'lmasa, local JSON fayldan va Render Secret Path'dan o'qiydi (TUZATILDI)
+    # 1. Birinchi navbatda Render Secret Files yoki Local JSON fayllarini tekshiramiz (USTUVOR REJIM)
+    possible_paths = [
+        "firebase_credentials.json", 
+        "/etc/secrets/firebase_credentials.json",
+        "../firebase_credentials.json"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                cred = credentials.Certificate(path)
+                firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                logging.info(f"[Firebase] Maxfiy fayl ({path}) orqali muvaffaqiyatli ulandi!")
+                break
+            except Exception as e:
+                logging.error(f"[Firebase] {path} faylidan ulanishda xatolik: {e}")
+                
+    # 2. Agar maxfiy fayl bo'lmasa, Render Environment Variable orqali ulanishga harakat qiladi
     if not db:
-        possible_paths = [
-            "firebase_credentials.json", 
-            "/etc/secrets/firebase_credentials.json"
-        ]
-        for path in possible_paths:
-            if os.path.exists(path):
-                try:
-                    cred = credentials.Certificate(path)
-                    firebase_admin.initialize_app(cred)
-                    db = firestore.client()
-                    logging.info(f"[Firebase] {path} maxfiy fayli orqali muvaffaqiyatli ulandi!")
-                    break
-                except Exception as e:
-                    logging.error(f"[Firebase] {path} faylidan ulanishda xatolik: {e}")
+        firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
+        if firebase_config_env:
+            try:
+                cred_dict = json.loads(firebase_config_env)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                logging.info("[Firebase] Render Environment Variable orqali muvaffaqiyatli ulandi!")
+            except Exception as e:
+                logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
 
 # Boshlang'ich baza andozasi
 DEFAULT_DB = {
@@ -149,7 +147,17 @@ DEFAULT_DB = {
 
 def load_db():
     """ Bulutli bazadan yoki mahalliy JSON fayldan foydalanuvchilar ma'lumotlarini yuklash """
-    loaded_data = DEFAULT_DB
+    local_data = DEFAULT_DB
+    
+    # Avval mahalliy faylni o'qiymiz (agar mavjud bo'lsa)
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                local_data = json.load(f)
+                local_data = {int(k): v for k, v in local_data.items()}
+        except Exception as e:
+            logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
+
     if db:
         try:
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
@@ -158,18 +166,17 @@ def load_db():
                 data = doc.to_dict()
                 logging.info("[Baza] Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
                 return {int(k): v for k, v in data.items()}
+            else:
+                # Agar Firestore bo'sh bo'lsa, lekin mahalliy faylda ma'lumot bo'lsa - avtomatik ravishda uni ko'chiramiz! (Migratsiya)
+                logging.info("[Baza] Firestore bo'sh. Mahalliy ma'lumotlar bulutga ko'chirilmoqda...")
+                serializable_db = {str(k): v for k, v in local_data.items()}
+                doc_ref.set(serializable_db)
+                logging.info("[Baza] Mahalliy ma'lumotlar muvaffaqiyatli Firebase'ga yuklandi!")
+                return local_data
         except Exception as e:
             logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
-
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return {int(k): v for k, v in data.items()}
-        except Exception as e:
-            logging.error(f"[Baza] Mahalliy bazani o'qishda xato: {e}")
     
-    return DEFAULT_DB
+    return local_data
 
 def save_db():
     """ Ma'lumotlarni ham Google Cloud'ga, ham mahalliy faylga sinxron yozish """
@@ -327,7 +334,7 @@ def get_admin_main_markup():
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# Dinamik tarzda interval klaviaturasini yaratish (Rasmdagidek)
+# Dinamik tarzda interval klaviaturasini yaratish
 def get_interval_keyboard(user_interval):
     def btn(val, label):
         text = f"✓ {label}" if user_interval == val else label
@@ -346,7 +353,7 @@ def get_interval_keyboard(user_interval):
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
-    await state.clear()  # FSM qotib qolishini oldini oladi
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     
@@ -370,7 +377,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "⚪ Autohabar yuborish")
 async def menu_autohabar(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     user_data = db_users.get(user_id)
@@ -409,7 +416,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "📝 Habar matni")
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     await show_message_settings(message, user_id)
@@ -551,7 +558,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "👤 Kabinet")
 async def menu_kabinet(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     user_data = db_users.get(user_id)
@@ -586,7 +593,7 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "💬 Guruhlarni sozlash")
 async def menu_guruhlar(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     user_data = db_users.get(user_id)
@@ -620,7 +627,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "👤 Profillar")
 async def menu_profillar(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     user_data = db_users.get(user_id)
@@ -642,7 +649,7 @@ async def menu_profillar(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "👑 Pro tarif")
 async def menu_pro_tarif(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     text = (
         "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n"
         "👤 Ko'p profil: 5 tagacha akkaunt ulasiz\n"
@@ -660,16 +667,15 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-# --- INTERVAL INTERFEYSI (Faqat 15 daqiqa qolib ketgan muammoni hal qilamiz) ---
+# --- INTERVAL INTERFEYSI ---
 @router.message(F.text == "⏱️ Interval")
 async def menu_interval(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     user_data = db_users.get(user_id)
     current_interval = user_data.get('interval', 15)
     
-    # Daqiqa yoki soat matnini ko'rsatish
     if current_interval >= 60:
         hours = current_interval / 60
         interval_text = f"{int(hours) if hours.is_integer() else hours} soat"
@@ -683,7 +689,7 @@ async def menu_interval(message: types.Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
 
-# Interval o'zgartirilgandagi asinxron ishlovchi (Callback query)
+# Interval o'zgartirilgandagi asinxron ishlovchi
 @router.callback_query(F.data.startswith("set_int_"))
 async def callback_set_interval(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
@@ -701,7 +707,6 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
 
     await callback_query.answer(f"✓ Interval {interval_text} ga sozlandi!", show_alert=True)
     
-    # Matnni va klaviaturani dinamik yangilaymiz
     text = (
         "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
         f"Joriy faol interval: <b>{interval_text}</b>\n\n"
@@ -724,7 +729,7 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
 
 @router.message(F.text == "⚙️ Sozlamalar")
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
-    await state.clear()  # Holatni tozalaymiz
+    await state.clear()
     text = (
         "⚙️ <b>Qo'shimcha Sozlamalar:</b>\n\n"
         "🤖 Avto-obuna: <b>Yoqilgan</b> (Bot majburiy guruhlarni o'zi anixlaydi)\n"
@@ -1162,7 +1167,6 @@ async def callback_disconnect(callback_query: types.CallbackQuery):
             pass
         active_clients.pop(user_id, None)
 
-    # Cloud zaxirani ham o'chirish (ixtiyoriy, seans uzilganda)
     if db:
         try:
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
@@ -1548,7 +1552,6 @@ async def state_code_received(message: types.Message, state: FSMContext):
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
-        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
         await backup_session_to_cloud(user_id)
         
         await message.answer(
@@ -1602,7 +1605,6 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
-        # MUVAFFAQIYATLI LOGIN: Sessiyani bulutga zaxiralash
         await backup_session_to_cloud(user_id)
         
         await message.answer(
@@ -1693,18 +1695,13 @@ async def main():
     print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
     print(f"[Tizim] Admin ID: {ADMIN_ID}")
     
-    # 1. Avval bulutdagi barcha sessiya (.session) fayllarini Renderga tiklab olamiz
     if db:
         print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
         await restore_sessions_from_cloud()
     
-    # Standart aiohttp sessiya sozlamalari
     bot = Bot(token=BOT_TOKEN)
     
-    # Telethon ulanishlari asinxron fon rejimida boshlanadi
     asyncio.create_task(init_existing_sessions())
-    
-    # Asinxron ishlovchi fon xizmatlarini yoqamiz
     asyncio.create_task(auto_sender_worker())
     logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
     
