@@ -220,7 +220,7 @@ def get_admin_main_markup():
 
 # ================= BOT HANDLERS =================
 
-@router.message(Command("start"))
+@router.message(Command("start"), state="*")
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()  # FSM qotib qolishini oldini oladi
     user_id = message.from_user.id
@@ -267,7 +267,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await message.answer("Tizimdan foydalanish uchun quyidagi tugmani bosing:", reply_markup=inline_kb)
 
-@router.message(F.text == "⚪ Autohabar yuborish")
+@router.message(F.text == "⚪ Autohabar yuborish", state="*")
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -305,7 +305,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "📝 Habar matni")
+@router.message(F.text == "📝 Habar matni", state="*")
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -443,7 +443,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 
 # =======================================================================
 
-@router.message(F.text == "👤 Kabinet")
+@router.message(F.text == "👤 Kabinet", state="*")
 async def menu_kabinet(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -477,7 +477,7 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "💬 Guruhlarni sozlash")
+@router.message(F.text == "💬 Guruhlarni sozlash", state="*")
 async def menu_guruhlar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -510,7 +510,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "👤 Profillar")
+@router.message(F.text == "👤 Profillar", state="*")
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -531,7 +531,7 @@ async def menu_profillar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "👑 Pro tarif")
+@router.message(F.text == "👑 Pro tarif", state="*")
 async def menu_pro_tarif(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     text = (
@@ -551,7 +551,7 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "⏱️ Interval")
+@router.message(F.text == "⏱️ Interval", state="*")
 async def menu_interval(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     user_id = message.from_user.id
@@ -572,7 +572,7 @@ async def menu_interval(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text == "⚙️ Sozlamalar")
+@router.message(F.text == "⚙️ Sozlamalar", state="*")
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
     await state.clear()  # Holatni tozalaymiz
     text = (
@@ -586,7 +586,7 @@ async def menu_sozlamalar(message: types.Message, state: FSMContext):
 
 # ================= ADMIN PANEL HANDLERS =================
 
-@router.message(F.text == "🛡️ Admin Panel")
+@router.message(F.text == "🛡️ Admin Panel", state="*")
 async def cmd_admin(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
@@ -891,7 +891,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         f"✅ <b>Ommaviy reklama yakunlandi!</b>\n\n"
         f"📤 Yuborildi: <b>{sent_count} ta foydalanuvchiga</b>\n"
         f"❌ O'chib ketgan/Bloklagan: <b>{fail_count} ta</b>",
-        reply_markup=get_main_keyboard(message.from_user.id),
+        reply_markup=get_main_keyboard(user_id),
         parse_mode="HTML"
     )
 
@@ -1013,7 +1013,7 @@ async def callback_disconnect(callback_query: types.CallbackQuery):
         active_clients.pop(user_id, None)
 
     await callback_query.answer("⚠️ Profil muvaffaqiyatli uzildi!", show_alert=True)
-    await menu_kabinet(callback_query.message)
+    await menu_kabinet(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
 @router.callback_query(F.data == "set_groups_all")
 async def callback_groups_all(callback_query: types.CallbackQuery):
@@ -1026,7 +1026,7 @@ async def callback_groups_all(callback_query: types.CallbackQuery):
         db_users[user_id]["groups_choice"] = "all"
         save_db()
     await callback_query.answer("✓ Hamma guruhlar tanlandi!", show_alert=True)
-    await menu_guruhlar(callback_query.message)
+    await menu_guruhlar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
 @router.callback_query(F.data == "set_groups_custom")
 async def callback_groups_custom(callback_query: types.CallbackQuery):
@@ -1039,7 +1039,7 @@ async def callback_groups_custom(callback_query: types.CallbackQuery):
         db_users[user_id]["groups_choice"] = "custom"
         save_db()
     await callback_query.answer("✓ Qo'lda tanlash rejimi faollashdi!", show_alert=True)
-    await menu_guruhlar(callback_query.message)
+    await menu_guruhlar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
 
 @router.callback_query(F.data == "clear_selected_groups")
 async def callback_clear_groups(callback_query: types.CallbackQuery):
