@@ -1,0 +1,1161 @@
+{
+    "7073273800": {
+        "balans": 150000,
+        "stars": 150,
+        "is_pro": true,
+        "referrals": 3,
+        "reklama_matni": "salom",
+        "interval": 5,
+        "active_phone": "+998331231549",
+        "active_name": ".",
+        "active_username": "@-",
+        "is_sending": false,
+        "groups_choice": "custom",
+        "selected_groups": [
+            -1002166666115,
+            -1002414392202
+        ],
+        "joined_time": "22:59",
+        "today_sent": 30,
+        "total_sent": 30,
+        "channels": [
+            "@autoxabarc_news",
+            "@autoxabar_chat"
+        ],
+        "cached_groups": [
+            {
+                "id": -1002166666115,
+                "name": "Tekin reklama Pubg Mobile Chat🇺🇿",
+                "participants_count": 939
+            },
+            {
+                "id": -1002414392202,
+                "name": "GIFT | NFT | SAVDO",
+                "participants_count": 1636
+            },
+            {
+                "id": -1002488667388,
+                "name": "Sotiladi 70 men sum💜",
+                "participants_count": 1160
+            },
+            {
+                "id": -1002513260891,
+                "name": "𝗦𝗔𝗩𝗗𝗢𝗖𝗛𝗜𝗟𝗔𝗥 𝗚𝗨𝗥𝗨𝗛𝗜",
+                "participants_count": 1372
+            },
+            {
+                "id": -1003969465093,
+                "name": "𝐆𝐚𝐫𝐚𝐧𝐭 𝐟𝐨𝐫𝐮𝐦",
+                "participants_count": 893
+            },
+            {
+                "id": -1002667299841,
+                "name": "𝗚𝗮𝗿𝗮𝗻𝗱𝗹𝗶𝘆 𝗳𝗼𝗿𝘂𝗺 🫆",
+                "participants_count": 8782
+            },
+            {
+                "id": -1002859756629,
+                "name": "SAVDO GRUPPA N1",
+                "participants_count": 5069
+            },
+            {
+                "id": -1002243290938,
+                "name": "Reklama guruh",
+                "participants_count": 799
+            },
+            {
+                "id": -1002079114496,
+                "name": "Garant guruh🤝",
+                "participants_count": 8791
+            },
+            {
+                "id": -1003815498831,
+                "name": "Vz reak vz group 💜",
+                "participants_count": 1127
+            },
+            {
+                "id": -1002119031421,
+                "name": "Oygul Telefon Dokoni 📞☎️",
+                "participants_count": 2646
+            },
+            {
+                "id": -1003362766470,
+                "name": "Reklama",
+                "participants_count": 398
+            },
+            {
+                "id": -1003072975896,
+                "name": "GURUH SOTILADI 🤝🏻 50MING",
+                "participants_count": 184
+            },
+            {
+                "id": -1003230792173,
+                "name": "REKLAMACHI UZ🇺🇿",
+                "participants_count": 4481
+            },
+            {
+                "id": -1001161809787,
+                "name": "✴ L I D E R ✴ Telefon ustalar uchun guruppa",
+                "participants_count": 349
+            },
+            {
+                "id": -1003808917451,
+                "name": "📳 L I D E R Professional telefon ustalar uchun maxsus guruppa",
+                "participants_count": 219
+            },
+            {
+                "id": -1001887540001,
+                "name": "Oygul Telfon Do'koni (Rasmiy)📞☎️",
+                "participants_count": 12682
+            },
+            {
+                "id": -1001208631696,
+                "name": "Buy and sell",
+                "participants_count": 321
+            },
+            {
+                "id": -1002255994923,
+                "name": "𝙏𝙀𝙆𝙄𝙉 𝙍𝙀𝙆𝙇𝘼𝙈𝘼",
+                "participants_count": 454
+            },
+            {
+                "id": -1001989878398,
+                "name": "Futboltv ⚽️",
+                "participants_count": 1699979
+            },
+            {
+                "id": -1002623927087,
+                "name": "FARGʻONA KATTA TELEFON BOZOR",
+                "participants_count": 1098
+            },
+            {
+                "id": -1002588551627,
+                "name": "Fargona tashloq marglon telfon bozor",
+                "participants_count": 470
+            },
+            {
+                "id": -1001589467487,
+                "name": "Margilon telefon bozori 7801",
+                "participants_count": 4603
+            },
+            {
+                "id": -1003100237517,
+                "name": "TEKIN REKLAMALAR",
+                "participants_count": 3168
+            },
+            {
+                "id": -1003243445231,
+                "name": "Uzmakerobot muhokama",
+                "participants_count": 256
+            },
+            {
+                "id": -1002890585346,
+                "name": "UZUM LIMIT NAQDLASH 🔵",
+                "participants_count": 3138
+            },
+            {
+                "id": -1003038448635,
+                "name": "24",
+                "participants_count": 1
+            },
+            {
+                "id": -1002971531869,
+                "name": "25",
+                "participants_count": 1
+            },
+            {
+                "id": -1002795369405,
+                "name": "26",
+                "participants_count": 1
+            },
+            {
+                "id": -1003092467676,
+                "name": "29",
+                "participants_count": 1
+            },
+            {
+                "id": -1002938635431,
+                "name": "37",
+                "participants_count": 1
+            },
+            {
+                "id": -1002998533466,
+                "name": "38",
+                "participants_count": 1
+            },
+            {
+                "id": -1003078750122,
+                "name": "39",
+                "participants_count": 1
+            },
+            {
+                "id": -1002977601255,
+                "name": "40",
+                "participants_count": 1
+            },
+            {
+                "id": -1003078330580,
+                "name": "48",
+                "participants_count": 1
+            },
+            {
+                "id": -1003062491307,
+                "name": "34",
+                "participants_count": 1
+            },
+            {
+                "id": -1002882449474,
+                "name": "41",
+                "participants_count": 1
+            },
+            {
+                "id": -1002856800666,
+                "name": "75",
+                "participants_count": 1
+            },
+            {
+                "id": -1003081140129,
+                "name": "42",
+                "participants_count": 1
+            },
+            {
+                "id": -1002949520324,
+                "name": "43",
+                "participants_count": 1
+            },
+            {
+                "id": -1002625501276,
+                "name": "44",
+                "participants_count": 1
+            },
+            {
+                "id": -1003057073029,
+                "name": "45",
+                "participants_count": 1
+            },
+            {
+                "id": -1002920229408,
+                "name": "47",
+                "participants_count": 1
+            },
+            {
+                "id": -1002846997596,
+                "name": "49",
+                "participants_count": 1
+            },
+            {
+                "id": -1002901773149,
+                "name": "50",
+                "participants_count": 1
+            },
+            {
+                "id": -1002960223493,
+                "name": "51",
+                "participants_count": 1
+            },
+            {
+                "id": -1002963417467,
+                "name": "35",
+                "participants_count": 1
+            },
+            {
+                "id": -1002927735438,
+                "name": "36",
+                "participants_count": 1
+            },
+            {
+                "id": -1002944070727,
+                "name": "33",
+                "participants_count": 1
+            },
+            {
+                "id": -1003083899239,
+                "name": "32",
+                "participants_count": 1
+            },
+            {
+                "id": -1003097570503,
+                "name": "31",
+                "participants_count": 1
+            },
+            {
+                "id": -1002750700881,
+                "name": "28",
+                "participants_count": 1
+            },
+            {
+                "id": -1002714584143,
+                "name": "46",
+                "participants_count": 1
+            },
+            {
+                "id": -1002932910490,
+                "name": "27",
+                "participants_count": 1
+            },
+            {
+                "id": -1002868238194,
+                "name": "52",
+                "participants_count": 1
+            },
+            {
+                "id": -1002918437872,
+                "name": "53",
+                "participants_count": 1
+            },
+            {
+                "id": -1002974138155,
+                "name": "54",
+                "participants_count": 1
+            },
+            {
+                "id": -1003096368875,
+                "name": "56",
+                "participants_count": 1
+            },
+            {
+                "id": -1003003699053,
+                "name": "57",
+                "participants_count": 1
+            },
+            {
+                "id": -1003089322994,
+                "name": "58",
+                "participants_count": 1
+            },
+            {
+                "id": -1002945260465,
+                "name": "59",
+                "participants_count": 1
+            },
+            {
+                "id": -1003047606910,
+                "name": "60",
+                "participants_count": 1
+            },
+            {
+                "id": -1002957957687,
+                "name": "62",
+                "participants_count": 1
+            },
+            {
+                "id": -1003079819272,
+                "name": "65",
+                "participants_count": 1
+            },
+            {
+                "id": -1003013976947,
+                "name": "66",
+                "participants_count": 1
+            },
+            {
+                "id": -1003099661554,
+                "name": "67",
+                "participants_count": 1
+            },
+            {
+                "id": -1002891210189,
+                "name": "68",
+                "participants_count": 1
+            },
+            {
+                "id": -1003046189477,
+                "name": "70",
+                "participants_count": 1
+            },
+            {
+                "id": -1003091731299,
+                "name": "64",
+                "participants_count": 1
+            },
+            {
+                "id": -1003028360681,
+                "name": "61",
+                "participants_count": 1
+            },
+            {
+                "id": -1002747420637,
+                "name": "71",
+                "participants_count": 1
+            },
+            {
+                "id": -1003420889208,
+                "name": "72",
+                "participants_count": 1
+            },
+            {
+                "id": -1003402136528,
+                "name": "73",
+                "participants_count": 1
+            },
+            {
+                "id": -1003299214506,
+                "name": "74",
+                "participants_count": 1
+            },
+            {
+                "id": -1003379338349,
+                "name": "76",
+                "participants_count": 1
+            },
+            {
+                "id": -1003481116361,
+                "name": "77",
+                "participants_count": 1
+            },
+            {
+                "id": -1003423350827,
+                "name": "78",
+                "participants_count": 1
+            },
+            {
+                "id": -1003452142224,
+                "name": "79",
+                "participants_count": 1
+            },
+            {
+                "id": -1003421713676,
+                "name": "80",
+                "participants_count": 1
+            },
+            {
+                "id": -1003354800122,
+                "name": "81",
+                "participants_count": 1
+            },
+            {
+                "id": -1003374305101,
+                "name": "82",
+                "participants_count": 1
+            },
+            {
+                "id": -1003346811553,
+                "name": "83",
+                "participants_count": 1
+            },
+            {
+                "id": -1003448442688,
+                "name": "84",
+                "participants_count": 1
+            },
+            {
+                "id": -1003331257081,
+                "name": "85",
+                "participants_count": 1
+            },
+            {
+                "id": -1003419593015,
+                "name": "87",
+                "participants_count": 1
+            },
+            {
+                "id": -1003424112947,
+                "name": "88",
+                "participants_count": 1
+            },
+            {
+                "id": -1003385704042,
+                "name": "89",
+                "participants_count": 1
+            },
+            {
+                "id": -1003249922171,
+                "name": "90",
+                "participants_count": 1
+            },
+            {
+                "id": -1003367409843,
+                "name": "91",
+                "participants_count": 1
+            },
+            {
+                "id": -1003493244289,
+                "name": "92",
+                "participants_count": 1
+            },
+            {
+                "id": -1003259824569,
+                "name": "93",
+                "participants_count": 1
+            },
+            {
+                "id": -1003272956339,
+                "name": "94",
+                "participants_count": 1
+            },
+            {
+                "id": -1003423949733,
+                "name": "95",
+                "participants_count": 1
+            },
+            {
+                "id": -1003083655745,
+                "name": "96",
+                "participants_count": 1
+            },
+            {
+                "id": -1002921918566,
+                "name": "97",
+                "participants_count": 1
+            },
+            {
+                "id": -4535810851,
+                "name": "98",
+                "participants_count": 1
+            },
+            {
+                "id": -1002797129658,
+                "name": "100",
+                "participants_count": 2
+            },
+            {
+                "id": -1003536557561,
+                "name": "iBeLink/Guruh",
+                "participants_count": 7405
+            },
+            {
+                "id": -1003065127852,
+                "name": "Питерда иш элонлар ва Авиакасса хизмати",
+                "participants_count": 150
+            },
+            {
+                "id": -4571714905,
+                "name": "97",
+                "participants_count": 150
+            },
+            {
+                "id": -4559659517,
+                "name": "96",
+                "participants_count": 150
+            },
+            {
+                "id": -4595281647,
+                "name": "95",
+                "participants_count": 150
+            },
+            {
+                "id": -4558427497,
+                "name": "94",
+                "participants_count": 150
+            },
+            {
+                "id": -4568318607,
+                "name": "93",
+                "participants_count": 150
+            },
+            {
+                "id": -4550179765,
+                "name": "92",
+                "participants_count": 150
+            },
+            {
+                "id": -4549944668,
+                "name": "91",
+                "participants_count": 150
+            },
+            {
+                "id": -4243893456,
+                "name": "90",
+                "participants_count": 150
+            },
+            {
+                "id": -4226136290,
+                "name": "89",
+                "participants_count": 150
+            },
+            {
+                "id": -4281713335,
+                "name": "88",
+                "participants_count": 150
+            },
+            {
+                "id": -4280054967,
+                "name": "87",
+                "participants_count": 150
+            },
+            {
+                "id": -4202897754,
+                "name": "85",
+                "participants_count": 150
+            },
+            {
+                "id": -4239172689,
+                "name": "84",
+                "participants_count": 150
+            },
+            {
+                "id": -4289774621,
+                "name": "83",
+                "participants_count": 150
+            },
+            {
+                "id": -4228040187,
+                "name": "82",
+                "participants_count": 150
+            },
+            {
+                "id": -4213521716,
+                "name": "81",
+                "participants_count": 150
+            },
+            {
+                "id": -4216502184,
+                "name": "80",
+                "participants_count": 150
+            },
+            {
+                "id": -4136060494,
+                "name": "79",
+                "participants_count": 150
+            },
+            {
+                "id": -4215679731,
+                "name": "78",
+                "participants_count": 150
+            },
+            {
+                "id": -4172830312,
+                "name": "77",
+                "participants_count": 150
+            },
+            {
+                "id": -4221934002,
+                "name": "76",
+                "participants_count": 150
+            },
+            {
+                "id": -4288906706,
+                "name": "74",
+                "participants_count": 150
+            },
+            {
+                "id": -4277677567,
+                "name": "73",
+                "participants_count": 150
+            },
+            {
+                "id": -4255561382,
+                "name": "72",
+                "participants_count": 150
+            },
+            {
+                "id": -4281495058,
+                "name": "71",
+                "participants_count": 150
+            },
+            {
+                "id": -4209183044,
+                "name": "61",
+                "participants_count": 150
+            },
+            {
+                "id": -4278211600,
+                "name": "64",
+                "participants_count": 150
+            },
+            {
+                "id": -4274084789,
+                "name": "70",
+                "participants_count": 150
+            },
+            {
+                "id": -4236967533,
+                "name": "68",
+                "participants_count": 150
+            },
+            {
+                "id": -4256187463,
+                "name": "67",
+                "participants_count": 150
+            },
+            {
+                "id": -4248026733,
+                "name": "66",
+                "participants_count": 150
+            },
+            {
+                "id": -4272296796,
+                "name": "65",
+                "participants_count": 150
+            },
+            {
+                "id": -4229027803,
+                "name": "62",
+                "participants_count": 150
+            },
+            {
+                "id": -4232725404,
+                "name": "60",
+                "participants_count": 150
+            },
+            {
+                "id": -4206587463,
+                "name": "59",
+                "participants_count": 150
+            },
+            {
+                "id": -4205397044,
+                "name": "58",
+                "participants_count": 150
+            },
+            {
+                "id": -4210402772,
+                "name": "57",
+                "participants_count": 150
+            },
+            {
+                "id": -4278062043,
+                "name": "56",
+                "participants_count": 150
+            },
+            {
+                "id": -4284789440,
+                "name": "54",
+                "participants_count": 150
+            },
+            {
+                "id": -4115257303,
+                "name": "53",
+                "participants_count": 150
+            },
+            {
+                "id": -4288050363,
+                "name": "52",
+                "participants_count": 150
+            },
+            {
+                "id": -4233824476,
+                "name": "51",
+                "participants_count": 150
+            },
+            {
+                "id": -4284644101,
+                "name": "50",
+                "participants_count": 150
+            },
+            {
+                "id": -4225020920,
+                "name": "49",
+                "participants_count": 150
+            },
+            {
+                "id": -4259916659,
+                "name": "47",
+                "participants_count": 150
+            },
+            {
+                "id": -4241793773,
+                "name": "46",
+                "participants_count": 150
+            },
+            {
+                "id": -4266292564,
+                "name": "45",
+                "participants_count": 150
+            },
+            {
+                "id": -4230635368,
+                "name": "44",
+                "participants_count": 150
+            },
+            {
+                "id": -4210798981,
+                "name": "43",
+                "participants_count": 150
+            },
+            {
+                "id": -4230954579,
+                "name": "75",
+                "participants_count": 150
+            },
+            {
+                "id": -4250392233,
+                "name": "42",
+                "participants_count": 150
+            },
+            {
+                "id": -4287183334,
+                "name": "41",
+                "participants_count": 150
+            },
+            {
+                "id": -4259377292,
+                "name": "34",
+                "participants_count": 150
+            },
+            {
+                "id": -4227890909,
+                "name": "48",
+                "participants_count": 150
+            },
+            {
+                "id": -4209032287,
+                "name": "40",
+                "participants_count": 150
+            },
+            {
+                "id": -4288298881,
+                "name": "39",
+                "participants_count": 150
+            },
+            {
+                "id": -4201917110,
+                "name": "38",
+                "participants_count": 150
+            },
+            {
+                "id": -4103602630,
+                "name": "37",
+                "participants_count": 150
+            },
+            {
+                "id": -4274114173,
+                "name": "35",
+                "participants_count": 150
+            },
+            {
+                "id": -4282150638,
+                "name": "36",
+                "participants_count": 150
+            },
+            {
+                "id": -4280624653,
+                "name": "33",
+                "participants_count": 150
+            },
+            {
+                "id": -4257713188,
+                "name": "32",
+                "participants_count": 150
+            },
+            {
+                "id": -4288194978,
+                "name": "31",
+                "participants_count": 150
+            },
+            {
+                "id": -4285745177,
+                "name": "28",
+                "participants_count": 150
+            },
+            {
+                "id": -4256541611,
+                "name": "27",
+                "participants_count": 150
+            },
+            {
+                "id": -4146846551,
+                "name": "29",
+                "participants_count": 150
+            },
+            {
+                "id": -4231650798,
+                "name": "30",
+                "participants_count": 1
+            },
+            {
+                "id": -4276711184,
+                "name": "26",
+                "participants_count": 150
+            },
+            {
+                "id": -4209724904,
+                "name": "25",
+                "participants_count": 150
+            },
+            {
+                "id": -4252111027,
+                "name": "24",
+                "participants_count": 150
+            },
+            {
+                "id": -1002149545490,
+                "name": "55",
+                "participants_count": 1
+            },
+            {
+                "id": -1002892460895,
+                "name": "21",
+                "participants_count": 1
+            },
+            {
+                "id": -1002899084922,
+                "name": "23",
+                "participants_count": 1
+            },
+            {
+                "id": -4244428168,
+                "name": "23",
+                "participants_count": 150
+            },
+            {
+                "id": -1002889646864,
+                "name": "22",
+                "participants_count": 1
+            },
+            {
+                "id": -4236611715,
+                "name": "22",
+                "participants_count": 150
+            },
+            {
+                "id": -4136856658,
+                "name": "21",
+                "participants_count": 150
+            },
+            {
+                "id": -1002857695647,
+                "name": "20",
+                "participants_count": 1
+            },
+            {
+                "id": -4241670905,
+                "name": "20",
+                "participants_count": 150
+            },
+            {
+                "id": -1002719931923,
+                "name": "19",
+                "participants_count": 1
+            },
+            {
+                "id": -4210389863,
+                "name": "19",
+                "participants_count": 150
+            },
+            {
+                "id": -1002822042166,
+                "name": "18",
+                "participants_count": 1
+            },
+            {
+                "id": -4215707810,
+                "name": "18",
+                "participants_count": 150
+            },
+            {
+                "id": -1002792707094,
+                "name": "17",
+                "participants_count": 1
+            },
+            {
+                "id": -4187278415,
+                "name": "17",
+                "participants_count": 150
+            },
+            {
+                "id": -1002524560467,
+                "name": "4",
+                "participants_count": 1
+            },
+            {
+                "id": -1002726451078,
+                "name": "16",
+                "participants_count": 1
+            },
+            {
+                "id": -4272710236,
+                "name": "16",
+                "participants_count": 150
+            },
+            {
+                "id": -1002709834923,
+                "name": "15",
+                "participants_count": 1
+            },
+            {
+                "id": -4271016169,
+                "name": "15",
+                "participants_count": 150
+            },
+            {
+                "id": -1002682808783,
+                "name": "14",
+                "participants_count": 1
+            },
+            {
+                "id": -4251031858,
+                "name": "14",
+                "participants_count": 150
+            },
+            {
+                "id": -1002726770196,
+                "name": "13",
+                "participants_count": 1
+            },
+            {
+                "id": -4219365910,
+                "name": "13",
+                "participants_count": 150
+            },
+            {
+                "id": -1002790994747,
+                "name": "12",
+                "participants_count": 1
+            },
+            {
+                "id": -4270541783,
+                "name": "12",
+                "participants_count": 150
+            },
+            {
+                "id": -1002835651241,
+                "name": "69",
+                "participants_count": 1
+            },
+            {
+                "id": -1002699545167,
+                "name": "11",
+                "participants_count": 1
+            },
+            {
+                "id": -4160011947,
+                "name": "11",
+                "participants_count": 150
+            },
+            {
+                "id": -1002757421694,
+                "name": "6",
+                "participants_count": 1
+            },
+            {
+                "id": -4243388662,
+                "name": "6",
+                "participants_count": 150
+            },
+            {
+                "id": -1002696280932,
+                "name": "10",
+                "participants_count": 1
+            },
+            {
+                "id": -4243039248,
+                "name": "10",
+                "participants_count": 150
+            },
+            {
+                "id": -1002713500721,
+                "name": "9",
+                "participants_count": 1
+            },
+            {
+                "id": -4186970933,
+                "name": "9",
+                "participants_count": 150
+            },
+            {
+                "id": -1002698611503,
+                "name": "8",
+                "participants_count": 1
+            },
+            {
+                "id": -4283116857,
+                "name": "8",
+                "participants_count": 150
+            },
+            {
+                "id": -1002545197322,
+                "name": "7",
+                "participants_count": 1
+            },
+            {
+                "id": -4273359031,
+                "name": "7",
+                "participants_count": 150
+            },
+            {
+                "id": -1002744976045,
+                "name": "86",
+                "participants_count": 1
+            },
+            {
+                "id": -1002857983660,
+                "name": "63",
+                "participants_count": 1
+            },
+            {
+                "id": -4219635937,
+                "name": "5",
+                "participants_count": 150
+            },
+            {
+                "id": -4202453169,
+                "name": "4",
+                "participants_count": 150
+            },
+            {
+                "id": -1002727675785,
+                "name": ".",
+                "participants_count": 1
+            },
+            {
+                "id": -4247142227,
+                "name": ".",
+                "participants_count": 150
+            },
+            {
+                "id": -1002734283080,
+                "name": ".",
+                "participants_count": 1
+            },
+            {
+                "id": -4235982979,
+                "name": ".",
+                "participants_count": 150
+            },
+            {
+                "id": -1002732476363,
+                "name": ".",
+                "participants_count": 1
+            },
+            {
+                "id": -4253818087,
+                "name": ".",
+                "participants_count": 150
+            },
+            {
+                "id": -1002835230021,
+                "name": "99",
+                "participants_count": 1
+            },
+            {
+                "id": -4568254488,
+                "name": "99",
+                "participants_count": 150
+            },
+            {
+                "id": -4528337952,
+                "name": "100",
+                "participants_count": 150
+            },
+            {
+                "id": -4266475846,
+                "name": "69",
+                "participants_count": 150
+            },
+            {
+                "id": -4223468370,
+                "name": "86",
+                "participants_count": 150
+            },
+            {
+                "id": -4289635856,
+                "name": "63",
+                "participants_count": 150
+            },
+            {
+                "id": -4570446235,
+                "name": "❤🥰❤",
+                "participants_count": 150
+            },
+            {
+                "id": -4148598714,
+                "name": "55",
+                "participants_count": 150
+            }
+        ],
+        "reklama_rasm": "sessions\\temp_7073273800.jpg",
+        "next_run_timestamp": 1782853366.124979,
+        "inline_buttons": []
+    }
+}
