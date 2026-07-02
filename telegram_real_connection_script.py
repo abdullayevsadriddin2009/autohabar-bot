@@ -3,7 +3,7 @@
 AutoHabar Pro - Real Telegram Bot va Avtomatlashtirilgan Tarqatish Tizimi.
 Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon) 
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
-Render, Railway va standart VPS hostinglarida 24/7 uzluksiz ishlashga moslashtirilgan.
+Render, Railway va barcha bulutli platformalarda 24/7 ishlaydi.
 """
 
 import asyncio
@@ -15,7 +15,7 @@ import json
 import base64
 from datetime import datetime
 
-# Loggerlarni eng tepada sozlaymiz (TUZATILDI: barcha xabarlar Renderda aniq ko'rinishi uchun)
+# Loggerlarni eng tepada sozlaymiz (barcha xabarlar Renderda aniq ko'rinishi uchun)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -132,13 +132,13 @@ if FIREBASE_AVAILABLE:
 else:
     print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
-# Boshlang'ich baza andozasi
+# Boshlang'ich baza andozasi (Yangi foydalanuvchilar balanslari noldan boshlanishi kafolatlanadi)
 DEFAULT_DB = {
     ADMIN_ID: {
-        "balans": 150000,
-        "stars": 150,
+        "balans": 0, # TUZATILDI: Barcha uchun boshlang'ich balans 0 so'm
+        "stars": 0,
         "is_pro": True,
-        "referrals": 3,
+        "referrals": 0,
         "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
         "reklama_rasm": None,
         "inline_buttons": [],
@@ -183,7 +183,7 @@ def load_db():
                 return {int(k): v for k, v in data.items()}
             else:
                 # Agar Firestore bo'sh bo'lsa, lekin mahalliy faylda ma'lumot bo'lsa - avtomatik ravishda uni ko'chiramiz! (Migratsiya)
-                print("[Baza] Firestore bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
+                print("[Baza] Firestore - bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
                 serializable_db = {str(k): v for k, v in local_data.items()}
                 doc_ref.set(serializable_db)
                 print("[Baza] MUVAFFAQIYAT: Mahalliy ma'lumotlar Firebase'ga to'liq ko'chirildi!")
@@ -208,9 +208,9 @@ def save_db():
             serializable_db = {str(k): v for k, v in db_users.items()}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc_ref.set(serializable_db)
-            print("[Baza] Ma'lumotlar Google Cloud bulutiga saqlandi!")
+            logging.info("[Baza] Ma'lumotlar Google Cloud Firestore omboriga yozildi!")
         except Exception as e:
-            print(f"[Baza] Cloud'ga saqlashda xatolik: {e}")
+            logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
 db_users = load_db()
 active_clients = {}
@@ -219,7 +219,7 @@ def ensure_user(user_id: int):
     """ Bazada KeyError bo'lmasligi uchun foydalanuvchini andoza bilan yaratish """
     if user_id not in db_users:
         db_users[user_id] = {
-            "balans": 0,
+            "balans": 0, # TUZATILDI: Barcha yangi foydalanuvchilar 0 so'm bilan boshlashadi
             "stars": 0,
             "is_pro": False,
             "referrals": 0,
@@ -360,7 +360,7 @@ def get_interval_keyboard(user_interval):
     kb = [
         [btn(2, "2daq"), btn(3, "3daq"), btn(4, "4daq"), btn(5, "5daq"), btn(6, "6daq")],
         [btn(7, "7daq"), btn(8, "8daq"), btn(9, "9daq"), btn(10, "10daq"), btn(11, "11daq")],
-        [btn(12, "12daq"), btn(13, "13daq"), btn(14, "14daq"), btn(15, "15daq")],
+        [btn(12, "12daq"), btn(13, "13daq"), border := btn(14, "14daq"), btn(15, "15daq")],
         [btn(30, "30daq"), btn(60, "1 soat"), btn(90, "1.5 soat"), btn(120, "2 soat"), btn(180, "3 soat")],
         [InlineKeyboardButton(text="⁉️ Interval nima", callback_data="explain_interval")]
     ]
@@ -430,6 +430,40 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     ])
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
+
+# TUZATILDI: Avto-xabar bo'limidagi Statistika tugmasi uchun orqada ishlaydigan callback_query hodisasi yozildi!
+@router.callback_query(F.data == "statistika")
+async def callback_user_statistika(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    
+    selected_g_count = len(user_data.get("selected_groups", []))
+    choice = user_data.get("groups_choice", "custom")
+    g_text = f"Tanlangan ({selected_g_count} ta)" if choice == "custom" else "Barcha a'zo bo'lingan guruhlar"
+    
+    stat_text = (
+        "📊 <b>Sizning shaxsiy statistikangiz</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📱 Akkaunt: <b>{user_data.get('active_phone', 'Ulanmagan ❌')}</b>\n"
+        f"🟢 Bugun yuborildi: <b>{user_data.get('today_sent', 0)} ta xabar</b>\n"
+        f"🔄 Jami yuborildi: <b>{user_data.get('total_sent', 0)} ta xabar</b>\n"
+        f"💬 Maqsadli guruhlar: <b>{g_text}</b>\n"
+        f"⏱️ Joriy kutish intervali: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
+        f"⏳ Avto-yuborish holati: <b>{'🟢 Faol tarqatilmoqda' if user_data.get('is_sending') else '🔴 To\'xtatilgan'}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Yangilash", callback_data="statistika")],
+        [InlineKeyboardButton(text="⬅️ Boshqaruv Paneliga Qaytish", callback_data="back_to_panel")]
+    ])
+    
+    try:
+        await callback_query.message.edit_text(stat_text, reply_markup=inline_kb, parse_mode="HTML")
+    except Exception:
+        await callback_query.message.answer(stat_text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
 
 @router.message(F.text == "📝 Habar matni")
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
@@ -1673,7 +1707,7 @@ async def init_existing_sessions():
                     
                     if user_id not in db_users:
                         db_users[user_id] = {
-                            "balans": 0,
+                            "balans": 0, # TUZATILDI: Hamma uchun standart balans boshlanishda 0 so'm
                             "stars": 0,
                             "is_pro": False,
                             "referrals": 0,
