@@ -409,7 +409,7 @@ async def menu_qollanma(message: types.Message, state: FSMContext):
         "4️⃣ <b>Interval va ishga tushirish:</b>\n"
         "• <i>⏱️ Interval</i> bo'limidan har bir tarqatish sikli orasidagi vaqtni belgilang.\n"
         "• <i>⚪ Autohabar yuborish</i> bo'limiga kirib, **▶️ Ishga tushirish** tugmasini bosing!\n\n"
-        "⚠️ <b>Spam-blokdan himoyalanish uchun maslahatlar:</b>\n"
+        "⚠️ <b>Spam-blokdan himoyalanish o'rganish:</b>\n"
         "• Vaqt intervalini kamida **15 daqiqa** qilib belgilang.\n"
         "• Kuniga 50-80 tadan ortiq guruhga xabar yubormaslikka harakat qiling."
     )
@@ -510,6 +510,9 @@ async def callback_user_statistika(callback_query: types.CallbackQuery):
     choice = user_data.get("groups_choice", "custom")
     g_text = f"Tanlangan ({selected_g_count} ta)" if choice == "custom" else "Barcha a'zo bo'lingan guruhlar"
     
+    # Python 3.10 f-string backslash muammosini hal qilish uchun o'zgaruvchidan foydalanamiz
+    status_text = "🟢 Faol tarqatilmoqda" if user_data.get("is_sending") else "🔴 To'xtatilgan"
+    
     stat_text = (
         "📊 <b>Sizning shaxsiy statistikangiz</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -518,7 +521,7 @@ async def callback_user_statistika(callback_query: types.CallbackQuery):
         f"🔄 Jami yuborildi: <b>{user_data.get('total_sent', 0)} ta xabar</b>\n"
         f"💬 Maqsadli guruhlar: <b>{g_text}</b>\n"
         f"⏱️ Joriy kutish intervali: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-yuborish holati: <b>{'🟢 Faol tarqatilmoqda' if user_data.get('is_sending') else '🔴 To\'xtatilgan'}</b>\n"
+        f"⏳ Avto-yuborish holati: <b>{status_text}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━"
     )
     
