@@ -344,7 +344,7 @@ class TextStates(StatesGroup):
     waiting_text = State()
     waiting_photo = State()
     waiting_buttons = State()
-    waiting_forward = State()  # TUZATILDI: waiting_forward holati klass ichida to'g'ri e'lon qilindi!
+    waiting_forward = State()  # waiting_forward xotira holati klass ichida to'g'ri e'lon qilindi!
 
 class AdminStates(StatesGroup):
     waiting_search_id = State()
@@ -394,6 +394,18 @@ class MandatorySubMiddleware(BaseMiddleware):
                 unsubscribed_channels.append(channel)
 
         if unsubscribed_channels:
+            # TUZATILDI: Obuna bo'lmagan yangi foydalanuvchiga birinchi navbatda pastdagi asosiy Reply Keyboard-ni ochib yuboramiz!
+            try:
+                await event.bot.send_message(
+                    chat_id=user_id,
+                    text="👋 <b>AutoHabar Pro botiga xush kelibsiz!</b>\n\nTizim boshqaruv menyusi yuklanmoqda...",
+                    reply_markup=get_main_keyboard(user_id),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.error(f"[Xavfsizlik] Reply keyboard yuborishda xato: {e}")
+
+            # Keyin esa Inline obuna tugmalarini ustidan chiqaramiz (Reply Keyboard aslo kollaps bo'lmaydi)
             markup_buttons = []
             for chan in unsubscribed_channels:
                 clean_name = chan.replace("@", "")
@@ -403,7 +415,7 @@ class MandatorySubMiddleware(BaseMiddleware):
             markup = InlineKeyboardMarkup(inline_keyboard=markup_buttons)
 
             block_text = (
-                "⚠️ <b>Bot xizmatlaridan foydalanish uchun quyidagi kanallarga a'zo bo'lishingiz shart!</b>\n\n"
+                "⚠️ <b>Bot xizmatlaridan foydalanish uchun yuqoridagi kanallarga a'zo bo'lishingiz shart!</b>\n\n"
                 "Iltimos, obuna bo'ling va keyin pastdagi <b>✅ Obunani tekshirish</b> tugmasini bosing:"
             )
 
@@ -515,7 +527,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
                 except Exception:
                     pass
                 
-                # 6 ta yangi a'zo taklif qilsa, bepul PRO beriladi!
+                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO beriladi!
                 if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
                     db_users[referrer_id]["is_pro"] = True
                     save_db()
@@ -545,11 +557,24 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
     )
     
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
-    ])
-    
-    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    # TUZATILDI: Avval uning akkaunti ulanmagan bo'lsa, faqat inline klaviaturali greeting xabarini yuboramiz
+    user_data = db_users.get(user_id)
+    if user_data and not user_data.get("active_phone"):
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
+        ])
+        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    else:
+        await message.answer(text, parse_mode="HTML")
+        
+    # TUZATILDI: ENG OXIRIDA alohida kichik xabar bilan Reply Keyboard yuboramiz. 
+    # Bu Telegram mijozlari pastki menyuni 100% ochib, ko'rsatib turishini kafolatlaydi!
+    await message.answer(
+        "🎛️ <b>Asosiy boshqaruv menyusi muvaffaqiyatli yoqildi!</b>\n"
+        "Bot xizmatlaridan foydalanish uchun quyidagi tugmalardan foydalaning 👇",
+        reply_markup=get_main_keyboard(user_id),
+        parse_mode="HTML"
+    )
 
 @router.message(F.text == "📖 Qo'llanma")
 async def menu_qollanma(message: types.Message, state: FSMContext):
@@ -739,11 +764,23 @@ async def callback_check_sub_status(callback_query: types.CallbackQuery):
             "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
         )
         
-        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
-        ])
-        
-        await callback_query.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+        # TUZATILDI: Obuna tasdiqlangandan so'ng, faqat inline klaviaturali xabar yuboriladi (agar tel bog'lanmagan bo'lsa)
+        user_data = db_users.get(user_id)
+        if user_data and not user_data.get("active_phone"):
+            inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
+            ])
+            await callback_query.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+        else:
+            await callback_query.message.answer(text, parse_mode="HTML")
+            
+        # TUZATILDI: ENG OXIRIDA Reply Keyboard tugmalari alohida xabarda yuboriladi!
+        await callback_query.message.answer(
+            "🎛️ <b>Asosiy boshqaruv menyusi faollashtirildi!</b>\n"
+            "Botdan to'liq foydalanish uchun pastdagi tugmalardan foydalaning 👇",
+            reply_markup=get_main_keyboard(user_id),
+            parse_mode="HTML"
+        )
 
 # ===================================================================================
 
