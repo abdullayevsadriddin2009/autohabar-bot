@@ -2532,7 +2532,8 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         await backup_session_to_cloud(user_id, phone)
         
         await message.answer(
-            "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi va bulutga zaxiralandi!</b>",
+            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
+            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
             reply_markup=get_main_keyboard(user_id),
             parse_mode="HTML"
         )
