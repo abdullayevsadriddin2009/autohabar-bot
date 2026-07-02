@@ -47,6 +47,7 @@ API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
 BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
+APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
 # Papkalarni yaratish
 SESSIONS_DIR = "sessions"
@@ -152,7 +153,9 @@ DEFAULT_DB = {
         "joined_time": datetime.now().strftime("%H:%M"),
         "today_sent": 0,
         "total_sent": 0,
-        "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+        "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+        "auto_off_hours": None,
+        "is_sending_started_at": 0
     }
 }
 
@@ -170,7 +173,8 @@ def load_db():
 
     if db:
         try:
-            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
+            # Qat'iy ruxsat berilgan maxsus Firestore ulanish yo'li (Rule 1 ga muvofiq)
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('public').document('data').collection('database').document('main')
             doc = doc_ref.get()
             if doc.exists:
                 data = doc.to_dict()
@@ -199,7 +203,7 @@ def save_db():
     if db:
         try:
             serializable_db = {str(k): v for k, v in db_users.items()}
-            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('public').document('data').collection('database').document('main')
             doc_ref.set(serializable_db)
             logging.info("[Baza] Ma'lumotlar Google Cloud Firestore omboriga yozildi!")
         except Exception as e:
@@ -230,9 +234,17 @@ def ensure_user(user_id: int):
             "joined_time": datetime.now().strftime("%H:%M"),
             "today_sent": 0,
             "total_sent": 0,
-            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+            "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+            "auto_off_hours": None,
+            "is_sending_started_at": 0
         }
-        save_db()
+    else:
+        # Yangi maydonlar mavjudligini kafolatlash
+        if "auto_off_hours" not in db_users[user_id]:
+            db_users[user_id]["auto_off_hours"] = None
+        if "is_sending_started_at" not in db_users[user_id]:
+            db_users[user_id]["is_sending_started_at"] = 0
+    save_db()
 
 async def backup_session_to_cloud(user_id):
     if not db:
@@ -240,10 +252,14 @@ async def backup_session_to_cloud(user_id):
     session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
     if os.path.exists(session_path):
         try:
-            with open(session_path, "rb") as f:
+            # Faylni xavfsiz nusxalab olib, keyin o'qiymiz (SQLite blokirovkalaridan qochish uchun)
+            temp_path = session_path + ".tmp"
+            shutil.copy2(session_path, temp_path)
+            with open(temp_path, "rb") as f:
                 encoded_data = base64.b64encode(f.read()).decode('utf-8')
+            os.remove(temp_path)
             
-            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
             doc_ref.set({"binary_data": encoded_data, "updated_at": datetime.now().isoformat()})
             print(f"[Sessiya] Profil {user_id} ulanishi bulutga zaxiralandi!")
         except Exception as e:
@@ -253,7 +269,7 @@ async def restore_sessions_from_cloud():
     if not db:
         return
     try:
-        users_ref = db.collection('artifacts').document('autohabar_pro').collection('users')
+        users_ref = db.collection('artifacts').document(APP_ID).collection('users')
         users_docs = users_ref.stream()
         
         for user_doc in users_docs:
@@ -319,7 +335,7 @@ def get_main_keyboard(user_id):
     kb = [
         [KeyboardButton(text="⚪ Autohabar yuborish"), KeyboardButton(text="📝 Habar matni")],
         [KeyboardButton(text="⏱️ Interval"), KeyboardButton(text="💬 Guruhlarni sozlash")],
-        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="📖 Qo'llanma")],  # Qo'llanma tugmasi
+        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="📖 Qo'llanma")],  
         [KeyboardButton(text="👤 Kabinet"), KeyboardButton(text="⚙️ Sozlamalar")]
     ]
     if user_id == ADMIN_ID:
@@ -426,6 +442,9 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
     holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
     
+    auto_off = user_data.get("auto_off_hours")
+    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
+    
     responseText = (
         "🤠 <b>Boshqaruv paneli</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -434,7 +453,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
         f"✍️ Xabar turi: <b>Matn</b>\n"
         f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
         f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        "⌛ Avto-o'chish: <b>∞ Cheksiz</b>\n"
+        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
         "📢 Mention: <b>O'chiq</b>\n"
         "━━━━━━━━━━━━━━━━━━━━"
     )
@@ -454,9 +473,81 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
+# ================= TAYMER SOZLAMALARI (YANGI ULANGAN QISM) =================
+
+async def show_timer_settings(message: types.Message, user_id: int):
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    current_timer = user_data.get("auto_off_hours")  # None yoki int
+    
+    def get_btn_text(hours, label):
+        if current_timer == hours:
+            return f"✓ {label}"
+        return label
+        
+    kb = [
+        [
+            InlineKeyboardButton(text=get_btn_text(1, "1 soat"), callback_data="set_timer_1"),
+            InlineKeyboardButton(text=get_btn_text(2, "2 soat"), callback_data="set_timer_2"),
+            InlineKeyboardButton(text=get_btn_text(3, "3 soat"), callback_data="set_timer_3")
+        ],
+        [
+            InlineKeyboardButton(text=get_btn_text(6, "6 soat"), callback_data="set_timer_6"),
+            InlineKeyboardButton(text=get_btn_text(12, "12 soat"), callback_data="set_timer_12"),
+            InlineKeyboardButton(text=get_btn_text(24, "24 soat"), callback_data="set_timer_24")
+        ],
+        [
+            InlineKeyboardButton(text=get_btn_text(48, "48 soat"), callback_data="set_timer_48"),
+            InlineKeyboardButton(text=get_btn_text(72, "72 soat"), callback_data="set_timer_72"),
+            InlineKeyboardButton(text=get_btn_text(None, "Cheksiz"), callback_data="set_timer_inf")
+        ],
+        [
+            InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")
+        ]
+    ]
+    
+    timer_text = "Cheksiz ∞" if current_timer is None else f"{current_timer} soat"
+    
+    text = (
+        "⏱️ <b>Avto-o'chirish taymerini sozlash</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Joriy o'chish vaqti: <b>{timer_text}</b>\n\n"
+        "Ushbu taymer reklama tarqatish ishga tushganidan so'ng, "
+        "belgilangan muddat o'tgach avtomatik ravishda to'xtatish imkonini beradi. "
+        "Bu guruhlar orasida ko'p reklama tarqatib, spamga tushib qolmaslikka yordam beradi."
+    )
+    
+    try:
+        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+
 @router.callback_query(F.data == "timer_setup")
 async def callback_timer_setup(callback_query: types.CallbackQuery):
-    await callback_query.answer("⏱️ Avto-o'chirish taymeri tez kunda ishga tushadi (PRO xizmat)!", show_alert=True)
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    await show_timer_settings(callback_query.message, user_id)
+    await callback_query.answer()
+
+@router.callback_query(F.data.startswith("set_timer_"))
+async def callback_set_timer(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    timer_val = callback_query.data.split("_")[2]
+    if timer_val == "inf":
+        db_users[user_id]["auto_off_hours"] = None
+        alert_text = "✓ Avto-o'chirish muddati Cheksiz qilib belgilandi!"
+    else:
+        hours = int(timer_val)
+        db_users[user_id]["auto_off_hours"] = hours
+        alert_text = f"✓ Avto-o'chirish muddati {hours} soat qilib belgilandi!"
+        
+    save_db()
+    await callback_query.answer(alert_text, show_alert=True)
+    await show_timer_settings(callback_query.message, user_id)
+
+# ===================================================================================
 
 @router.callback_query(F.data == "refresh_status")
 async def callback_refresh_status(callback_query: types.CallbackQuery, state: FSMContext):
@@ -468,6 +559,9 @@ async def callback_refresh_status(callback_query: types.CallbackQuery, state: FS
     profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
     holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
     
+    auto_off = user_data.get("auto_off_hours")
+    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
+    
     responseText = (
         "🤠 <b>Boshqaruv paneli (Yangilandi 🔄)</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -476,7 +570,7 @@ async def callback_refresh_status(callback_query: types.CallbackQuery, state: FS
         f"✍️ Xabar turi: <b>Matn</b>\n"
         f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
         f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        "⌛ Avto-o'chish: <b>∞ Cheksiz</b>\n"
+        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
         "📢 Mention: <b>O'chiq</b>\n"
         "━━━━━━━━━━━━━━━━━━━━"
     )
@@ -510,7 +604,6 @@ async def callback_user_statistika(callback_query: types.CallbackQuery):
     choice = user_data.get("groups_choice", "custom")
     g_text = f"Tanlangan ({selected_g_count} ta)" if choice == "custom" else "Barcha a'zo bo'lingan guruhlar"
     
-    # Python 3.10 f-string backslash muammosini hal qilish uchun o'zgaruvchidan foydalanamiz
     status_text = "🟢 Faol tarqatilmoqda" if user_data.get("is_sending") else "🔴 To'xtatilgan"
     
     stat_text = (
@@ -1176,16 +1269,53 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 @router.callback_query(F.data == "back_to_panel")
 async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    await menu_autohabar(callback_query.message, state)
-
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    
+    phone = user_data.get("active_phone")
+    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
+    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
+    
+    auto_off = user_data.get("auto_off_hours")
+    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
+    
+    responseText = (
+        "🤠 <b>Boshqaruv paneli</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"{profilStatus}\n"
+        f"⚡ Holat: <b>{holatStatus}</b>\n"
+        f"✍️ Xabar turi: <b>Matn</b>\n"
+        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
+        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
+        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
+        "📢 Mention: <b>O'chiq</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    
+    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
+            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
+        ],
+        [
+            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
+            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
+        ]
+    ])
+    
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+        await callback_query.answer()
+    except Exception:
+        await callback_query.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
     text = user_data.get("reklama_matni", "")
-    
-    # TUZATILDI: Admin yoki oddiy foydalanuvchi bo'lishidan qat'iy nazar link qo'shiladigan bo'ldi!
     text += "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi"
         
     photo_path = user_data.get("reklama_rasm") 
@@ -1215,8 +1345,30 @@ async def auto_sender_worker():
         
         for user_id, user_data in list(db_users.items()):
             if user_data.get("is_sending") and user_data.get("active_phone"):
-                next_run = user_data.get("next_run_timestamp", 0)
+                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
+                started_at = user_data.get("is_sending_started_at", 0)
+                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
                 
+                if auto_off_hours and started_at:
+                    elapsed_hours = (current_time - started_at) / 3600.0
+                    if elapsed_hours >= auto_off_hours:
+                        db_users[user_id]["is_sending"] = False
+                        db_users[user_id]["is_sending_started_at"] = 0
+                        save_db()
+                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
+                        try:
+                            await bot.send_message(
+                                user_id, 
+                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                                parse_mode="HTML"
+                            )
+                        except Exception:
+                            pass
+                        continue
+                # =====================================================================
+
+                next_run = user_data.get("next_run_timestamp", 0)
                 if current_time >= next_run:
                     interval_minutes = user_data.get("interval", 15)
                     db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
@@ -1279,6 +1431,7 @@ async def callback_disconnect(callback_query: types.CallbackQuery):
     ensure_user(user_id)
     db_users[user_id]["active_phone"] = None
     db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
     save_db()
     
     if user_id in active_clients:
@@ -1290,7 +1443,7 @@ async def callback_disconnect(callback_query: types.CallbackQuery):
 
     if db:
         try:
-            doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
             doc_ref.delete()
         except Exception:
             pass
@@ -1573,6 +1726,9 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery):
     
     if user_data["is_sending"]:
         user_data["next_run_timestamp"] = 0
+        user_data["is_sending_started_at"] = datetime.now().timestamp()
+    else:
+        user_data["is_sending_started_at"] = 0
         
     save_db()
     await callback_query.answer(f"Avto-xabar tarqatish muvaffaqiyatli {status_text}", show_alert=True)
@@ -1796,7 +1952,9 @@ async def init_existing_sessions():
                             "joined_time": datetime.now().strftime("%H:%M"),
                             "today_sent": 0,
                             "total_sent": 0,
-                            "channels": ["@autoxabarc_news", "@autoxabar_chat"]
+                            "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+                            "auto_off_hours": None,
+                            "is_sending_started_at": 0
                         }
                     else:
                         db_users[user_id]["active_phone"] = f"+{me.phone}"
