@@ -96,7 +96,6 @@ dp.include_router(router)
 db = None
 if FIREBASE_AVAILABLE:
     print("[Firebase] Baza ulanish yo'llarini qidirish...")
-    # 1. Birinchi navbatda Render Secret Files yoki Local JSON fayllarini tekshiramiz (USTUVOR REJIM)
     possible_paths = [
         "firebase_credentials.json", 
         "/etc/secrets/firebase_credentials.json",
@@ -115,7 +114,6 @@ if FIREBASE_AVAILABLE:
             except Exception as e:
                 print(f"[Firebase] XATO: {path} faylidan foydalanishda xatolik: {e}")
                 
-    # 2. Agar maxfiy fayl bo'lmasa, Render Environment Variable orqali ulanishga harakat qiladi
     if not db:
         print("[Firebase] Maxfiy fayllar topilmadi. Environment Variable tekshirilmoqda...")
         firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
@@ -132,10 +130,10 @@ if FIREBASE_AVAILABLE:
 else:
     print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
-# Boshlang'ich baza andozasi (Yangi foydalanuvchilar balanslari noldan boshlanishi kafolatlanadi)
+# Boshlang'ich baza andozasi
 DEFAULT_DB = {
     ADMIN_ID: {
-        "balans": 0, # TUZATILDI: Barcha uchun boshlang'ich balans 0 so'm
+        "balans": 0,
         "stars": 0,
         "is_pro": True,
         "referrals": 0,
@@ -161,10 +159,7 @@ DEFAULT_DB = {
 # ================= SESSIONS & DATABASE CLOUD PERSISTENCE =================
 
 def load_db():
-    """ Bulutli bazadan yoki mahalliy JSON fayldan foydalanuvchilar ma'lumotlarini yuklash """
     local_data = DEFAULT_DB
-    
-    # Avval mahalliy faylni o'qiymiz (agar mavjud bo'lsa)
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -182,7 +177,6 @@ def load_db():
                 print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
                 return {int(k): v for k, v in data.items()}
             else:
-                # Agar Firestore bo'sh bo'lsa, lekin mahalliy faylda ma'lumot bo'lsa - avtomatik ravishda uni ko'chiramiz! (Migratsiya)
                 print("[Baza] Firestore - bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
                 serializable_db = {str(k): v for k, v in local_data.items()}
                 doc_ref.set(serializable_db)
@@ -196,7 +190,6 @@ def load_db():
     return local_data
 
 def save_db():
-    """ Ma'lumotlarni ham Google Cloud'ga, ham mahalliy faylga sinxron yozish """
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(db_users, f, ensure_ascii=False, indent=4)
@@ -216,10 +209,9 @@ db_users = load_db()
 active_clients = {}
 
 def ensure_user(user_id: int):
-    """ Bazada KeyError bo'lmasligi uchun foydalanuvchini andoza bilan yaratish """
     if user_id not in db_users:
         db_users[user_id] = {
-            "balans": 0, # TUZATILDI: Barcha yangi foydalanuvchilar 0 so'm bilan boshlashadi
+            "balans": 0,
             "stars": 0,
             "is_pro": False,
             "referrals": 0,
@@ -243,7 +235,6 @@ def ensure_user(user_id: int):
         save_db()
 
 async def backup_session_to_cloud(user_id):
-    """ Telethon SQLite `.session` faylini shifrlab bulutga xavfsiz saqlash """
     if not db:
         return
     session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
@@ -259,7 +250,6 @@ async def backup_session_to_cloud(user_id):
             print(f"[Sessiya] Bulutga saqlashda xatolik: {e}")
 
 async def restore_sessions_from_cloud():
-    """ Render qayta ishga tushganda bulutdagi barcha sessiyalarni qayta tiklash """
     if not db:
         return
     try:
@@ -329,7 +319,7 @@ def get_main_keyboard(user_id):
     kb = [
         [KeyboardButton(text="⚪ Autohabar yuborish"), KeyboardButton(text="📝 Habar matni")],
         [KeyboardButton(text="⏱️ Interval"), KeyboardButton(text="💬 Guruhlarni sozlash")],
-        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="👑 Pro tarif")],
+        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="📖 Qo'llanma")],  # Yangi Qo'llanma tugmasi qo'shildi
         [KeyboardButton(text="👤 Kabinet"), KeyboardButton(text="⚙️ Sozlamalar")]
     ]
     if user_id == ADMIN_ID:
@@ -351,7 +341,6 @@ def get_admin_main_markup():
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# Dinamik tarzda interval klaviaturasini yaratish
 def get_interval_keyboard(user_interval):
     def btn(val, label):
         text = f"✓ {label}" if user_interval == val else label
@@ -382,7 +371,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "› Akkaunt qo'shing\n"
         "› Guruhlarni sozlang\n"
         "› Habarni sozlang\n"
-        "› Autohabarni ishga tushuring"
+        "› Autohabarni ishga tushuring\n\n"
+        "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
     )
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -390,7 +380,39 @@ async def cmd_start(message: types.Message, state: FSMContext):
     ])
     
     await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
-    await message.answer("Tizimdan foydalanish uchun quyidagi tugmani bosing:", reply_markup=inline_kb)
+
+@router.message(F.text == "📖 Qo'llanma")
+async def menu_qollanma(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    text = (
+        "📖 <b>AutoHabar Pro - Foydalanish Bo'yicha Batafsil Qo'llanma</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Ushbu bot sizga shaxsiy Telegram profilingizni ulab, "
+        "guruhlarga 24/7 rejimida avtomatik ravishda reklamalarni tarqatishga yordam beradi.\n\n"
+        "⚙️ <b>Qadam-baqadam sozlash yo'riqnomasi:</b>\n\n"
+        "1️⃣ <b>Akkaunt ulash:</b>\n"
+        "• Asosiy menyudan <i>👤 Profillar</i> yoki <i>⚪ Autohabar yuborish</i> bo'limidan akkaunt qo'shish tugmasini bosing.\n"
+        "• Telefon raqamingizni xalqaro formatda kiriting (Masalan: <code>+998901234567</code>).\n"
+        "• Telegram ilovangizga kelgan 5 xonali kodni kiriting. **Muhim:** Kod raqamlari orasiga albatta **nuqta qo'ying** (Masalan: <code>5.8.2.9.1</code>).\n\n"
+        "2️⃣ <b>Guruhlarni sozlash:</b>\n"
+        "• <i>💬 Guruhlarni sozlash</i> bo'limiga kiring.\n"
+        "• <b>Ro'yxatlar</b> tugmasini bosib, xabar yuborishni xohlagan guruhlaringizni belgilang.\n"
+        "• Tanlov tugagach, eng pastdagi <b>💾 Saqlash</b> tugmasini bosing.\n"
+        "• Yangi guruhlarga a'zo bo'lsangiz, keshni yangilash uchun <b>+ Qo'shish (Keshni yangilash)</b> tugmasini bosing.\n\n"
+        "3️⃣ <b>Reklama xabarini sozlash:</b>\n"
+        "• <i>📝 Habar matni</i> bo'limiga kiring.\n"
+        "• Reklama matnini tahrirlang, rasm yuklang yoki tugmalar qo'shing.\n\n"
+        "4️⃣ <b>Interval va ishga tushirish:</b>\n"
+        "• <i>⏱️ Interval</i> bo'limidan har bir tarqatish sikli orasidagi vaqtni belgilang.\n"
+        "• <i>⚪ Autohabar yuborish</i> bo'limiga kirib, **▶️ Ishga tushirish** tugmasini bosing!\n\n"
+        "⚠️ <b>Spam-blokdan himoyalanish uchun maslahatlar:</b>\n"
+        "• Vaqt intervalini kamida **15 daqiqa** qilib belgilang.\n"
+        "• Kuniga 50-80 tadan ortiq guruhga xabar yubormaslikka harakat qiling."
+    )
+    await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text == "⚪ Autohabar yuborish")
 async def menu_autohabar(message: types.Message, state: FSMContext):
@@ -431,7 +453,54 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-# TUZATILDI: Avto-xabar bo'limidagi Statistika tugmasi uchun orqada ishlaydigan callback_query hodisasi yozildi!
+# TUZATILDI: Avto-xabar bo'limidagi barcha boshqa tugmalar uchun javob beruvchi callback_query hodisalari mukammal yozildi!
+@router.callback_query(F.data == "timer_setup")
+async def callback_timer_setup(callback_query: types.CallbackQuery):
+    # Tugma qotib qolmasligi uchun darhol javob qaytaramiz
+    await callback_query.answer("⏱️ Avto-o'chirish taymeri tez kunda ishga tushadi (PRO xizmat)!", show_alert=True)
+
+@router.callback_query(F.data == "refresh_status")
+async def callback_refresh_status(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    
+    phone = user_data.get("active_phone")
+    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
+    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
+    
+    responseText = (
+        "🤠 <b>Boshqaruv paneli (Yangilandi 🔄)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"{profilStatus}\n"
+        f"⚡ Holat: <b>{holatStatus}</b>\n"
+        f"✍️ Xabar turi: <b>Matn</b>\n"
+        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
+        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
+        "⌛ Avto-o'chish: <b>∞ Cheksiz</b>\n"
+        "📢 Mention: <b>O'chiq</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    
+    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
+            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
+        ],
+        [
+            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
+            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
+        ]
+    ])
+    
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+        await callback_query.answer("🔄 Boshqaruv paneli muvaffaqiyatli yangilandi!")
+    except Exception:
+        await callback_query.answer("Boshqaruv paneli joriy holatda.")
+
 @router.callback_query(F.data == "statistika")
 async def callback_user_statistika(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
@@ -1104,15 +1173,14 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 # =========================================================================
 
 @router.callback_query(F.data == "back_to_panel")
-async def callback_back_panel(callback_query: types.CallbackQuery):
+async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.answer()
-    await menu_autohabar(callback_query.message)
+    await menu_autohabar(callback_query.message, state)
 
 
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
-    """ Media (Rasm), Inline tugmalar va textni yaxlit bitta xabar sifatida yuboruvchi asinxron motor """
     text = user_data.get("reklama_matni", "")
     
     if int(user_id) != ADMIN_ID:
@@ -1707,7 +1775,7 @@ async def init_existing_sessions():
                     
                     if user_id not in db_users:
                         db_users[user_id] = {
-                            "balans": 0, # TUZATILDI: Hamma uchun standart balans boshlanishda 0 so'm
+                            "balans": 0,
                             "stars": 0,
                             "is_pro": False,
                             "referrals": 0,
