@@ -263,7 +263,7 @@ def ensure_user(user_id: int):
             "auto_reply_active": False
         }
     else:
-        # Eski maydonlarni to'g'ri yangilash
+        # Maydonlarni xavfsiz to'ldirish
         if "referrals_count" not in db_users[user_id]:
             db_users[user_id]["referrals_count"] = 0
         if "referred_by" not in db_users[user_id]:
@@ -333,6 +333,25 @@ async def restore_sessions_from_cloud():
                     print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}_{phone_clean}.session")
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
+
+# ================= STATES FOR LOGIN & ACTIONS =================
+class LoginStates(StatesGroup):
+    waiting_phone = State()
+    waiting_code = State()
+    waiting_2fa = State()
+
+class TextStates(StatesGroup):
+    waiting_text = State()
+    waiting_photo = State()
+    waiting_buttons = State()
+    waiting_forward = State()  # TUZATILDI: waiting_forward holati klass ichida to'g'ri e'lon qilindi!
+
+class AdminStates(StatesGroup):
+    waiting_search_id = State()
+    waiting_add_balans = State()
+    waiting_add_stars = State()
+    waiting_add_channel = State()
+    waiting_broadcast_msg = State()
 
 # ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE) =================
 
@@ -496,7 +515,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
                 except Exception:
                     pass
                 
-                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO beriladi!
+                # 6 ta yangi a'zo taklif qilsa, bepul PRO beriladi!
                 if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
                     db_users[referrer_id]["is_pro"] = True
                     save_db()
@@ -530,7 +549,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
     ])
     
-    await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 @router.message(F.text == "📖 Qo'llanma")
 async def menu_qollanma(message: types.Message, state: FSMContext):
@@ -563,7 +582,7 @@ async def menu_qollanma(message: types.Message, state: FSMContext):
         "• Vaqt intervalini kamida **15 daqiqa** qilib belgilang.\n"
         "• Kuniga 50-80 tadan ortiq guruhga xabar yubormaslikka harakat qiling."
     )
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
 @router.message(F.text == "⚪ Autohabar yuborish")
 async def menu_autohabar(message: types.Message, state: FSMContext):
@@ -724,7 +743,7 @@ async def callback_check_sub_status(callback_query: types.CallbackQuery):
             [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
         ])
         
-        await callback_query.message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await callback_query.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 # ===================================================================================
 
@@ -1339,7 +1358,7 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🔗 Taklif havolasini ulashish", url=f"https://t.me/share/url?url={ref_link}&text=Guruhlarga+avtomatik+reklama+yuboruvchi+zor+botni+sinab+koring!")],
         [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")]
     ])
-    await message.answer(text, inline_kb, parse_mode="HTML")
+    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML") # TUZATILDI: reply_markup kalit so'zi bilan to'g'ri o'rnatildi!
 
 @router.callback_query(F.data == "buy_pro_balance")
 async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
