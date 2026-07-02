@@ -344,7 +344,7 @@ class TextStates(StatesGroup):
     waiting_text = State()
     waiting_photo = State()
     waiting_buttons = State()
-    waiting_forward = State()  # waiting_forward xotira holati klass ichida to'g'ri e'lon qilindi!
+    waiting_forward = State()
 
 class AdminStates(StatesGroup):
     waiting_search_id = State()
@@ -394,7 +394,6 @@ class MandatorySubMiddleware(BaseMiddleware):
                 unsubscribed_channels.append(channel)
 
         if unsubscribed_channels:
-            # TUZATILDI: Obuna bo'lmagan yangi foydalanuvchiga birinchi navbatda pastdagi asosiy Reply Keyboard-ni ochib yuboramiz!
             try:
                 await event.bot.send_message(
                     chat_id=user_id,
@@ -557,7 +556,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
     )
     
-    # TUZATILDI: Avval uning akkaunti ulanmagan bo'lsa, faqat inline klaviaturali greeting xabarini yuboramiz
+    # Avval uning akkaunti ulanmagan bo'lsa, faqat inline klaviaturali greeting xabarini yuboramiz
     user_data = db_users.get(user_id)
     if user_data and not user_data.get("active_phone"):
         inline_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -567,8 +566,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     else:
         await message.answer(text, parse_mode="HTML")
         
-    # TUZATILDI: ENG OXIRIDA alohida kichik xabar bilan Reply Keyboard yuboramiz. 
-    # Bu Telegram mijozlari pastki menyuni 100% ochib, ko'rsatib turishini kafolatlaydi!
+    # ENG OXIRIDA alohida kichik xabar bilan Reply Keyboard yuboramiz.
     await message.answer(
         "🎛️ <b>Asosiy boshqaruv menyusi muvaffaqiyatli yoqildi!</b>\n"
         "Bot xizmatlaridan foydalanish uchun quyidagi tugmalardan foydalaning 👇",
@@ -764,7 +762,6 @@ async def callback_check_sub_status(callback_query: types.CallbackQuery):
             "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
         )
         
-        # TUZATILDI: Obuna tasdiqlangandan so'ng, faqat inline klaviaturali xabar yuboriladi (agar tel bog'lanmagan bo'lsa)
         user_data = db_users.get(user_id)
         if user_data and not user_data.get("active_phone"):
             inline_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -774,7 +771,6 @@ async def callback_check_sub_status(callback_query: types.CallbackQuery):
         else:
             await callback_query.message.answer(text, parse_mode="HTML")
             
-        # TUZATILDI: ENG OXIRIDA Reply Keyboard tugmalari alohida xabarda yuboriladi!
         await callback_query.message.answer(
             "🎛️ <b>Asosiy boshqaruv menyusi faollashtirildi!</b>\n"
             "Botdan to'liq foydalanish uchun pastdagi tugmalardan foydalaning 👇",
@@ -1844,7 +1840,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-# =========================================================================
+# ================= ========================================================
 
 @router.callback_query(F.data == "back_to_panel")
 async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1894,6 +1890,7 @@ async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMCon
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
+    # Sadriddin, agar PRO va forward rejimi yoqilgan bo'lsa, xabarni to'g'ridan-to'g'ri forward qilamiz!
     if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
         try:
             await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
