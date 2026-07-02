@@ -1,2 +1,4 @@
 aiogram>=3.0.0
 telethon>=1.24.0
+aiohttp>=3.8.0
+firebase-admin>=5.0.0
