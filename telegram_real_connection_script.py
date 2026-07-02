@@ -365,9 +365,10 @@ async def cmd_start(message: types.Message, state: FSMContext):
     
     text = (
         "📊 <b>Asosiy menyu:</b>\n"
-        "<b>O AUTO HABAR PRO</b>\n"
+        "<b>@Auto_Xabar_Yuborish_Bot</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Salom, xush kelibsiz! 👋\n\n"
+        "Assalomu alaykum,xush kelibsiz! 👋\n\n"
+        "› Botimizdan foydalanish uchun\n"
         "› Akkaunt qo'shing\n"
         "› Guruhlarni sozlang\n"
         "› Habarni sozlang\n"
