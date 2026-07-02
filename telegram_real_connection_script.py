@@ -319,7 +319,7 @@ def get_main_keyboard(user_id):
     kb = [
         [KeyboardButton(text="⚪ Autohabar yuborish"), KeyboardButton(text="📝 Habar matni")],
         [KeyboardButton(text="⏱️ Interval"), KeyboardButton(text="💬 Guruhlarni sozlash")],
-        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="📖 Qo'llanma")],  # Yangi Qo'llanma tugmasi qo'shildi
+        [KeyboardButton(text="👤 Profillar"), KeyboardButton(text="📖 Qo'llanma")],  # Qo'llanma tugmasi
         [KeyboardButton(text="👤 Kabinet"), KeyboardButton(text="⚙️ Sozlamalar")]
     ]
     if user_id == ADMIN_ID:
@@ -349,7 +349,7 @@ def get_interval_keyboard(user_interval):
     kb = [
         [btn(2, "2daq"), btn(3, "3daq"), btn(4, "4daq"), btn(5, "5daq"), btn(6, "6daq")],
         [btn(7, "7daq"), btn(8, "8daq"), btn(9, "9daq"), btn(10, "10daq"), btn(11, "11daq")],
-        [btn(12, "12daq"), btn(13, "13daq"), border := btn(14, "14daq"), btn(15, "15daq")],
+        [btn(12, "12daq"), btn(13, "13daq"), btn(14, "14daq"), btn(15, "15daq")],
         [btn(30, "30daq"), btn(60, "1 soat"), btn(90, "1.5 soat"), btn(120, "2 soat"), btn(180, "3 soat")],
         [InlineKeyboardButton(text="⁉️ Interval nima", callback_data="explain_interval")]
     ]
@@ -453,10 +453,8 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-# TUZATILDI: Avto-xabar bo'limidagi barcha boshqa tugmalar uchun javob beruvchi callback_query hodisalari mukammal yozildi!
 @router.callback_query(F.data == "timer_setup")
 async def callback_timer_setup(callback_query: types.CallbackQuery):
-    # Tugma qotib qolmasligi uchun darhol javob qaytaramiz
     await callback_query.answer("⏱️ Avto-o'chirish taymeri tez kunda ishga tushadi (PRO xizmat)!", show_alert=True)
 
 @router.callback_query(F.data == "refresh_status")
@@ -701,8 +699,8 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
         f"👥 Jami profillar: <b>{1 if user_data.get('active_phone') else 0}</b>\n"
         f"📅 Qo'shilgan: <b>{user_data.get('joined_time', '22:37')}</b>\n\n"
         f"🛡️ Tarif: 👤 <b>{is_pro_text}</b>\n"
-        f"|o_tarif: <b>{premium_text}</b>\n"
-        f"️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>"
+        f"👑 Pro tarif: <b>{premium_text}</b>\n"
+        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>"
     )
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
