@@ -160,7 +160,10 @@ DEFAULT_DB = {
         "referred_by": None,
         "forward_chat_id": None,
         "forward_msg_id": None,
-        "is_forward_mode": False
+        "is_forward_mode": False,
+        "accounts": [],  # Barcha ulangan akkauntlar ro'yxati
+        "auto_sub_active": True,
+        "auto_reply_active": False
     }
 }
 
@@ -185,7 +188,7 @@ def load_db():
                 print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
                 parsed_data = {int(k): v for k, v in data.items()}
                 
-                # Eski keshdagi default kanallarni tozalash
+                # Eski default kanallarni avtomatik tozalash
                 if ADMIN_ID in parsed_data:
                     old_defaults = ["@autoxabarc_news", "@autoxabar_chat"]
                     current_chans = parsed_data[ADMIN_ID].get("channels", [])
@@ -254,10 +257,13 @@ def ensure_user(user_id: int):
             "referred_by": None,
             "forward_chat_id": None,
             "forward_msg_id": None,
-            "is_forward_mode": False
+            "is_forward_mode": False,
+            "accounts": [],
+            "auto_sub_active": True,
+            "auto_reply_active": False
         }
     else:
-        # Yangi andoza maydonlari mavjudligini tekshirish
+        # Eski maydonlarni to'g'ri yangilash
         if "referrals_count" not in db_users[user_id]:
             db_users[user_id]["referrals_count"] = 0
         if "referred_by" not in db_users[user_id]:
@@ -272,12 +278,25 @@ def ensure_user(user_id: int):
             db_users[user_id]["auto_off_hours"] = None
         if "is_sending_started_at" not in db_users[user_id]:
             db_users[user_id]["is_sending_started_at"] = 0
+        if "accounts" not in db_users[user_id]:
+            db_users[user_id]["accounts"] = []
+            if db_users[user_id].get("active_phone"):
+                db_users[user_id]["accounts"].append({
+                    "phone": db_users[user_id]["active_phone"],
+                    "name": db_users[user_id].get("active_name", "Foydalanuvchi"),
+                    "username": db_users[user_id].get("active_username", "@-")
+                })
+        if "auto_sub_active" not in db_users[user_id]:
+            db_users[user_id]["auto_sub_active"] = True
+        if "auto_reply_active" not in db_users[user_id]:
+            db_users[user_id]["auto_reply_active"] = False
     save_db()
 
-async def backup_session_to_cloud(user_id):
+async def backup_session_to_cloud(user_id, phone):
     if not db:
         return
-    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}_{phone_clean}.session")
     if os.path.exists(session_path):
         try:
             temp_path = session_path + ".tmp"
@@ -286,9 +305,9 @@ async def backup_session_to_cloud(user_id):
                 encoded_data = base64.b64encode(f.read()).decode('utf-8')
             os.remove(temp_path)
             
-            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
             doc_ref.set({"binary_data": encoded_data, "updated_at": datetime.now().isoformat()})
-            print(f"[Sessiya] Profil {user_id} ulanishi bulutga zaxiralandi!")
+            print(f"[Sessiya] Profil {user_id} ({phone}) ulanishi bulutga zaxiralandi!")
         except Exception as e:
             print(f"[Sessiya] Bulutga saqlashda xatolik: {e}")
 
@@ -301,37 +320,19 @@ async def restore_sessions_from_cloud():
         
         for user_doc in users_docs:
             user_id = user_doc.id
-            session_doc_ref = users_ref.document(user_id).collection('telethon_session').document('session_file')
-            session_doc = session_doc_ref.get()
+            sessions_ref = users_ref.document(user_id).collection('telethon_sessions')
+            sessions_docs = sessions_ref.stream()
             
-            if session_doc.exists:
+            for session_doc in sessions_docs:
+                phone_clean = session_doc.id
                 binary_data_b64 = session_doc.to_dict().get("binary_data")
                 if binary_data_b64:
-                    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
+                    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}_{phone_clean}.session")
                     with open(session_path, "wb") as f:
                         f.write(base64.b64decode(binary_data_b64.encode('utf-8')))
-                    print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}.session")
+                    print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}_{phone_clean}.session")
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
-
-# ================= STATES FOR LOGIN & ACTIONS =================
-class LoginStates(StatesGroup):
-    waiting_phone = State()
-    waiting_code = State()
-    waiting_2fa = State()
-
-class TextStates(StatesGroup):
-    waiting_text = State()
-    waiting_photo = State()
-    waiting_buttons = State()
-    waiting_forward = State()  # Forward xabar holati
-
-class AdminStates(StatesGroup):
-    waiting_search_id = State()
-    waiting_add_balans = State()
-    waiting_add_stars = State()
-    waiting_add_channel = State()
-    waiting_broadcast_msg = State()
 
 # ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE) =================
 
@@ -352,8 +353,8 @@ class MandatorySubMiddleware(BaseMiddleware):
         if user_id == ADMIN_ID:
             return await handler(event, data)
 
-        # Tekshirish va to'ldirish tugmalarini aylanib qolmasligi uchun o'tkazamiz
-        if isinstance(event, types.CallbackQuery) and event.data in ["check_sub_status", "back_to_deposit", "deposit_balance"]:
+        # Tekshirish, sozlamalar va to'ldirish tugmalarini aylanib qolmasligi uchun o'tkazamiz
+        if isinstance(event, types.CallbackQuery) and event.data in ["check_sub_status", "back_to_deposit", "deposit_balance", "back_to_panel"]:
             return await handler(event, data)
 
         admin_data = db_users.get(ADMIN_ID, {})
@@ -397,9 +398,11 @@ class MandatorySubMiddleware(BaseMiddleware):
         return await handler(event, data)
 
 # ================= CLIENT RECOVERY ENGINE =================
-async def get_client(user_id):
-    client = active_clients.get(user_id)
-    session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}")
+async def get_client(user_id, phone):
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    client = active_clients.get(session_key)
+    session_path = os.path.join(SESSIONS_DIR, f"session_{session_key}")
     
     if not client:
         client = TelegramClient(
@@ -414,7 +417,7 @@ async def get_client(user_id):
             system_version="Windows 11",
             app_version="2.2.0"
         )
-        active_clients[user_id] = client
+        active_clients[session_key] = client
         
     if not client.is_connected():
         await client.connect()
@@ -470,7 +473,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
     is_new_user = user_id not in db_users
-    
     ensure_user(user_id)
     
     # Referal taklif havolasini tekshirish
@@ -494,7 +496,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
                 except Exception:
                     pass
                 
-                # Sadriddin, taklif qilingan faol a'zolar 6 taga yetsa, avtomatik ravishda bepul PRO beriladi!
+                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO beriladi!
                 if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
                     db_users[referrer_id]["is_pro"] = True
                     save_db()
@@ -1039,25 +1041,35 @@ async def menu_kabinet(message: types.Message, state: FSMContext):
 async def menu_kabinet_msg(message: types.Message, user_id: int):
     user_data = db_users.get(user_id)
     
-    phone = user_data.get("active_phone") or "Profil ulanmagan"
     username = user_data.get("active_username") or "@-"
     name = user_data.get("active_name") or "Mavjud emas"
     is_pro_text = "Pro" if user_data.get("is_pro") else "Free"
     premium_text = "Bor 👑" if user_data.get("is_pro") else "Pro yo'q"
     
     ref_link = f"https://t.me/Auto_Xabar_Yuborish_Bot?start=ref_{user_id}"
+    accounts_list = user_data.get("accounts", [])
+    
+    # 5 tagacha ulangan profillarni ko'rsatamiz
+    profiles_text = ""
+    if accounts_list:
+        for idx, acc in enumerate(accounts_list, 1):
+            status = " (Faol)" if acc["phone"] == user_data.get("active_phone") else ""
+            profiles_text += f"📞 {idx}. <b>{acc['phone']}</b>{status}\n"
+    else:
+        profiles_text = "❌ Profillar ulanmagan.\n"
     
     text = (
         "👤 <b>Sizning Kabinetingiz</b>\n\n"
         f"👥 Ism: <b>{name}</b>\n"
-        f"📞 Raqam: <b>+{phone.replace('+', '') if phone != 'Profil ulanmagan' else phone}</b>\n"
         f"🌐 Username: <b>{username}</b>\n"
         f"💰 Balans: <b>{user_data.get('balans', 0):,} so'm</b>\n\n"
+        "👥 <b>Ulangan barcha profillaringiz:</b>\n"
+        f"{profiles_text}\n"
         "📊 <b>Statistika:</b>\n"
         f"✔️ Bugun yuborildi: <b>{user_data.get('today_sent', 0)}</b>\n"
         f"🔄 Jami yuborilgan: <b>{user_data.get('total_sent', 0)}</b>\n"
         f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'}</b>\n"
-        f"👥 Jami profillar: <b>{1 if user_data.get('active_phone') else 0}</b>\n"
+        f"👥 Jami faol profillar: <b>{len(accounts_list)} / 5 ta</b>\n"
         f"📅 Qo'shilgan: <b>{user_data.get('joined_time', '22:37')}</b>\n\n"
         f"👥 Taklif qilingan faol do'stlar: <b>{user_data.get('referrals_count', 0)} / 6 ta</b>\n"
         f"🔗 Shaxsiy taklif havolangiz:\n<code>{ref_link}</code>\n\n"
@@ -1090,7 +1102,9 @@ async def callback_deposit_balance(callback_query: types.CallbackQuery):
         "💰 <b>Bot Balansini To'ldirish</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"Sizning joriy balansingiz: <b>{user_data.get('balans', 0):,} so'm</b>\n\n"
-        "💸 Bot balansingizni to'ldirish uchun quyidagi administrator profiliga to'g'ridan-to'g'ri yozing:\n"
+        "💸 Bot balansingizni to'ldirish uchun to'g'ridan-to'g'ri administrator bilan bog'laning. "
+        "To'lov amalga oshirilgach, administrator hisobingizga pulni darhol qo'shib beradi.\n\n"
+        "💬 Balansni to'ldirish uchun quyidagi administrator profiliga to'g'ridan-to'g'ri yozing:\n"
         "👉 <b>@AbduIIayev_7</b>\n\n"
         "⚠️ <i>Eslatma: Yo'lingizni osonlashtirish uchun pastdagi tugmani bosib, administratorga to'g'ridan-to'g'ri o'tib ketishingiz mumkin.</i>"
     )
@@ -1146,27 +1160,154 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
+# ================= 👤 PROFILLAR BO'LIMI (MULTI-ACCOUNT) =================
+
 @router.message(F.text == "👤 Profillar")
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
+    await show_profillar_settings(message, user_id)
+
+async def show_profillar_settings(message: types.Message, user_id: int):
     user_data = db_users.get(user_id)
-    phone = user_data.get("active_phone")
+    accounts_list = user_data.get("accounts", [])
+    active_phone = user_data.get("active_phone")
     
-    text = "👥 <b>Ulangan Profillar:</b>\n\n"
-    if phone:
-        text += f"✅ 1. <b>{phone}</b> (Faol)\n"
-    else:
-        text += "❌ Hali hech qanday profil yo'q.\n"
+    text = (
+        "👥 <b>Ulangan Akkauntlarni Boshqarish</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Joriy faol ulanish: <b>{active_phone or 'Mavjud emas ❌'}</b>\n\n"
+        "Free tarifda faqat 1 ta profil qo'shish mumkin.\n"
+        "<b>👑 PRO tarifda 5 tagacha profil qo'shishingiz va boshqarishingiz mumkin!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Quyidagi ro'yxatdan faollashtirish yoki o'chirish uchun profilni tanlang:"
+    )
     
-    text += "\n<i>Free tarifda faqat 1 ta profil ulashingiz mumkin. Premium tarifda 5 tagacha profil qo'shish imkoni bor!</i>"
+    buttons = []
+    for acc in accounts_list:
+        phone = acc["phone"]
+        status_icon = "🟢" if phone == active_phone else "⚪"
+        buttons.append([
+            InlineKeyboardButton(text=f"{status_icon} {phone} ({acc['name'][:10]})", callback_data=f"manage_acc_{phone}")
+        ])
+        
+    buttons.append([InlineKeyboardButton(text="➕ Yangi profil qo'shish", callback_data="add_account")])
+    buttons.append([InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")])
     
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Yangi profil qo'shish", callback_data="add_account")],
-        [InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")]
-    ])
-    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    try:
+        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("manage_acc_"))
+async def callback_manage_acc(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = callback_query.data.replace("manage_acc_", "")
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    
+    target_acc = next((acc for acc in accounts_list if acc["phone"] == phone), None)
+    if not target_acc:
+        await callback_query.answer("⚠️ Profil topilmadi!", show_alert=True)
+        return
+        
+    text = (
+        f"📱 <b>Profil sozlamalari: {phone}</b>\n"
+        f"🏷️ Ism: <b>{target_acc['name']}</b>\n"
+        f"🌐 Username: <b>{target_acc['username']}</b>\n\n"
+        "Ushbu profilni nima qilishni xohlaysiz?"
+    )
+    
+    kb = [
+        [
+            InlineKeyboardButton(text="🟢 Faol qilish", callback_data=f"activate_acc_{phone}"),
+            InlineKeyboardButton(text="⚠️ Uzish (O'chirish)", callback_data=f"delete_acc_{phone}")
+        ],
+        [InlineKeyboardButton(text="⬅️ Profillarga qaytish", callback_data="go_to_profillar")]
+    ]
+    
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "go_to_profillar")
+async def callback_go_to_profillar(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    await show_profillar_settings(callback_query.message, user_id)
+    await callback_query.answer()
+
+@router.callback_query(F.data.startswith("activate_acc_"))
+async def callback_activate_acc(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = callback_query.data.replace("activate_acc_", "")
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    
+    target_acc = next((acc for acc in accounts_list if acc["phone"] == phone), None)
+    if target_acc:
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = target_acc["name"]
+        db_users[user_id]["active_username"] = target_acc["username"]
+        save_db()
+        await callback_query.answer(f"✓ {phone} muvaffaqiyatli faollashtirildi!", show_alert=True)
+    
+    await show_profillar_settings(callback_query.message, user_id)
+
+@router.callback_query(F.data.startswith("delete_acc_"))
+async def callback_delete_acc(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = callback_query.data.replace("delete_acc_", "")
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if db_users[user_id].get("active_phone") == phone:
+        db_users[user_id]["active_phone"] = None
+        db_users[user_id]["is_sending"] = False
+        db_users[user_id]["is_sending_started_at"] = 0
+        if cleaned_accounts:
+            db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+            db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+            db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+            
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer("⚠️ Profil muvaffaqiyatli o'chirildi!", show_alert=True)
+    await show_profillar_settings(callback_query.message, user_id)
+
+# ===================================================================================
 
 @router.message(F.text == "👑 Pro tarif")
 async def menu_pro_tarif(message: types.Message, state: FSMContext):
@@ -1198,7 +1339,7 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🔗 Taklif havolasini ulashish", url=f"https://t.me/share/url?url={ref_link}&text=Guruhlarga+avtomatik+reklama+yuboruvchi+zor+botni+sinab+koring!")],
         [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")]
     ])
-    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    await message.answer(text, inline_kb, parse_mode="HTML")
 
 @router.callback_query(F.data == "buy_pro_balance")
 async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
@@ -1224,6 +1365,428 @@ async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
             f"Botga 6 ta yangi odam taklif qilib, bepul PRO oling!",
             show_alert=True
         )
+
+# ================= INTERAKTIV SOZLAMALAR BO'LIMI =================
+
+@router.message(F.text == "⚙️ Sozlamalar")
+async def menu_sozlamalar(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    await show_sozlamalar_menu(message, user_id)
+
+async def show_sozlamalar_menu(message: types.Message, user_id: int):
+    user_data = db_users.get(user_id)
+    
+    auto_sub = "Yoqilgan 🟢" if user_data.get("auto_sub_active", True) else "O'chirilgan 🔴"
+    auto_reply = "Yoqilgan 🟢" if user_data.get("auto_reply_active", False) else "O'chirilgan 🔴"
+    
+    text = (
+        "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🤖 Avto-obuna: <b>{auto_sub}</b>\n"
+        f"↩️ Auto Reply: <b>{auto_reply}</b>\n"
+        "🛡️ Anti-Ban: <b>Eng yuqori darajada (Maksimal) 🛡️</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Sozlamalarni o'zgartirish uchun kerakli tugmani bosing:"
+    )
+    
+    kb = [
+        [
+            InlineKeyboardButton(text="🤖 Avto-obunani o'zgartirish", callback_data="toggle_auto_sub"),
+            InlineKeyboardButton(text="↩️ Auto Reply o'zgartirish", callback_data="toggle_auto_reply")
+        ],
+        [InlineKeyboardButton(text="❌ Yopish", callback_data="close_menu")]
+    ]
+    
+    try:
+        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+
+@router.callback_query(F.data == "toggle_auto_sub")
+async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["auto_sub_active"] = not db_users[user_id].get("auto_sub_active", True)
+    save_db()
+    
+    status = "yoqildi 🟢" if db_users[user_id]["auto_sub_active"] else "o'chirildi 🔴"
+    await callback_query.answer(f"✓ Avto-obuna {status}!", show_alert=True)
+    await show_sozlamalar_menu(callback_query.message, user_id)
+
+@router.callback_query(F.data == "toggle_auto_reply")
+async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["auto_reply_active"] = not db_users[user_id].get("auto_reply_active", False)
+    save_db()
+    
+    status = "yoqildi 🟢" if db_users[user_id]["auto_reply_active"] else "o'chirildi 🔴"
+    await callback_query.answer(f"✓ Auto Reply {status}!", show_alert=True)
+    await show_sozlamalar_menu(callback_query.message, user_id)
+
+@router.callback_query(F.data == "close_menu")
+async def callback_close_menu(callback_query: types.CallbackQuery):
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    await callback_query.answer()
+
+# ================= ADMIN PANEL HANDLERS =================
+
+@router.message(F.text == "🛡️ Admin Panel")
+async def cmd_admin(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await state.clear()
+    
+    text = (
+        "🛡️ <b>AutoHabar Pro - Tizim Admin Paneli</b>\n\n"
+        "Boshqaruv bo'limini tanlang:"
+    )
+    await message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
+
+@router.callback_query(F.data == "adm_main_menu")
+async def callback_adm_main(callback_query: types.CallbackQuery, state: FSMContext = None):
+    if callback_query.from_user.id != ADMIN_ID:
+        await callback_query.answer("Ruxsat berilmagan!", show_alert=True)
+        return
+    if state:
+        await state.clear()
+    text = (
+        "🛡️ <b>AutoHabar Pro - Tizim Admin Paneli</b>\n\n"
+        "Boshqaruv bo'limini tanlang:"
+    )
+    try:
+        await callback_query.message.edit_text(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
+    except Exception:
+        await callback_query.message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "adm_stats")
+async def callback_adm_stats(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    total_users = len(db_users)
+    pro_users = sum(1 for u in db_users.values() if u.get("is_pro", False))
+    active_senders = sum(1 for u in db_users.values() if u.get("is_sending", False))
+    total_sent = sum(u.get("total_sent", 0) for u in db_users.values())
+    
+    text = (
+        "📊 <b>Botning real vaqt rejimidagi statistikasi:</b>\n\n"
+        f"👥 Jami foydalanuvchilar: <b>{total_users} ta</b>\n"
+        f"👑 VIP (PRO) a'zolar: <b>{pro_users} ta</b>\n"
+        f"🟢 Faol yuboruvchilar: <b>{active_senders} ta</b>\n"
+        f"📤 Jami tarqatilgan xabarlar: <b>{total_sent} ta</b>\n\n"
+        f"🕒 Yangilangan vaqt: <i>{datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</i>"
+    )
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "adm_search_user")
+async def callback_adm_search_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    await state.set_state(AdminStates.waiting_search_id)
+    text = (
+        "👤 <b>Foydalanuvchini sozlash bo'limi</b>\n\n"
+        "Iltimos, boshqarmoqchi bo'lgan foydalanuvchining <b>Telegram ID</b> raqamini kiriting:"
+    )
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_search_id))
+async def admin_user_search_process(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        target_id = int(message.text.strip())
+        if target_id in db_users:
+            await state.update_data(target_id=target_id)
+            user_data = db_users[target_id]
+            
+            tarif_nomi = "PRO 👑" if user_data.get("is_pro") else "FREE 👤"
+            active_phone = user_data.get("active_phone") or "Ulanmagan"
+            
+            text = (
+                f"👤 <b>Foydalanuvchi topildi! (ID: {target_id})</b>\n\n"
+                f"🏷️ Ism: <b>{user_data.get('active_name', 'Mavjud emas')}</b>\n"
+                f"🌐 Username: <b>{user_data.get('active_username', '@-')}</b>\n"
+                f"📞 Aloqa raqam: <b>+{active_phone.replace('+', '') if active_phone != 'Ulanmagan' else active_phone}</b>\n"
+                f"🛡️ Joriy tarif: <b>{tarif_nomi}</b>\n"
+                f"💰 Pul Balans: <b>{user_data.get('balans', 0):,} so'm</b>\n"
+                f"⭐ Stars Balans: <b>{user_data.get('stars', 0)} ⭐️</b>\n"
+                f"📤 Jami yuborgan xabarlari: <b>{user_data.get('total_sent', 0)} ta</b>"
+            )
+            
+            inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="💰 Balans tahrirlash", callback_data=f"adm_chg_bal_{target_id}"),
+                    InlineKeyboardButton(text="⭐️ Stars tahrirlash", callback_data=f"adm_chg_stars_{target_id}"),
+                ],
+                [
+                    InlineKeyboardButton(text="👑 PRO / FREE o'tkazish", callback_data=f"adm_chg_tarif_{target_id}")
+                ],
+                [
+                    InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")
+                ]
+            ])
+            await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+            await state.clear()
+        else:
+            await message.answer("❌ Bunday IDga ega foydalanuvchi topilmadi! Qaytadan kiriting yoki ⬅️ Orqaga tugmasini bosing:")
+    except ValueError:
+        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lik kerak! Qaytadan kiriting:")
+
+@router.callback_query(F.data.startswith("adm_chg_bal_"))
+async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    await state.update_data(target_id=target_id)
+    await state.set_state(AdminStates.waiting_add_balans)
+    
+    await callback_query.message.edit_text(
+        f"💰 <b>Balansni tahrirlash (User ID: {target_id})</b>\n\n"
+        "Balansga pul qo'shish uchun: <code>+50000</code>\n"
+        "Hisobdan pul ayirish uchun: <code>-30000</code> kabi qiymat yuboring:",
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_add_balans))
+async def state_process_add_balans(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    data = await state.get_data()
+    target_id = data.get("target_id")
+    val_str = message.text.strip()
+    
+    try:
+        change_amount = int(val_str)
+        if target_id in db_users:
+            current_bal = db_users[target_id].get("balans", 0)
+            new_bal = current_bal + change_amount
+            if new_bal < 0:
+                new_bal = 0
+            db_users[target_id]["balans"] = new_bal
+            save_db()
+            
+            await message.answer(
+                f"✅ <b>Balans muvaffaqiyatli o'zgartirildi!</b>\n"
+                f"Eski balans: {current_bal:,} so'm\n"
+                f"Yangi balans: <b>{new_bal:,} so'm</b>",
+                reply_markup=get_main_keyboard(target_id),
+                parse_mode="HTML"
+            )
+            try:
+                await bot.send_message(target_id, f"💰 Tizim administratori hisobingiz balansini o'zgartirdi!\nJoriy balans: <b>{new_bal:,} so'm</b>", parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            await message.answer("❌ Foydalanuvchi bazadan o'chib ketgan.")
+    except ValueError:
+        await message.answer("❌ Noto'g'ri qiymat kiritildi. Faqat raqam yoki + / - belgisidan foydalaning (masalan: +25000):")
+    await state.clear()
+
+@router.callback_query(F.data.startswith("adm_chg_stars_"))
+async def callback_adm_chg_stars_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    await state.update_data(target_id=target_id)
+    await state.set_state(AdminStates.waiting_add_stars)
+    
+    await callback_query.message.edit_text(
+        f"⭐️ <b>Telegram Stars balansini tahrirlash (User ID: {target_id})</b>\n\n"
+        "Stars qo'shish uchun: <code>+50</code>\n"
+        "Stars ayirish uchun: <code>-30</code> kabi qiymat yuboring:",
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_add_stars))
+async def state_process_add_stars(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    data = await state.get_data()
+    target_id = data.get("target_id")
+    val_str = message.text.strip()
+    
+    try:
+        change_amount = int(val_str)
+        if target_id in db_users:
+            current_stars = db_users[target_id].get("stars", 0)
+            new_stars = current_stars + change_amount
+            if new_stars < 0:
+                new_stars = 0
+            db_users[target_id]["stars"] = new_stars
+            save_db()
+            
+            await message.answer(
+                f"✅ <b>Stars balans o'zgartirildi!</b>\n"
+                f"Eski: {current_stars} ⭐️\n"
+                f"Yangi: <b>{new_stars} ⭐️</b>",
+                reply_markup=get_main_keyboard(target_id),
+                parse_mode="HTML"
+            )
+            try:
+                await bot.send_message(target_id, f"⭐️ Tizim administratori hisobingizga Stars taqdim etdi!\nJoriy stars: <b>{new_stars} ⭐️</b>", parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            await message.answer("❌ Foydalanuvchi topilmadi.")
+    except ValueError:
+        await message.answer("❌ Noto'g'ri format! Faqat son yozing (masalan: +10):")
+    await state.clear()
+
+@router.callback_query(F.data.startswith("adm_chg_tarif_"))
+async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    if target_id in db_users:
+        current_status = db_users[target_id].get("is_pro", False)
+        new_status = not current_status
+        db_users[target_id]["is_pro"] = new_status
+        save_db()
+        
+        status_nomi = "PRO 👑" if new_status else "FREE 👤"
+        await callback_query.answer(f"Tarif muvaffaqiyatli {status_nomi} ga o'zgartirildi!", show_alert=True)
+        try:
+            tabrik = "👑 <b>Tabriklaymiz! Tizim administratori sizga cheksiz PRO tarifini taqdim etdi!</b>\nEndi barcha yopiq xizmatlar siz uchun ochoq." if new_status else "⚠️ Hisobingizdagi PRO tarifi administrator tomonidan bekor qilindi va bepul rejimga qaytarildingiz."
+            await bot.send_message(target_id, tabrik, parse_mode="HTML")
+        except Exception:
+            pass
+        
+        text = (
+            "🛡️ <b>AutoHabar Pro - Tizim Admin Paneli</b>\n\n"
+            "Boshqaruv bo'limini tanlang:"
+        )
+        try:
+            await callback_query.message.edit_text(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
+        except Exception:
+            pass
+    else:
+        await callback_query.answer("Foydalanuvchi topilmadi!", show_alert=True)
+
+@router.callback_query(F.data == "adm_mandatory_sub")
+async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    channels = db_users[ADMIN_ID].get("channels", [])
+    text = (
+        "📢 <b>Majburiy obuna kanallarini sozlash</b>\n\n"
+        "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qilib ko'rsatiladi:\n\n"
+    )
+    if channels:
+        for idx, chan in enumerate(channels, 1):
+            text += f"{idx}. <b>{chan}</b>\n"
+    else:
+        text += "❌ Hozirda hech qanday majburiy kanal o'rnatilmagan."
+        
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="adm_sub_add_chan"),
+            InlineKeyboardButton(text="❌ Hammasini tozalash", callback_data="adm_sub_clear_chan")
+        ],
+        [InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "adm_sub_add_chan")
+async def callback_adm_add_chan_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    await state.set_state(AdminStates.waiting_add_channel)
+    text = (
+        "📢 <b>Yangi majburiy kanal qo'shish</b>\n\n"
+        "Iltimos, kanalning user-id nomini yozib yuboring (masalan: <code>@autoxabarc_news</code>):"
+    )
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_mandatory_sub")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_add_channel))
+async def state_save_mandatory_channel(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    chan_name = message.text.strip()
+    if not chan_name.startswith("@") or len(chan_name) < 4:
+        await message.answer("❌ Noto'g'ri kanal nomi! Format: @autoxabarc_news shaklida bo'lishi shart.")
+        return
+        
+    channels = db_users[ADMIN_ID].get("channels", [])
+    if chan_name not in channels:
+        channels.append(chan_name)
+        db_users[ADMIN_ID]["channels"] = channels
+        save_db()
+        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
+    else:
+        await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
+    await state.clear()
+
+@router.callback_query(F.data == "adm_sub_clear_chan")
+async def callback_adm_clear_chans(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    db_users[ADMIN_ID]["channels"] = []
+    save_db()
+    await callback_query.answer("📢 Barcha majburiy kanallar olib tashlandi!", show_alert=True)
+    await callback_adm_sub_menu(callback_query)
+
+@router.callback_query(F.data == "adm_broadcast_prompt")
+async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    await state.set_state(AdminStates.waiting_broadcast_msg)
+    text = (
+        "✉️ <b>Ommaviy reklama tarqatish bo'limi</b>\n\n"
+        "Istalgan rasm yoki matnli xabarni yuboring. Ushabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
+    )
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_broadcast_msg))
+async def state_process_broadcast(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await state.clear()
+    progress_msg = await message.answer("🔄 <b>Ommaviy reklama tarqatish boshlandi...</b>", parse_mode="HTML")
+    
+    sent_count = 0
+    fail_count = 0
+    
+    for u_id in list(db_users.keys()):
+        try:
+            await message.copy_to(chat_id=u_id)
+            sent_count += 1
+            await asyncio.sleep(0.05)
+        except Exception:
+            fail_count += 1
+            
+    await progress_msg.delete()
+    await message.answer(
+        f"✅ <b>Ommaviy reklama yakunlandi!</b>\n\n"
+        f"📤 Yuborildi: <b>{sent_count} ta foydalanuvchiga</b>\n"
+        f"❌ O'chib ketgan/Bloklagan: <b>{fail_count} ta</b>",
+        reply_markup=get_main_keyboard(message.from_user.id),
+        parse_mode="HTML"
+    )
 
 # =========================================================================
 
@@ -1275,13 +1838,11 @@ async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMCon
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
-    # Sadriddin, agar PRO va forward rejimi yoqilgan bo'lsa, xabarni to'g'ridan-to'g'ri forward qilamiz!
     if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
         try:
             await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
         except Exception as e:
             logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
-            # Agar forward xatoga uchrasa, zaxira sifatida oddiy xabar yuboramiz
             await client.send_message(chat_id, user_data.get("reklama_matni", ""))
     else:
         text = user_data.get("reklama_matni", "")
@@ -1353,7 +1914,11 @@ async def run_sending_cycle_for_user(user_id):
         return
         
     try:
-        client = await get_client(user_id)
+        active_phone = user_data.get("active_phone")
+        if not active_phone:
+            return
+            
+        client = await get_client(user_id, active_phone)
         if await client.is_user_authorized():
             guruhlar = []
             choice = user_data.get("groups_choice", "custom")
@@ -1369,7 +1934,7 @@ async def run_sending_cycle_for_user(user_id):
                 logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
                 return
                 
-            logging.info(f"[Sender] Foydalanuvchi {user_id} uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
+            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
             
             for g_id in guruhlar:
                 if not db_users.get(user_id, {}).get("is_sending"):
@@ -1398,27 +1963,53 @@ async def run_sending_cycle_for_user(user_id):
 async def callback_disconnect(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer("⚠️ Faol ulanish mavjud emas!", show_alert=True)
+        return
+        
     db_users[user_id]["active_phone"] = None
     db_users[user_id]["is_sending"] = False
     db_users[user_id]["is_sending_started_at"] = 0
+    
+    # Ro'yxatdan o'chirish
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
     save_db()
     
-    if user_id in active_clients:
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
         try:
-            await active_clients[user_id].disconnect()
+            await active_clients[session_key].disconnect()
         except Exception:
             pass
-        active_clients.pop(user_id, None)
-
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
     if db:
         try:
-            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
             doc_ref.delete()
         except Exception:
             pass
 
-    await callback_query.answer("⚠️ Profil muvaffaqiyatli uzildi!", show_alert=True)
-    await menu_kabinet(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
+    await callback_query.answer("⚠️ Faol profil muvaffaqiyatli uzildi!", show_alert=True)
+    await menu_kabinet_msg(callback_query.message, user_id)
 
 @router.callback_query(F.data == "set_groups_all")
 async def callback_groups_all(callback_query: types.CallbackQuery):
@@ -1469,7 +2060,12 @@ async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
         pass
 
     try:
-        client = await get_client(user_id)
+        active_phone = db_users[user_id].get("active_phone")
+        if not active_phone:
+            await callback_query.message.answer("⚠️ Avval profil bog'lashingiz kerak!")
+            return
+            
+        client = await get_client(user_id, active_phone)
         if not await client.is_user_authorized():
             await callback_query.message.answer("⚠️ Seans muddati tugagan! Iltimos, profilni qayta qo'shing.")
             return
@@ -1514,8 +2110,13 @@ async def callback_groups_list(callback_query: types.CallbackQuery):
     
     guruhlar = user_data.get("cached_groups", [])
     if not guruhlar:
+        active_phone = user_data.get("active_phone")
+        if not active_phone:
+            await callback_query.message.answer("⚠️ Avval profilingizni ulashingiz shart!")
+            return
+            
         try:
-            client = await get_client(user_id)
+            client = await get_client(user_id, active_phone)
         except Exception:
             await callback_query.message.answer("⚠️ Avval profilingizni ulashingiz shart!")
             return
@@ -1719,28 +2320,31 @@ async def trigger_immediate_sending(user_id):
 
 @router.callback_query(F.data == "add_account")
 async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
-    try:
-        await callback_query.answer()
-    except Exception:
-        pass
-    
     user_id = callback_query.from_user.id
     ensure_user(user_id)
-    if user_id in active_clients:
-        try:
-            await active_clients[user_id].disconnect()
-        except Exception:
-            pass
-        active_clients.pop(user_id, None)
-
-    session_file = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
-    if os.path.exists(session_file):
-        for attempt in range(5):
-            try:
-                os.remove(session_file)
-                break
-            except Exception:
-                await asyncio.sleep(0.3)
+    
+    # Sadriddin, free / PRO cheklovlarini qat'iy tekshiramiz!
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        if not is_pro:
+            await callback_query.message.answer(
+                "⚠️ <b>Bepul tarif cheklovi!</b>\n\n"
+                "Free tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\n"
+                "Ko'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
+                parse_mode="HTML"
+            )
+        else:
+            await callback_query.message.answer(
+                "⚠️ <b>Maksimal profil cheklovi!</b>\n\n"
+                "PRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
+                parse_mode="HTML"
+            )
+        await callback_query.answer()
+        return
 
     await callback_query.message.answer(
         "📱 <b>Real Telegram akkaunt ulash</b>\n\n"
@@ -1748,6 +2352,7 @@ async def callback_add_account_wizard(callback_query: types.CallbackQuery, state
         parse_mode="HTML"
     )
     await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
 
 @router.message(StateFilter(LoginStates.waiting_phone))
 async def state_phone_received(message: types.Message, state: FSMContext):
@@ -1760,7 +2365,7 @@ async def state_phone_received(message: types.Message, state: FSMContext):
     await message.answer("🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...")
     
     try:
-        client = await get_client(message.from_user.id)
+        client = await get_client(message.from_user.id, phone)
         send_code_result = await client.send_code_request(phone)
         await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
         await state.set_state(LoginStates.waiting_code)
@@ -1788,17 +2393,27 @@ async def state_code_received(message: types.Message, state: FSMContext):
     ensure_user(user_id)
     
     try:
-        client = await get_client(user_id)
+        client = await get_client(user_id, phone)
         await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         
         me = await client.get_me()
         
+        # Akkauntlar ro'yxatiga qo'shamiz
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
         db_users[user_id]["active_phone"] = phone
         db_users[user_id]["active_name"] = me.first_name
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
-        await backup_session_to_cloud(user_id)
+        await backup_session_to_cloud(user_id, phone)
         
         await message.answer(
             "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
@@ -1842,16 +2457,26 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
     phone = data.get("phone")
     
     try:
-        client = await get_client(user_id)
+        client = await get_client(user_id, phone)
         await client.sign_in(phone=phone, password=password)
         me = await client.get_me()
         
+        # Akkauntlar ro'yxatiga qo'shish
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
         db_users[user_id]["active_phone"] = phone
         db_users[user_id]["active_name"] = me.first_name
         db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
         save_db()
         
-        await backup_session_to_cloud(user_id)
+        await backup_session_to_cloud(user_id, phone)
         
         await message.answer(
             "✅ <b>Akkauntingiz ikki bosqichli parol orqali muvaffaqiyatli bog'landi va bulutga zaxiralandi!</b>",
@@ -1890,53 +2515,43 @@ async def init_existing_sessions():
     if not os.path.exists(SESSIONS_DIR):
         return
     for file in os.listdir(SESSIONS_DIR):
-        if file.endswith(".session"):
+        if file.endswith(".session") and "_" in file:
             user_id_str = file.replace("session_", "").replace(".session", "")
+            parts = user_id_str.split("_")
+            if len(parts) < 2:
+                continue
             try:
-                user_id = int(user_id_str)
-                client = await get_client(user_id)
+                user_id = int(parts[0])
+                phone_clean = parts[1]
+                
+                # Haqiqiy profil telefon raqamini aniqlash uchun db_users ni o'qiymiz
+                user_data = db_users.get(user_id)
+                if not user_data:
+                    continue
+                accounts_list = user_data.get("accounts", [])
+                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
+                
+                if not target_phone:
+                    target_phone = "+" + phone_clean
+                
+                client = await get_client(user_id, target_phone)
                 
                 if await client.is_user_authorized():
-                    active_clients[user_id] = client
+                    session_key = f"{user_id}_{phone_clean}"
+                    active_clients[session_key] = client
                     me = await client.get_me()
                     
-                    if user_id not in db_users:
-                        db_users[user_id] = {
-                            "balans": 0,
-                            "stars": 0,
-                            "is_pro": False,
-                            "referrals": 0,
-                            "reklama_matni": "🔥 AutoHabar Pro yordamida ishingizni yengillating!",
-                            "reklama_rasm": None,
-                            "inline_buttons": [],
-                            "interval": 15,
-                            "next_run_timestamp": 0,
-                            "active_phone": f"+{me.phone}",
-                            "active_name": me.first_name,
-                            "active_username": f"@{me.username}" if me.username else "@-",
-                            "is_sending": False,
-                            "groups_choice": "all",
-                            "selected_groups": [],
-                            "cached_groups": [],
-                            "joined_time": datetime.now().strftime("%H:%M"),
-                            "today_sent": 0,
-                            "total_sent": 0,
-                            "channels": [],
-                            "auto_off_hours": None,
-                            "is_sending_started_at": 0,
-                            "referrals_count": 0,
-                            "referred_by": None,
-                            "forward_chat_id": None,
-                            "forward_msg_id": None,
-                            "is_forward_mode": False
-                        }
-                    else:
-                        db_users[user_id]["active_phone"] = f"+{me.phone}"
-                        db_users[user_id]["active_name"] = me.first_name
-                        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-                        
+                    ensure_user(user_id)
+                    accounts_list = db_users[user_id].get("accounts", [])
+                    if not any(acc["phone"] == target_phone for acc in accounts_list):
+                        accounts_list.append({
+                            "phone": target_phone,
+                            "name": me.first_name,
+                            "username": f"@{me.username}" if me.username else "@-"
+                        })
+                        db_users[user_id]["accounts"] = accounts_list
                     save_db()
-                    logging.info(f"Mavjud sessiya muvaffaqiyatli yuklandi: +{me.phone} (ID: {user_id})")
+                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
             except Exception as e:
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
@@ -1954,7 +2569,7 @@ async def main():
     
     bot = Bot(token=BOT_TOKEN)
     
-    # Global majburiy obuna nazoratchisini aiogram dispatcheriga ulash
+    # Global majburiy obuna nazoratchisini dispatcherga ulash
     dp.message.outer_middleware(MandatorySubMiddleware())
     dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
