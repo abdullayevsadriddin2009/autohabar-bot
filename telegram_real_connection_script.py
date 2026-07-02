@@ -14,6 +14,14 @@ import shutil
 import json
 import base64
 from datetime import datetime
+
+# Loggerlarni eng tepada sozlaymiz (TUZATILDI: barcha xabarlar Renderda aniq ko'rinishi uchun)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
@@ -24,14 +32,15 @@ from telethon import TelegramClient, errors, Button
 from aiohttp import web
 
 # Google Firebase Admin SDK import qilish
+print("[Tizim] Firebase kutubxonalarini tekshirish boshlanmoqda...")
 FIREBASE_AVAILABLE = False
 try:
     import firebase_admin
     from firebase_admin import credentials, firestore
     FIREBASE_AVAILABLE = True
-    logging.info("[Firebase] Kutubxonalar muvaffaqiyatli import qilindi!")
+    print("[Firebase] OK: Barcha kutubxonalar muvaffaqiyatli yuklandi!")
 except ImportError as e:
-    logging.error(f"[Firebase] Kutubxona importida xatolik: {e}. Iltimos, requirements.txt yoki talablar.txt faylini tekshiring!")
+    print(f"[Firebase] XATO: Kutubxona import qilinmadi! Sababi: {e}")
 
 # ================= CONFIGURATION =================
 API_ID = 37104311
@@ -50,9 +59,6 @@ if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 DB_FILE = os.path.join(SESSIONS_DIR, "database.json")
 
-# Loggerlarni sozlash
-logging.basicConfig(level=logging.INFO)
-
 # ================= AVTOMATIK NOM TAHRIRLASH (AQLLI REJIM) =================
 if os.path.exists("sessiyalar") and os.path.isdir("sessiyalar"):
     try:
@@ -62,9 +68,9 @@ if os.path.exists("sessiyalar") and os.path.isdir("sessiyalar"):
             shutil.rmtree("sessiyalar")
         else:
             os.rename("sessiyalar", SESSIONS_DIR)
-        logging.info("[Tizim] 'sessiyalar' papkasi nomi 'sessions'ga muvaffaqiyatli o'zgartirildi!")
+        print("[Tizim] 'sessiyalar' papkasi nomi 'sessions'ga o'zgartirildi!")
     except Exception as e:
-        logging.error(f"[Tizim] Papka nomini o'zgartirishda xatolik: {e}")
+        print(f"[Tizim] Papka nomini o'zgartirishda xatolik: {e}")
 
 if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
     for file in os.listdir(SESSIONS_DIR):
@@ -75,11 +81,11 @@ if os.path.exists(SESSIONS_DIR) and os.path.isdir(SESSIONS_DIR):
             try:
                 if not os.path.exists(new_path):
                     os.rename(old_path, new_path)
-                    logging.info(f"[Tizim] Fayl nomi to'g'rilandi: {file} -> {new_file}")
+                    print(f"[Tizim] Fayl nomi to'g'rilandi: {file} -> {new_file}")
                 else:
                     os.remove(old_path)
             except Exception as e:
-                logging.error(f"[Tizim] Fayl nomini o'zgartirishda xatolik: {e}")
+                print(f"[Tizim] Fayl nomini o'zgartirishda xatolik: {e}")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -89,6 +95,7 @@ dp.include_router(router)
 # ================= GOOGLE FIRESTORE CLOUD DATABASE =================
 db = None
 if FIREBASE_AVAILABLE:
+    print("[Firebase] Baza ulanish yo'llarini qidirish...")
     # 1. Birinchi navbatda Render Secret Files yoki Local JSON fayllarini tekshiramiz (USTUVOR REJIM)
     possible_paths = [
         "firebase_credentials.json", 
@@ -98,18 +105,19 @@ if FIREBASE_AVAILABLE:
     for path in possible_paths:
         if os.path.exists(path):
             try:
+                print(f"[Firebase] Topildi: {path} kalit fayli mavjud. Ulanyapti...")
                 cred = credentials.Certificate(path)
-                # Agar Firebase allaqachon init qilingan bo'lsa, uni qaytadan qilmaymiz
                 if not firebase_admin._apps:
                     firebase_admin.initialize_app(cred)
                 db = firestore.client()
-                logging.info(f"[Firebase] Maxfiy fayl ({path}) orqali muvaffaqiyatli ulandi!")
+                print(f"[Firebase] MUVAFFAQIYAT: {path} orqali ulanish o'rnatildi!")
                 break
             except Exception as e:
-                logging.error(f"[Firebase] {path} faylidan ulanishda xatolik: {e}")
+                print(f"[Firebase] XATO: {path} faylidan foydalanishda xatolik: {e}")
                 
     # 2. Agar maxfiy fayl bo'lmasa, Render Environment Variable orqali ulanishga harakat qiladi
     if not db:
+        print("[Firebase] Maxfiy fayllar topilmadi. Environment Variable tekshirilmoqda...")
         firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
         if firebase_config_env:
             try:
@@ -118,11 +126,11 @@ if FIREBASE_AVAILABLE:
                 if not firebase_admin._apps:
                     firebase_admin.initialize_app(cred)
                 db = firestore.client()
-                logging.info("[Firebase] Render Environment Variable orqali muvaffaqiyatli ulandi!")
+                print("[Firebase] MUVAFFAQIYAT: Render Environment Variable orqali ulandi!")
             except Exception as e:
-                logging.error(f"[Firebase] Env ulanishida xatolik: {e}")
+                print(f"[Firebase] XATO: Env orqali ulanishda xato: {e}")
 else:
-    logging.error("[Firebase] DIQQAT! Kutubxona mavjud emasligi sababli Firebase ulanishi bekor qilindi.")
+    print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
 # Boshlang'ich baza andozasi
 DEFAULT_DB = {
@@ -171,19 +179,19 @@ def load_db():
             doc = doc_ref.get()
             if doc.exists:
                 data = doc.to_dict()
-                logging.info("[Baza] Ma'lumotlar Google Cloud'dan muvaffaqiyatli yuklandi!")
+                print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
                 return {int(k): v for k, v in data.items()}
             else:
                 # Agar Firestore bo'sh bo'lsa, lekin mahalliy faylda ma'lumot bo'lsa - avtomatik ravishda uni ko'chiramiz! (Migratsiya)
-                logging.info("[Baza] Firestore bo'sh. Mahalliy ma'lumotlar bulutga ko'chirilmoqda...")
+                print("[Baza] Firestore bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
                 serializable_db = {str(k): v for k, v in local_data.items()}
                 doc_ref.set(serializable_db)
-                logging.info("[Baza] Mahalliy ma'lumotlar muvaffaqiyatli Firebase'ga yuklandi!")
+                print("[Baza] MUVAFFAQIYAT: Mahalliy ma'lumotlar Firebase'ga to'liq ko'chirildi!")
                 return local_data
         except Exception as e:
-            logging.error(f"[Baza] Firestore'dan yuklashda xatolik: {e}")
+            print(f"[Baza] Firestore'dan yuklashda kutilmagan xatolik: {e}")
     else:
-        logging.warning("[Baza] Firebase ulanmaganligi sababli faqat mahalliy ma'lumotlar ishlatilmoqda.")
+        print("[Baza] OGOHLANTIRISH: Firebase ulanmaganligi sababli vaqtinchalik mahalliy bazadan foydalanilmoqda.")
     
     return local_data
 
@@ -200,9 +208,9 @@ def save_db():
             serializable_db = {str(k): v for k, v in db_users.items()}
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('public').document('database')
             doc_ref.set(serializable_db)
-            logging.info("[Baza] Ma'lumotlar Google Cloud Firestore omboriga yozildi!")
+            print("[Baza] Ma'lumotlar Google Cloud bulutiga saqlandi!")
         except Exception as e:
-            logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
+            print(f"[Baza] Cloud'ga saqlashda xatolik: {e}")
 
 db_users = load_db()
 active_clients = {}
@@ -246,9 +254,9 @@ async def backup_session_to_cloud(user_id):
             
             doc_ref = db.collection('artifacts').document('autohabar_pro').collection('users').document(str(user_id)).collection('telethon_session').document('session_file')
             doc_ref.set({"binary_data": encoded_data, "updated_at": datetime.now().isoformat()})
-            logging.info(f"[Sessiya] {user_id} uchun sessiya fayli bulutga zaxiralandi!")
+            print(f"[Sessiya] Profil {user_id} ulanishi bulutga zaxiralandi!")
         except Exception as e:
-            logging.error(f"[Sessiya] Bulutga zaxiralashda xatolik: {e}")
+            print(f"[Sessiya] Bulutga saqlashda xatolik: {e}")
 
 async def restore_sessions_from_cloud():
     """ Render qayta ishga tushganda bulutdagi barcha sessiyalarni qayta tiklash """
@@ -269,9 +277,9 @@ async def restore_sessions_from_cloud():
                     session_path = os.path.join(SESSIONS_DIR, f"session_{user_id}.session")
                     with open(session_path, "wb") as f:
                         f.write(base64.b64decode(binary_data_b64.encode('utf-8')))
-                    logging.info(f"[Sessiya] Bulutdan qayta tiklandi: user_{user_id}.session")
+                    print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}.session")
     except Exception as e:
-        logging.error(f"[Sessiya] Bulutdan tiklashda xatolik: {e}")
+        print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
 
 # ================= STATES FOR LOGIN & ACTIONS =================
 class LoginStates(StatesGroup):
