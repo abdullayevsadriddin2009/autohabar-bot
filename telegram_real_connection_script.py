@@ -22,12 +22,12 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-from aiogram import Bot, Dispatcher, types, Router, F
+from aiogram import Bot, Dispatcher, types, Router, F, BaseMiddleware
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import StateFilter, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, TelegramObject
 from telethon import TelegramClient, errors, Button
 from aiohttp import web
 
@@ -131,7 +131,7 @@ if FIREBASE_AVAILABLE:
 else:
     print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
-# Boshlang'ich baza andozasi
+# Boshlang'ich baza andozasi (Yopiq default kanallar o'rniga bo'sh ro'yxat ulandi)
 DEFAULT_DB = {
     ADMIN_ID: {
         "balans": 0,
@@ -153,7 +153,7 @@ DEFAULT_DB = {
         "joined_time": datetime.now().strftime("%H:%M"),
         "today_sent": 0,
         "total_sent": 0,
-        "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+        "channels": [],  # TUZATILDI: Bo'sh boshlanadi
         "auto_off_hours": None,
         "is_sending_started_at": 0
     }
@@ -173,13 +173,21 @@ def load_db():
 
     if db:
         try:
-            # Qat'iy ruxsat berilgan maxsus Firestore ulanish yo'li (Rule 1 ga muvofiq)
             doc_ref = db.collection('artifacts').document(APP_ID).collection('public').document('data').collection('database').document('main')
             doc = doc_ref.get()
             if doc.exists:
                 data = doc.to_dict()
                 print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
-                return {int(k): v for k, v in data.items()}
+                parsed_data = {int(k): v for k, v in data.items()}
+                
+                # Sadriddin, eski tizimdan qolgan majburiy kanallarni bazadan avtomatik butunlay yo'qotamiz!
+                if ADMIN_ID in parsed_data:
+                    old_defaults = ["@autoxabarc_news", "@autoxabar_chat"]
+                    current_chans = parsed_data[ADMIN_ID].get("channels", [])
+                    cleaned_chans = [c for c in current_chans if c not in old_defaults]
+                    parsed_data[ADMIN_ID]["channels"] = cleaned_chans
+                    
+                return parsed_data
             else:
                 print("[Baza] Firestore - bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
                 serializable_db = {str(k): v for k, v in local_data.items()}
@@ -234,17 +242,11 @@ def ensure_user(user_id: int):
             "joined_time": datetime.now().strftime("%H:%M"),
             "today_sent": 0,
             "total_sent": 0,
-            "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+            "channels": [],
             "auto_off_hours": None,
             "is_sending_started_at": 0
         }
-    else:
-        # Yangi maydonlar mavjudligini kafolatlash
-        if "auto_off_hours" not in db_users[user_id]:
-            db_users[user_id]["auto_off_hours"] = None
-        if "is_sending_started_at" not in db_users[user_id]:
-            db_users[user_id]["is_sending_started_at"] = 0
-    save_db()
+        save_db()
 
 async def backup_session_to_cloud(user_id):
     if not db:
@@ -304,6 +306,74 @@ class AdminStates(StatesGroup):
     waiting_add_stars = State()
     waiting_add_channel = State()
     waiting_broadcast_msg = State()
+
+# ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE) =================
+# TUZATILDI: 100% kafolatlangan obuna tekshirish global tizimi (aiogram v3)
+
+class MandatorySubMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event: TelegramObject, data: dict):
+        user = None
+        if isinstance(event, types.Message):
+            user = event.from_user
+        elif isinstance(event, types.CallbackQuery):
+            user = event.from_user
+
+        if not user:
+            return await handler(event, data)
+
+        user_id = user.id
+
+        # 👑 Admin har doim cheklovlardan ozod qilinadi!
+        if user_id == ADMIN_ID:
+            return await handler(event, data)
+
+        # Tekshirish tugmasini bosganda cheksiz aylanib qolmaslik uchun o'tkazib yuboramiz
+        if isinstance(event, types.CallbackQuery) and event.data == "check_sub_status":
+            return await handler(event, data)
+
+        # Admin qo'shgan majburiy kanallar ro'yxatini olamiz
+        admin_data = db_users.get(ADMIN_ID, {})
+        channels = admin_data.get("channels", [])
+
+        if not channels:
+            return await handler(event, data)
+
+        # Kanallarni tekshiramiz
+        unsubscribed_channels = []
+        for channel in channels:
+            chat_id = channel if channel.startswith("@") else f"@{channel}"
+            try:
+                member = await event.bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+                # left yoki kicked holatda bo'lsa a'zo bo'lmagan hisoblanadi
+                if member.status in ["left", "kicked"]:
+                    unsubscribed_channels.append(channel)
+            except Exception as e:
+                logging.error(f"[Xavfsizlik] {channel} obunasini tekshirishda xato: {e}")
+                unsubscribed_channels.append(channel)
+
+        if unsubscribed_channels:
+            # Sadriddin, agar foydalanuvchi birorta kanalga a'zo bo'lmagan bo'lsa, xabarni to'liq to'xtatib bloklaymiz!
+            markup_buttons = []
+            for chan in unsubscribed_channels:
+                clean_name = chan.replace("@", "")
+                markup_buttons.append([InlineKeyboardButton(text=f"📢 {chan} kanaliga ulanish", url=f"https://t.me/{clean_name}")])
+            
+            markup_buttons.append([InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data="check_sub_status")])
+            markup = InlineKeyboardMarkup(inline_keyboard=markup_buttons)
+
+            block_text = (
+                "⚠️ <b>Bot xizmatlaridan foydalanish uchun quyidagi kanallarga a'zo bo'lishingiz shart!</b>\n\n"
+                "Iltimos, obuna bo'ling va keyin pastdagi <b>✅ Obunani tekshirish</b> tugmasini bosing:"
+            )
+
+            if isinstance(event, types.Message):
+                await event.answer(block_text, reply_markup=markup, parse_mode="HTML")
+            elif isinstance(event, types.CallbackQuery):
+                await event.message.answer(block_text, reply_markup=markup, parse_mode="HTML")
+                await event.answer()
+            return  # Davom ettirishni butunlay to'xtatadi!
+
+        return await handler(event, data)
 
 # ================= CLIENT RECOVERY ENGINE =================
 async def get_client(user_id):
@@ -473,7 +543,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
-# ================= TAYMER SOZLAMALARI (YANGI ULANGAN QISM) =================
+# ================= TAYMER SOZLAMALARI =================
 
 async def show_timer_settings(message: types.Message, user_id: int):
     ensure_user(user_id)
@@ -546,6 +616,53 @@ async def callback_set_timer(callback_query: types.CallbackQuery):
     save_db()
     await callback_query.answer(alert_text, show_alert=True)
     await show_timer_settings(callback_query.message, user_id)
+
+# ================= OBUNA VA STATUSTI TEKSHIRISH CALLBACK (YANGI) =================
+
+@router.callback_query(F.data == "check_sub_status")
+async def callback_check_sub_status(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    admin_data = db_users.get(ADMIN_ID, {})
+    channels = admin_data.get("channels", [])
+    
+    unsubscribed_channels = []
+    for channel in channels:
+        chat_id = channel if channel.startswith("@") else f"@{channel}"
+        try:
+            member = await callback_query.bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+            if member.status in ["left", "kicked"]:
+                unsubscribed_channels.append(channel)
+        except Exception:
+            unsubscribed_channels.append(channel)
+            
+    if unsubscribed_channels:
+        # Hali obuna to'liq emas! Foydalanuvchiga ogohlantirish beramiz
+        await callback_query.answer("⚠️ Diqqat! Barcha kanallarga a'zo bo'lishingiz shart!", show_alert=True)
+    else:
+        # Sadriddin, agar obuna to'liq bajarilgan bo'lsa, tabriklab Asosiy menyuni ochamiz!
+        await callback_query.answer("🎉 Rahmat! Obuna to'liq tasdiqlandi. Bot faollashtirildi!", show_alert=True)
+        await callback_query.message.delete()
+        
+        text = (
+            "📊 <b>Asosiy menyu:</b>\n"
+            "<b>@Auto_Xabar_Yuborish_Bot</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Assalomu alaykum,xush kelibsiz! 👋\n\n"
+            "› Botimizdan foydalanish uchun\n"
+            "› Akkaunt qo'shing\n"
+            "› Guruhlarni sozlang\n"
+            "› Habarni sozlang\n"
+            "› Autohabarni ishga tushuring\n\n"
+            "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
+        )
+        
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
+        ])
+        
+        await callback_query.message.answer(text, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
 # ===================================================================================
 
@@ -1265,53 +1382,6 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-# =========================================================================
-
-@router.callback_query(F.data == "back_to_panel")
-async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    
-    phone = user_data.get("active_phone")
-    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
-    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
-    
-    auto_off = user_data.get("auto_off_hours")
-    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
-    
-    responseText = (
-        "🤠 <b>Boshqaruv paneli</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"{profilStatus}\n"
-        f"⚡ Holat: <b>{holatStatus}</b>\n"
-        f"✍️ Xabar turi: <b>Matn</b>\n"
-        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
-        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
-        "📢 Mention: <b>O'chiq</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-    
-    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
-    
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
-            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
-        ],
-        [
-            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
-            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
-        ]
-    ])
-    
-    try:
-        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
-        await callback_query.answer()
-    except Exception:
-        await callback_query.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
-
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
@@ -1952,7 +2022,7 @@ async def init_existing_sessions():
                             "joined_time": datetime.now().strftime("%H:%M"),
                             "today_sent": 0,
                             "total_sent": 0,
-                            "channels": ["@autoxabarc_news", "@autoxabar_chat"],
+                            "channels": [],
                             "auto_off_hours": None,
                             "is_sending_started_at": 0
                         }
@@ -1979,6 +2049,10 @@ async def main():
         await restore_sessions_from_cloud()
     
     bot = Bot(token=BOT_TOKEN)
+    
+    # Global majburiy obuna nazoratchisini aiogram dispatcheriga ulash (TUZATILDI)
+    dp.message.outer_middleware(MandatorySubMiddleware())
+    dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
     asyncio.create_task(init_existing_sessions())
     asyncio.create_task(auto_sender_worker())
