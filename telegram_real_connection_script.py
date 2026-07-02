@@ -1185,8 +1185,8 @@ async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMCon
 async def send_reklama_message(client, chat_id, user_data, user_id):
     text = user_data.get("reklama_matni", "")
     
-    if int(user_id) != ADMIN_ID:
-        text += "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi"
+    # TUZATILDI: Admin yoki oddiy foydalanuvchi bo'lishidan qat'iy nazar link qo'shiladigan bo'ldi!
+    text += "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi"
         
     photo_path = user_data.get("reklama_rasm") 
     buttons_data = user_data.get("inline_buttons", [])
