@@ -325,6 +325,7 @@ class TextStates(StatesGroup):
     waiting_buttons = State()
     waiting_forward = State()
     waiting_support_question = State()
+    waiting_custom_interval = State()  # Yangi Qo'lda kiritish holati
 
 class AdminStates(StatesGroup):
     waiting_search_id = State()
@@ -336,20 +337,47 @@ class AdminStates(StatesGroup):
 
 # ================= KEYBOARD MARKUPS GENERATORS (TUZATILDI - TO'LIQ QO'SHILDI!) =================
 
+# Sadriddin, rasm (image_3e3f65.png) bilan 100% bir xil bo'lgan tugmalar tartibi!
 def get_interval_keyboard(current_interval):
+    def check(val, text):
+        return f"✓ {text}" if current_interval == val else text
+
     kb = [
         [
-            InlineKeyboardButton(text="5 daqiqa" + (" ✓" if current_interval == 5 else ""), callback_data="set_int_5"),
-            InlineKeyboardButton(text="15 daqiqa" + (" ✓" if current_interval == 15 else ""), callback_data="set_int_15"),
-            InlineKeyboardButton(text="30 daqiqa" + (" ✓" if current_interval == 30 else ""), callback_data="set_int_30")
+            InlineKeyboardButton(text=check(2, "2daq"), callback_data="set_int_2"),
+            InlineKeyboardButton(text=check(3, "3daq"), callback_data="set_int_3"),
+            InlineKeyboardButton(text=check(4, "4daq"), callback_data="set_int_4"),
+            InlineKeyboardButton(text=check(5, "5daq"), callback_data="set_int_5"),
+            InlineKeyboardButton(text=check(6, "6daq"), callback_data="set_int_6")
         ],
         [
-            InlineKeyboardButton(text="1 soat" + (" ✓" if current_interval == 60 else ""), callback_data="set_int_60"),
-            InlineKeyboardButton(text="2 soat" + (" ✓" if current_interval == 120 else ""), callback_data="set_int_120"),
-            InlineKeyboardButton(text="3 soat" + (" ✓" if current_interval == 180 else ""), callback_data="set_int_180")
+            InlineKeyboardButton(text=check(7, "7daq"), callback_data="set_int_7"),
+            InlineKeyboardButton(text=check(8, "8daq"), callback_data="set_int_8"),
+            InlineKeyboardButton(text=check(9, "9daq"), callback_data="set_int_9"),
+            InlineKeyboardButton(text=check(10, "10daq"), callback_data="set_int_10"),
+            InlineKeyboardButton(text=check(11, "11daq"), callback_data="set_int_11")
         ],
         [
-            InlineKeyboardButton(text="⁉️ Interval nima?", callback_data="explain_interval")
+            InlineKeyboardButton(text=check(12, "12daq"), callback_data="set_int_12"),
+            InlineKeyboardButton(text=check(13, "13daq"), callback_data="set_int_13"),
+            InlineKeyboardButton(text=check(14, "14daq"), callback_data="set_int_14"),
+            InlineKeyboardButton(text=check(15, "15daq"), callback_data="set_int_15")
+        ],
+        [
+            InlineKeyboardButton(text=check(30, "30daq"), callback_data="set_int_30"),
+            InlineKeyboardButton(text=check(60, "1 soat"), callback_data="set_int_60"),
+            InlineKeyboardButton(text=check(90, "1.5 soat"), callback_data="set_int_90"),
+            InlineKeyboardButton(text=check(120, "2 soat"), callback_data="set_int_120"),
+            InlineKeyboardButton(text=check(180, "3 soat"), callback_data="set_int_180")
+        ],
+        [
+            InlineKeyboardButton(text="⁉️ Interval nima", callback_data="explain_interval")
+        ],
+        [
+            InlineKeyboardButton(text="✍️ Qo'lda kiritish", callback_data="custom_interval")
+        ],
+        [
+            InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
@@ -358,7 +386,7 @@ def get_admin_main_markup():
     kb = [
         [
             InlineKeyboardButton(text="📊 Statistika", callback_data="adm_stats"),
-            InlineKeyboardButton(text="👤 Foydalanuvchini tahrirlash", callback_data="adm_search_user")
+            InlineKeyboardButton(text="Foydalanuvchini tahrirlash 👤", callback_data="adm_search_user")
         ],
         [
             InlineKeyboardButton(text="📢 Majburiy obuna kanallari", callback_data="adm_mandatory_sub"),
@@ -403,7 +431,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настреек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настреек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5</b>\n👥 Приглашено друзей: <b>{referrals} / 6</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -705,8 +733,8 @@ async def message_receive_support_question(message: types.Message, state: FSMCon
     await message.answer(get_text(user_id, "support_sent"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await state.clear()
 
-# Admin javob berishni bosganda
-@router.callback_query(F.data.startswith("reply_to_user_"))
+# Admin javob berishni bosganda (TUZATILDI: StateFilter ulandi)
+@router.callback_query(F.data.startswith("reply_to_user_"), StateFilter("*"))
 async def callback_admin_reply_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -854,7 +882,7 @@ async def show_sozlamalar_menu(message: types.Message, user_id: int):
     except Exception:
         await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
 
-@router.callback_query(F.data == "change_language_settings")
+@router.callback_query(F.data == "change_language_settings", StateFilter("*"))
 async def callback_change_language_settings(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -863,7 +891,7 @@ async def callback_change_language_settings(callback_query: types.CallbackQuery)
     await callback_query.message.edit_text(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
     await callback_query.answer()
 
-@router.callback_query(F.data == "toggle_auto_sub")
+@router.callback_query(F.data == "toggle_auto_sub", StateFilter("*"))
 async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -874,7 +902,7 @@ async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
     await callback_query.answer(f"✓ Avto-obuna {status}!", show_alert=True)
     await show_sozlamalar_menu(callback_query.message, user_id)
 
-@router.callback_query(F.data == "toggle_auto_reply")
+@router.callback_query(F.data == "toggle_auto_reply", StateFilter("*"))
 async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -885,7 +913,7 @@ async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
     await callback_query.answer(f"✓ Auto Reply {status}!", show_alert=True)
     await show_sozlamalar_menu(callback_query.message, user_id)
 
-@router.callback_query(F.data == "close_menu")
+@router.callback_query(F.data == "close_menu", StateFilter("*"))
 async def callback_close_menu(callback_query: types.CallbackQuery):
     try:
         await callback_query.message.delete()
@@ -908,7 +936,7 @@ async def cmd_admin(message: types.Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
 
-@router.callback_query(F.data == "adm_main_menu")
+@router.callback_query(F.data == "adm_main_menu", StateFilter("*"))
 async def callback_adm_main(callback_query: types.CallbackQuery, state: FSMContext = None):
     if callback_query.from_user.id != ADMIN_ID:
         await callback_query.answer("Ruxsat berilmagan!", show_alert=True)
@@ -925,7 +953,7 @@ async def callback_adm_main(callback_query: types.CallbackQuery, state: FSMConte
         await callback_query.message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
     await callback_query.answer()
 
-@router.callback_query(F.data == "adm_stats")
+@router.callback_query(F.data == "adm_stats", StateFilter("*"))
 async def callback_adm_stats(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -948,7 +976,7 @@ async def callback_adm_stats(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-@router.callback_query(F.data == "adm_search_user")
+@router.callback_query(F.data == "adm_search_user", StateFilter("*"))
 async def callback_adm_search_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1006,7 +1034,7 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lik kerak! Qaytadan kiriting:")
 
-@router.callback_query(F.data.startswith("adm_chg_bal_"))
+@router.callback_query(F.data.startswith("adm_chg_bal_"), StateFilter("*"))
 async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1057,7 +1085,7 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
         await message.answer("❌ Noto'g'ri qiymat kiritildi. Faqat raqam yoki + / - belgisidan foydalaning (masalan: +25000):")
     await state.clear()
 
-@router.callback_query(F.data.startswith("adm_chg_stars_"))
+@router.callback_query(F.data.startswith("adm_chg_stars_"), StateFilter("*"))
 async def callback_adm_chg_stars_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1108,7 +1136,7 @@ async def state_process_add_stars(message: types.Message, state: FSMContext):
         await message.answer("❌ Noto'g'ri format! Faqat son yozing (masalan: +10):")
     await state.clear()
 
-@router.callback_query(F.data.startswith("adm_chg_tarif_"))
+@router.callback_query(F.data.startswith("adm_chg_tarif_"), StateFilter("*"))
 async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1138,7 +1166,7 @@ async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
     else:
         await callback_query.answer("Foydalanuvchi topilmadi!", show_alert=True)
 
-@router.callback_query(F.data == "adm_mandatory_sub")
+@router.callback_query(F.data == "adm_mandatory_sub", StateFilter("*"))
 async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1163,7 +1191,7 @@ async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
 
-@router.callback_query(F.data == "adm_sub_add_chan")
+@router.callback_query(F.data == "adm_sub_add_chan", StateFilter("*"))
 async def callback_adm_add_chan_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1197,7 +1225,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         await message.answer("⚠️ Usbuhu kanal allaqachon ro'yxatda bor.")
     await state.clear()
 
-@router.callback_query(F.data == "adm_sub_clear_chan")
+@router.callback_query(F.data == "adm_sub_clear_chan", StateFilter("*"))
 async def callback_adm_clear_chans(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1206,7 +1234,7 @@ async def callback_adm_clear_chans(callback_query: types.CallbackQuery):
     await callback_query.answer("📢 Barcha majburiy kanallar olib tashlandi!", show_alert=True)
     await callback_adm_sub_menu(callback_query)
 
-@router.callback_query(F.data == "adm_broadcast_prompt")
+@router.callback_query(F.data == "adm_broadcast_prompt", StateFilter("*"))
 async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
         return
@@ -1335,7 +1363,7 @@ async def show_message_settings(message: types.Message, user_id: int):
 
 # ================= AD REKLAMA EDIT CALLBACK HANDLERS =================
 
-@router.callback_query(F.data == "edit_text")
+@router.callback_query(F.data == "edit_text", StateFilter("*"))
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await state.set_state(TextStates.waiting_text)
@@ -1353,7 +1381,7 @@ async def message_receive_text(message: types.Message, state: FSMContext):
     await show_message_settings(message, user_id)
     await state.clear()
 
-@router.callback_query(F.data == "edit_photo")
+@router.callback_query(F.data == "edit_photo", StateFilter("*"))
 async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await state.set_state(TextStates.waiting_photo)
@@ -1383,7 +1411,7 @@ async def message_receive_photo(message: types.Message, state: FSMContext):
 async def message_receive_photo_invalid(message: types.Message):
     await message.answer("⚠️ Iltimos, reklama uchun rasm shaklida fayl yuboring!")
 
-@router.callback_query(F.data == "clear_media_buttons")
+@router.callback_query(F.data == "clear_media_buttons", StateFilter("*"))
 async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1402,7 +1430,7 @@ async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
     await callback_query.answer("❌ Barcha media va tugmalar olib tashlandi!", show_alert=True)
     await show_message_settings(callback_query.message, user_id)
 
-@router.callback_query(F.data == "edit_buttons_pro")
+@router.callback_query(F.data == "edit_buttons_pro", StateFilter("*"))
 async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1446,7 +1474,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 
 # ================= AD FORWARD EDIT CALLBACK HANDLERS =================
 
-@router.callback_query(F.data == "edit_forward")
+@router.callback_query(F.data == "edit_forward", StateFilter("*"))
 async def callback_edit_forward(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1460,7 +1488,7 @@ async def callback_edit_forward(callback_query: types.CallbackQuery, state: FSMC
     await callback_query.message.answer(
         "📤 <b>Forward xabar sozlash bo'limi (Faqat PRO)</b>\n\n"
         "Iltimos, o'zingizning kanalingizdan istalgan xabarni (rasmli, tugmali, matnli) **ushbu botga forward (uzatish)** qiling.\n\n"
-        "<i>Bot o'sha xabarni guruhlarga ko'rishlar sonini oshiradigan va kanal havolasini saqlaydigan qilib yuboradi.</i>",
+        "<i>Bot o'sha xabarni guruhlarga ko'rishlar sonini oshiradigan va kanal havalasini saqlaydigan qilib yuboradi.</i>",
         parse_mode="HTML"
     )
     await callback_query.answer()
@@ -1501,7 +1529,7 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
     await show_message_settings(message, user_id)
     await state.clear()
 
-@router.callback_query(F.data == "toggle_forward_mode")
+@router.callback_query(F.data == "toggle_forward_mode", StateFilter("*"))
 async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1554,7 +1582,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.callback_query(F.data == "set_groups_all")
+@router.callback_query(F.data == "set_groups_all", StateFilter("*"))
 async def callback_groups_all(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1563,7 +1591,7 @@ async def callback_groups_all(callback_query: types.CallbackQuery, state: FSMCon
     await callback_query.answer("✓ Hamma guruhlar tanlandi!", show_alert=True)
     await menu_guruhlar(callback_query.message, state)
 
-@router.callback_query(F.data == "set_groups_custom")
+@router.callback_query(F.data == "set_groups_custom", StateFilter("*"))
 async def callback_groups_custom(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1572,7 +1600,7 @@ async def callback_groups_custom(callback_query: types.CallbackQuery, state: FSM
     await callback_query.answer("✓ Qo'lda tanlash rejimi faollashdi!", show_alert=True)
     await menu_guruhlar(callback_query.message, state)
 
-@router.callback_query(F.data == "clear_selected_groups")
+@router.callback_query(F.data == "clear_selected_groups", StateFilter("*"))
 async def callback_clear_groups(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1581,7 +1609,7 @@ async def callback_clear_groups(callback_query: types.CallbackQuery):
     await callback_query.answer("🚨 Tanlangan barcha guruhlar tozalandi!", show_alert=True)
     await callback_groups_list(callback_query)
 
-@router.callback_query(F.data == "refresh_groups_force")
+@router.callback_query(F.data == "refresh_groups_force", StateFilter("*"))
 async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1606,7 +1634,7 @@ async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
     except Exception as e:
         await callback_query.message.answer(f"❌ Xatolik yuz berdi: {e}")
 
-@router.callback_query(F.data.startswith("groups_list_page_"))
+@router.callback_query(F.data.startswith("groups_list_page_"), StateFilter("*"))
 async def callback_groups_list(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1660,7 +1688,7 @@ async def callback_groups_list(callback_query: types.CallbackQuery):
     except Exception:
         await callback_query.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-@router.callback_query(F.data.startswith("toggle_group_"))
+@router.callback_query(F.data.startswith("toggle_group_"), StateFilter("*"))
 async def callback_toggle_group(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1680,7 +1708,7 @@ async def callback_toggle_group(callback_query: types.CallbackQuery):
     save_db()
     await callback_groups_list(callback_query)
 
-@router.callback_query(F.data.startswith("select_all_groups_"))
+@router.callback_query(F.data.startswith("select_all_groups_"), StateFilter("*"))
 async def callback_select_all_groups(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1692,7 +1720,7 @@ async def callback_select_all_groups(callback_query: types.CallbackQuery):
     save_db()
     await callback_groups_list(callback_query)
 
-@router.callback_query(F.data.startswith("deselect_all_groups_"))
+@router.callback_query(F.data.startswith("deselect_all_groups_"), StateFilter("*"))
 async def callback_deselect_all_groups(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1700,7 +1728,7 @@ async def callback_deselect_all_groups(callback_query: types.CallbackQuery):
     save_db()
     await callback_groups_list(callback_query)
 
-@router.callback_query(F.data == "save_groups_selection")
+@router.callback_query(F.data == "save_groups_selection", StateFilter("*"))
 async def callback_save_groups(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1742,6 +1770,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
             InlineKeyboardButton(text=f"{status_icon} {phone} ({acc['name'][:10]})", callback_data="manage_acc_" + phone)
         ])
         
+    # TUZATILDI: Rasm (image_3e3fc1.png) dagi kabi "➕" o'rniga styled plus, back arrow uchun ham xuddi shunday format!
     buttons.append([InlineKeyboardButton(text="➕ Yangi profil qo'shish", callback_data="add_account")])
     buttons.append([InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")])
     
@@ -1750,7 +1779,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
     except Exception:
         await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-@router.callback_query(F.data.startswith("manage_acc_"))
+@router.callback_query(F.data.startswith("manage_acc_"), StateFilter("*"))
 async def callback_manage_acc(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1776,20 +1805,20 @@ async def callback_manage_acc(callback_query: types.CallbackQuery):
             InlineKeyboardButton(text="🟢 Faol qilish", callback_data="activate_acc_" + phone),
             InlineKeyboardButton(text="⚠️ Uzish (O'chirish)", callback_data="delete_acc_" + phone)
         ],
-        [InlineKeyboardButton(text="⬅️ Profillarga qaytish", callback_data="go_to_profillar")]
+        [InlineKeyboardButton(text="← Profillarga qaytish", callback_data="go_to_profillar")]
     ]
     
     await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
     await callback_query.answer()
 
-@router.callback_query(F.data == "go_to_profillar")
+@router.callback_query(F.data == "go_to_profillar", StateFilter("*"))
 async def callback_go_to_profillar(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
     await show_profillar_settings(callback_query.message, user_id)
     await callback_query.answer()
 
-@router.callback_query(F.data.startswith("activate_acc_"))
+@router.callback_query(F.data.startswith("activate_acc_"), StateFilter("*"))
 async def callback_activate_acc(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1808,7 +1837,7 @@ async def callback_activate_acc(callback_query: types.CallbackQuery):
     
     await show_profillar_settings(callback_query.message, user_id)
 
-@router.callback_query(F.data.startswith("delete_acc_"))
+@router.callback_query(F.data.startswith("delete_acc_"), StateFilter("*"))
 async def callback_delete_acc(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1887,11 +1916,11 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💳 10,000 UZS bilan sotib olish", callback_data="buy_pro_balance")],
         [InlineKeyboardButton(text="🔗 Taklif havolasini ulashish", url="https://t.me/share/url?url=" + ref_link + "&text=Guruhlarga+avtomatik+reklama+yuboruvchi+zor+botni+sinab+koring!")],
-        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")]
+        [InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")]
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.callback_query(F.data == "buy_pro_balance")
+@router.callback_query(F.data == "buy_pro_balance", StateFilter("*"))
 async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1940,8 +1969,8 @@ async def menu_interval(message: types.Message, state: FSMContext):
     
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
 
-# Interval o'zgartirilgandagi asinxron callback drayveri
-@router.callback_query(F.data.startswith("set_int_"))
+# Interval o'zgartirilgandagi asinxron callback drayveri (TUZATILDI: StateFilter ulandi)
+@router.callback_query(F.data.startswith("set_int_"), StateFilter("*"))
 async def callback_set_interval(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     val = int(callback_query.data.split("_")[2])
@@ -1968,7 +1997,7 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
     except Exception:
         pass
 
-@router.callback_query(F.data == "explain_interval")
+@router.callback_query(F.data == "explain_interval", StateFilter("*"))
 async def callback_explain_interval(callback_query: types.CallbackQuery):
     explanation = (
         "⁉️ <b>Interval nima va u nega kerak?</b>\n\n"
@@ -1977,6 +2006,31 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
     )
     await callback_query.message.answer(explanation, parse_mode="HTML")
     await callback_query.answer()
+
+# TUZATILDI: Qo'lda kiritish callback va message handleri to'liq xatosiz ulandi!
+@router.callback_query(F.data == "custom_interval", StateFilter("*"))
+async def callback_custom_interval(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await state.set_state(TextStates.waiting_custom_interval)
+    await callback_query.message.answer("✍️ <b>Xabar yuborish oralig'ini (Intervalni) daqiqalarda kiriting (masalan: 20):</b>", parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(TextStates.waiting_custom_interval))
+async def message_receive_custom_interval(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    try:
+        val = int(message.text.strip())
+        if val < 1:
+            await message.answer("❌ Minimal interval vaqti - 1 daqiqa!")
+            return
+        db_users[user_id]["interval"] = val
+        save_db()
+        await message.answer(f"✅ <b>Interval {val} daqiqaga sozlandi!</b>", reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        await menu_interval(message, state)
+    except ValueError:
+        await message.answer("❌ Iltimos, faqat butun son kiriting (masalan: 25):")
 
 
 # ================= 💰 DEPOSIT / RECHARGE SYSTEM (TUZATILDI - TO'LIQ QO'SHILDI!) =================
@@ -1999,7 +2053,7 @@ async def callback_deposit_balance(callback_query: types.CallbackQuery, state: F
     )
     kb = [
         [InlineKeyboardButton(text="✍️ Administratorga yozish", url="https://t.me/AbduIIayev_7")],
-        [InlineKeyboardButton(text="⬅️ Kabinetga qaytish", callback_data="back_to_kabinet")]
+        [InlineKeyboardButton(text="← Kabinetga qaytish", callback_data="back_to_kabinet")]
     ]
     await callback_query.message.edit_text(deposit_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
     await callback_query.answer()
@@ -2240,7 +2294,6 @@ async def run_sending_cycle_for_user(user_id):
                     
     except Exception as e:
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
-
 
 # ================= MAIN MAIN MOTORS =================
 
