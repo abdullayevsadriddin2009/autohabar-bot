@@ -104,7 +104,6 @@ DEFAULT_DB = {
 }
 
 # ================= GOOGLE FIRESTORE CLOUD DATABASE CONNECTION =================
-# TUZATILDI: db o'zgaruvchisi load_db() funksiyasidan oldin e'lon qilindi!
 db = None
 if FIREBASE_AVAILABLE:
     print("[Firebase] Baza ulanish yo'llarini qidirish...")
@@ -351,7 +350,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Iltimos, o'zingizga qulay bo'lgan tilni tanlang:\n\n🌐 Пожалуйста, выберите удобный для вас язык:\n\n🌐 Please select your preferred language:",
         "support_prompt": "✍️ <b>Savol yuborish bo'limi</b>\n\nIltimos, o'z savolingizni yoki murojaatingizni batafsil yozib yuboring. Tizim administratori tez fursatda sizga bot orqali javob yo'llaydi!",
         "support_sent": "✅ Savolingiz administratorga muvaffaqiyatli yetkazildi! Tez fursatda javob yo'llaymiz.",
-        "settings_title": "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>Eng yuqori darajada (Maksimal) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:",
+        "settings_title": "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>Eng yuqori darajada (Maksimal) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirishinteraktiv qilish uchun kerakli tugmani bosing:",
         "guide_text": "📖 <b>AutoHabar Pro - Foydalanish Bo'yicha Batafsil Qo'llanma</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Akkaunt ulash:</b>\n• Profil bo'limidan akkaunt qo'shish tugmasini bosing va telefon raqamingizni xalqaro formatda kiriting.\n• SMS kod kelganda raqamlar orasiga albatta <b>nuqta qo'yib</b> kiriting (Format: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Guruhlarni sozlash:</b>\n• Guruhlarni sozlash bo'limiga kirib, xabar yuboriladigan guruhlarni belgilang va saqlang.\n\n3️⃣ <b>Interval va Taymer:</b>\n• Guruhlar orasidagi kutish vaqtini (Interval) va bot avtomatik o'chadigan taymer muddatini belgilang.\n\n4️⃣ <b>Tugatish:</b>\n• Autohabar yuborish bo'limidan <b>▶️ Ishga tushirish</b> tugmasini bosing!",
         "cabinet_title": "👤 <b>Sizning Kabinetingiz</b>\n\n👥 Ism: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balans: <b>{balans} so'm</b>\n\n📊 <b>Statistika:</b>\n✔️ Bugun yuborildi: <b>{today_sent}</b>\n🔄 Jami yuborilgan: <b>{total_sent}</b>\n👥 Ulangan akkauntlar: <b>{acc_count} / 5 ta</b>\n👥 Taklif qilingan a'zolar: <b>{referrals} / 6 ta</b>\n🔗 Havola: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Tilni o'zgartirish",
@@ -369,7 +368,7 @@ LOCALIZATION = {
         "btn_settings": "⚙️ Настройки",
         "btn_support": "❓ Вопрос и Помощь",
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
-        "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
+        "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайщее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
         "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
@@ -1177,7 +1176,7 @@ async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, sta
     await state.set_state(AdminStates.waiting_broadcast_msg)
     text = (
         "✉️ <b>Ommaviy reklama tarqatish bo'limi</b>\n\n"
-        "Istalgan rasm yoki matnli xabarni yuboring. Ushabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
+        "Istalgan rasm yoki matnli xabarni yuboring. Usbuhabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
     )
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_main_menu")]
@@ -1703,43 +1702,6 @@ async def init_existing_sessions():
 
 # ================= OTHER ACTIONS & LOGIN WIZARD =================
 
-@router.callback_query(F.data == "toggle_sending")
-async def callback_toggle_sending(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    
-    if not user_data.get("active_phone"):
-        await callback_query.answer("Avvalo profilingizni ulashingiz shart! 📱", show_alert=True)
-        return
-        
-    user_data["is_sending"] = not user_data.get("is_sending")
-    status_text = "ishga tushirildi! 🚀" if user_data["is_sending"] else "to'xtatildi! 🛑"
-    
-    if user_data["is_sending"]:
-        user_data["next_run_timestamp"] = 0
-        user_data["is_sending_started_at"] = datetime.now().timestamp()
-    else:
-        user_data["is_sending_started_at"] = 0
-        
-    save_db()
-    await callback_query.answer(f"Avto-xabar tarqatish muvaffaqiyatli {status_text}", show_alert=True)
-    await menu_autohabar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
-    
-    if user_data["is_sending"]:
-        logging.info(f"[Sender] Foydalanuvchi {user_id} uchun reklama tarqatish darhol ishga tushirildi!")
-        asyncio.create_task(trigger_immediate_sending(user_id))
-
-async def trigger_immediate_sending(user_id):
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    if not user_data.get("is_sending"):
-        return
-    interval_minutes = user_data.get("interval", 15)
-    db_users[user_id]["next_run_timestamp"] = datetime.now().timestamp() + (interval_minutes * 60)
-    save_db()
-    await run_sending_cycle_for_user(user_id)
-
 @router.callback_query(F.data == "add_account")
 async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
@@ -1778,10 +1740,9 @@ async def callback_add_account_wizard(callback_query: types.CallbackQuery, state
 
 @router.message(StateFilter(LoginStates.waiting_phone))
 async def state_phone_received(message: types.Message, state: FSMContext):
-    # Sadriddin, endi barcha davlat telefon raqamlari qabul qilinadi (TUZATILDI!)
+    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
     phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     
-    # Barcha xalqaro raqamlarni (masalan: +7, +1, +998 va b.) xatosiz qabul qiluvchi tekshiruv
     if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
         await message.answer(
             "❌ <b>Noto'g'ri telefon raqam format kiritildi!</b>\n\n"
@@ -1982,6 +1943,25 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
     )
     await callback_query.message.answer(explanation, parse_mode="HTML")
     await callback_query.answer()
+
+
+# ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
+# TUZATILDI: main() funksiyasida chaqirilgan start_web_server funksiyasi mantiqan shu yerda e'lon qilindi!
+
+async def handle_ping(request):
+    return web.Response(text="Bot is running smoothly!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    app.router.add_get('/ping', handle_ping)
+    
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Port {port}-portda muvaffaqiyatli ishga tushirildi!")
 
 
 # ================= MAIN MAIN MOTORS =================
