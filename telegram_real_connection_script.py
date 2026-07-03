@@ -334,6 +334,39 @@ class AdminStates(StatesGroup):
     waiting_broadcast_msg = State()
     waiting_admin_reply = State()
 
+# ================= KEYBOARD MARKUPS GENERATORS (TUZATILDI - TO'LIQ QO'SHILDI!) =================
+
+def get_interval_keyboard(current_interval):
+    kb = [
+        [
+            InlineKeyboardButton(text="5 daqiqa" + (" ✓" if current_interval == 5 else ""), callback_data="set_int_5"),
+            InlineKeyboardButton(text="15 daqiqa" + (" ✓" if current_interval == 15 else ""), callback_data="set_int_15"),
+            InlineKeyboardButton(text="30 daqiqa" + (" ✓" if current_interval == 30 else ""), callback_data="set_int_30")
+        ],
+        [
+            InlineKeyboardButton(text="1 soat" + (" ✓" if current_interval == 60 else ""), callback_data="set_int_60"),
+            InlineKeyboardButton(text="2 soat" + (" ✓" if current_interval == 120 else ""), callback_data="set_int_120"),
+            InlineKeyboardButton(text="3 soat" + (" ✓" if current_interval == 180 else ""), callback_data="set_int_180")
+        ],
+        [
+            InlineKeyboardButton(text="⁉️ Interval nima?", callback_data="explain_interval")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def get_admin_main_markup():
+    kb = [
+        [
+            InlineKeyboardButton(text="📊 Statistika", callback_data="adm_stats"),
+            InlineKeyboardButton(text="👤 Foydalanuvchini tahrirlash", callback_data="adm_search_user")
+        ],
+        [
+            InlineKeyboardButton(text="📢 Majburiy obuna kanallari", callback_data="adm_mandatory_sub"),
+            InlineKeyboardButton(text="✉️ Ommaviy reklama yuborish", callback_data="adm_broadcast_prompt")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
 # ================= MULTI-LANGUAGE LOCALIZATION SYSTEM =================
 LOCALIZATION = {
     "uz": {
@@ -370,7 +403,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настреек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5</b>\n👥 Приглашено друзей: <b>{referrals} / 6</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -1902,7 +1935,7 @@ async def menu_interval(message: types.Message, state: FSMContext):
     text = (
         "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
         f"Joriy faol interval: <b>{interval_text}</b>\n\n"
-        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat davomida to'xtab (kutib) turadi."
+        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat dorasida to'xtab (kutib) turadi."
     )
     
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
@@ -1944,6 +1977,83 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
     )
     await callback_query.message.answer(explanation, parse_mode="HTML")
     await callback_query.answer()
+
+
+# ================= 💰 DEPOSIT / RECHARGE SYSTEM (TUZATILDI - TO'LIQ QO'SHILDI!) =================
+
+@router.callback_query(F.data == "deposit_balance", StateFilter("*"))
+async def callback_deposit_balance(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    deposit_text = (
+        "💰 <b>Hisobni to'ldirish tizimi</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Sizning Telegram ID raqamingiz: <code>{user_id}</code>\n"
+        f"Joriy balansingiz: <b>{db_users[user_id].get('balans', 0):,} so'm</b>\n\n"
+        "Hisobingizni xavfsiz to'ldirish uchun shaxsiy ID raqamingizni administratorimizga yozib yuboring:\n"
+        "👉 <b>Administrator: @AbduIIayev_7</b>\n\n"
+        "💡 <i>Eslatma: To'lovingiz tasdiqlanishi bilanoq balans hisobingizga soniyada avtomatik qo'shiladi!</i>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    kb = [
+        [InlineKeyboardButton(text="✍️ Administratorga yozish", url="https://t.me/AbduIIayev_7")],
+        [InlineKeyboardButton(text="⬅️ Kabinetga qaytish", callback_data="back_to_kabinet")]
+    ]
+    await callback_query.message.edit_text(deposit_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "back_to_kabinet", StateFilter("*"))
+async def callback_back_to_kabinet(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await menu_kabinet_msg(callback_query.message, callback_query.from_user.id)
+    await callback_query.answer()
+
+@router.callback_query(F.data == "back_to_panel", StateFilter("*"))
+async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    
+    phone = user_data.get("active_phone")
+    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
+    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
+    
+    auto_off = user_data.get("auto_off_hours")
+    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
+    
+    responseText = (
+        "🤠 <b>Boshqaruv paneli</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"{profilStatus}\n"
+        f"⚡ Holat: <b>{holatStatus}</b>\n"
+        f"✍️ Xabar turi: <b>Matn</b>\n"
+        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
+        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
+        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
+        "📢 Mention: <b>O'chiq</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    
+    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
+            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
+        ],
+        [
+            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
+            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
+        ]
+    ])
+    
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+        await callback_query.answer()
+    except Exception:
+        await callback_query.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
 
 # ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
@@ -2131,6 +2241,7 @@ async def run_sending_cycle_for_user(user_id):
     except Exception as e:
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
 
+
 # ================= MAIN MAIN MOTORS =================
 
 async def main():
@@ -2162,7 +2273,7 @@ async def main():
     print("👉 Botingizga /start buyrug'ini yuboring.")
     print("\n==================================================")
     
-    # Tarmoq uzilishlari uchun auto-retry polling (TUZATILDI!)
+    # Tarmoq uzilishlari uchun auto-retry polling
     max_retries = 10
     for attempt in range(1, max_retries + 1):
         try:
