@@ -49,6 +49,12 @@ BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
+# Bot, Dispatcher va Routerlarni e'lon qilish (TUZATILDI: NameError butunlay yo'qotildi!)
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+router = Router()
+dp.include_router(router)
+
 # Papkalarni yaratish
 SESSIONS_DIR = "sessions"
 if os.path.exists(SESSIONS_DIR) and not os.path.isdir(SESSIONS_DIR):
@@ -96,44 +102,6 @@ DEFAULT_DB = {
         "lang": "uz"
     }
 }
-
-# ================= GOOGLE FIRESTORE CLOUD DATABASE =================
-db = None
-if FIREBASE_AVAILABLE:
-    print("[Firebase] Baza ulanish yo'llarini qidirish...")
-    possible_paths = [
-        "firebase_credentials.json", 
-        "/etc/secrets/firebase_credentials.json",
-        "../firebase_credentials.json"
-    ]
-    for path in possible_paths:
-        if os.path.exists(path):
-            try:
-                print(f"[Firebase] Topildi: {path} kalit fayli mavjud. Ulanyapti...")
-                cred = credentials.Certificate(path)
-                if not firebase_admin._apps:
-                    firebase_admin.initialize_app(cred)
-                db = firestore.client()
-                print(f"[Firebase] MUVAFFAQIYAT: {path} orqali ulanish o'rnatildi!")
-                break
-            except Exception as e:
-                print(f"[Firebase] XATO: {path} faylidan foydalanishda xatolik: {e}")
-                
-    if not db:
-        print("[Firebase] Maxfiy fayllar topilmadi. Environment Variable tekshirilmoqda...")
-        firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
-        if firebase_config_env:
-            try:
-                cred_dict = json.loads(firebase_config_env)
-                cred = credentials.Certificate(cred_dict)
-                if not firebase_admin._apps:
-                    firebase_admin.initialize_app(cred)
-                db = firestore.client()
-                print("[Firebase] MUVAFFAQIYAT: Render Environment Variable orqali ulandi!")
-            except Exception as e:
-                print(f"[Firebase] XATO: Env orqali ulanishda xato: {e}")
-else:
-    print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
 # ================= SESSIONS & DATABASE PERSISTENCE =================
 
@@ -193,7 +161,8 @@ def save_db():
         except Exception as e:
             logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
-db_users = load_db()
+# Firebase ulanishini yuklab olish
+db_users = {}
 active_clients = {}
 
 def ensure_user(user_id: int):
@@ -232,7 +201,6 @@ def ensure_user(user_id: int):
             "lang": None
         }
     else:
-        # Maydonlarni to'g'ri yangilash
         if "referrals_count" not in db_users[user_id]:
             db_users[user_id]["referrals_count"] = 0
         if "referred_by" not in db_users[user_id]:
@@ -249,12 +217,6 @@ def ensure_user(user_id: int):
             db_users[user_id]["is_sending_started_at"] = 0
         if "accounts" not in db_users[user_id]:
             db_users[user_id]["accounts"] = []
-            if db_users[user_id].get("active_phone"):
-                db_users[user_id]["accounts"].append({
-                    "phone": db_users[user_id]["active_phone"],
-                    "name": db_users[user_id].get("active_name", "Foydalanuvchi"),
-                    "username": db_users[user_id].get("active_username", "@-")
-                })
         if "auto_sub_active" not in db_users[user_id]:
             db_users[user_id]["auto_sub_active"] = True
         if "auto_reply_active" not in db_users[user_id]:
@@ -304,6 +266,9 @@ async def restore_sessions_from_cloud():
                     print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}_{phone_clean}.session")
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
+
+# Baza yuklash
+db_users = load_db()
 
 # ================= STATES FOR LOGIN & ACTIONS =================
 class LoginStates(StatesGroup):
@@ -1203,9 +1168,57 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+# ================= ========================================================
+
+@router.callback_query(F.data == "back_to_panel")
+async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    
+    phone = user_data.get("active_phone")
+    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
+    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
+    
+    auto_off = user_data.get("auto_off_hours")
+    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
+    
+    responseText = (
+        "🤠 <b>Boshqaruv paneli</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"{profilStatus}\n"
+        f"⚡ Holat: <b>{holatStatus}</b>\n"
+        f"✍️ Xabar turi: <b>Matn</b>\n"
+        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
+        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
+        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
+        "📢 Mention: <b>O'chiq</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    
+    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
+            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
+        ],
+        [
+            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
+            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
+        ]
+    ])
+    
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+        await callback_query.answer()
+    except Exception:
+        await callback_query.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
+
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
+    # Sadriddin, agar PRO va forward rejimi yoqilgan bo'lsa, xabarni to'g'ridan-to'g'ri forward qilamiz!
     if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
         try:
             await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
@@ -1768,9 +1781,17 @@ async def callback_add_account_wizard(callback_query: types.CallbackQuery, state
 
 @router.message(StateFilter(LoginStates.waiting_phone))
 async def state_phone_received(message: types.Message, state: FSMContext):
-    phone = message.text.strip()
-    if not phone.startswith("+") or len(phone) < 9:
-        await message.answer("❌ Noto'g'ri telefon raqam! Format: +998901234567")
+    # Sadriddin, endi barcha davlat telefon raqamlari qabul qilinadi (TUZATILDI!)
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    
+    # Barcha xalqaro raqamlarni (masalan: +7, +1, +998 va b.) xatosiz qabul qiluvchi tekshiruv
+    if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
+        await message.answer(
+            "❌ <b>Noto'g'ri telefon raqam format kiritildi!</b>\n\n"
+            "Format: <code>+[davlat_kodi][raqam]</code>\n"
+            "<i>(Masalan: O'zbekiston: <code>+998901234567</code>, Rossiya: <code>+79001234567</code>, AQSh: <code>+12025550123</code>)</i>",
+            parse_mode="HTML"
+        )
         return
     
     await state.update_data(phone=phone)
@@ -1903,25 +1924,7 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
         await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
 
 
-# ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
-
-async def handle_ping(request):
-    return web.Response(text="Bot is running smoothly!")
-
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get('/', handle_ping)
-    app.router.add_get('/ping', handle_ping)
-    
-    port = int(os.environ.get("PORT", 10000))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    logging.info(f"Port {port}-portda muvaffaqiyatli ishga tushirildi!")
-
-# ================= INTERVAL MENYUSI (TUZATILDI - HANDLER QO'SHILDI) =================
-# Sadriddin, mana shu asinxron xizmat siz bosgan reply klaviaturadagi "⏱️ Interval" xabarini tutadi!
+# ================= INTERVAL MENYUSI =================
 
 @router.message(F.text.in_([LOCALIZATION["uz"]["btn_interval"], LOCALIZATION["ru"]["btn_interval"], LOCALIZATION["en"]["btn_interval"]]))
 async def menu_interval(message: types.Message, state: FSMContext):
@@ -1943,7 +1946,6 @@ async def menu_interval(message: types.Message, state: FSMContext):
         "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat davomida to'xtab (kutib) turadi."
     )
     
-    # TUZATILDI: reply_markup kalit so'zi bilan to'g'ri bog'landi!
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
 
 # Interval o'zgartirilgandagi asinxron callback drayveri
