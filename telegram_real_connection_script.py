@@ -313,27 +313,6 @@ async def restore_sessions_from_cloud():
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
 
-# ================= STATES FOR LOGIN & ACTIONS =================
-class LoginStates(StatesGroup):
-    waiting_phone = State()
-    waiting_code = State()
-    waiting_2fa = State()
-
-class TextStates(StatesGroup):
-    waiting_text = State()
-    waiting_photo = State()
-    waiting_buttons = State()
-    waiting_forward = State()
-    waiting_support_question = State()
-
-class AdminStates(StatesGroup):
-    waiting_search_id = State()
-    waiting_add_balans = State()
-    waiting_add_stars = State()
-    waiting_add_channel = State()
-    waiting_broadcast_msg = State()
-    waiting_admin_reply = State()
-
 # ================= MULTI-LANGUAGE LOCALIZATION SYSTEM =================
 LOCALIZATION = {
     "uz": {
@@ -370,7 +349,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5</b>\n👥 Приглашено друзей: <b>{referrals} / 6</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -537,8 +516,8 @@ async def get_client(user_id, phone):
 
 # ================= BOT HANDLERS =================
 
-# TUZATILDI: start buyrug'i barcha holatlardan break out qilishi uchun state="*" ulandi
-@router.message(Command("start"), state="*")
+# TUZATILDI: start buyrug'i barcha holatlardan break out qilishi uchun StateFilter("*") ulandi
+@router.message(Command("start"), StateFilter("*"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -626,7 +605,7 @@ async def callback_select_lang(callback_query: types.CallbackQuery):
 
 # ================= 📩 SAVOL VA YORDAM (SUPPORT SYSTEM) =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_support"], LOCALIZATION["ru"]["btn_support"], LOCALIZATION["en"]["btn_support"]]), state="*")
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_support"], LOCALIZATION["ru"]["btn_support"], LOCALIZATION["en"]["btn_support"]]), StateFilter("*"))
 async def menu_support_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -722,14 +701,14 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
 
 # ===================================================================================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_guide"], LOCALIZATION["ru"]["btn_guide"], LOCALIZATION["en"]["btn_guide"]]), state="*")
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_guide"], LOCALIZATION["ru"]["btn_guide"], LOCALIZATION["en"]["btn_guide"]]), StateFilter("*"))
 async def menu_guide_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     await message.answer(get_text(user_id, "guide_text"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_cabinet"], LOCALIZATION["ru"]["btn_cabinet"], LOCALIZATION["en"]["btn_cabinet"]]), state="*")
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_cabinet"], LOCALIZATION["ru"]["btn_cabinet"], LOCALIZATION["en"]["btn_cabinet"]]), StateFilter("*"))
 async def menu_kabinet(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -782,7 +761,7 @@ async def menu_kabinet_msg(message: types.Message, user_id: int):
     except Exception:
         await message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_settings"], LOCALIZATION["ru"]["btn_settings"], LOCALIZATION["en"]["btn_settings"]]), state="*")
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_settings"], LOCALIZATION["ru"]["btn_settings"], LOCALIZATION["en"]["btn_settings"]]), StateFilter("*"))
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -862,8 +841,8 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
 
 # ================= ADMIN PANEL HANDLERS =================
 
-# TUZATILDI: Admin panel barcha holatlardan break out qilishi uchun state="*" ulandi!
-@router.message(F.text == "🛡️ Admin Panel", state="*")
+# TUZATILDI: Admin panel barcha holatlardan break out qilishi uchun StateFilter("*") ulandi!
+@router.message(F.text == "🛡️ Admin Panel", StateFilter("*"))
 async def cmd_admin(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
@@ -1217,8 +1196,8 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 # ================= ⚪ AUTOHABAR YUBORISH MENYUSI =================
 
-# TUZATILDI: menu_autohabar routerga state="*" filtri bilan ulandi, xotira holati tozalanishi faollashtirildi!
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_auto_send"], LOCALIZATION["ru"]["btn_auto_send"], LOCALIZATION["en"]["btn_auto_send"]]), state="*")
+# TUZATILDI: menu_autohabar routerga StateFilter("*") ulandi, xotira holati tozalanishi faollashtirildi!
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_auto_send"], LOCALIZATION["ru"]["btn_auto_send"], LOCALIZATION["en"]["btn_auto_send"]]), StateFilter("*"))
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1262,8 +1241,8 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
 
 # ================= 📝 HABAR MATNI MENYUSI =================
 
-# TUZATILDI: menu_habar_matni_msg routerga state="*" filtri bilan ulandi, xotira holati tozalanishi faollashtirildi!
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_msg_text"], LOCALIZATION["ru"]["btn_msg_text"], LOCALIZATION["en"]["btn_msg_text"]]), state="*")
+# TUZATILDI: menu_habar_matni_msg routerga StateFilter("*") ulandi, xotira holati tozalanishi faollashtirildi!
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_msg_text"], LOCALIZATION["ru"]["btn_msg_text"], LOCALIZATION["en"]["btn_msg_text"]]), StateFilter("*"))
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1488,8 +1467,8 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
 
 # ================= 💬 GURUHLARNI SOZLASH MENYUSI =================
 
-# TUZATILDI: menu_guruhlar routerga state="*" filtri bilan ulandi, xotira holati tozalanishi faollashtirildi!
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_groups"], LOCALIZATION["ru"]["btn_groups"], LOCALIZATION["en"]["btn_groups"]]), state="*")
+# TUZATILDI: menu_guruhlar routerga StateFilter("*") ulandi, xotira holati tozalanishi faollashtirildi!
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_groups"], LOCALIZATION["ru"]["btn_groups"], LOCALIZATION["en"]["btn_groups"]]), StateFilter("*"))
 async def menu_guruhlar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1525,8 +1504,8 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
 
 # ================= 👤 PROFILLAR BO'LIMI (MULTI-ACCOUNT) =================
 
-# TUZATILDI: menu_profillar routerga state="*" filtri bilan ulandi, xotira holati tozalanishi faollashtirildi!
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_profiles"], LOCALIZATION["ru"]["btn_profiles"], LOCALIZATION["en"]["btn_profiles"]]), state="*")
+# TUZATILDI: menu_profillar routerga StateFilter("*") ulandi, xotira holati tozalanishi faollashtirildi!
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_profiles"], LOCALIZATION["ru"]["btn_profiles"], LOCALIZATION["en"]["btn_profiles"]]), StateFilter("*"))
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1553,7 +1532,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
         phone = acc["phone"]
         status_icon = "🟢" if phone == active_phone else "⚪"
         buttons.append([
-            InlineKeyboardButton(text=f"{status_icon} {phone} ({acc['name'][:10]})", callback_data=f"manage_acc_{phone}")
+            InlineKeyboardButton(text=f"{status_icon} {phone} ({acc['name'][:10]})", callback_data="manage_acc_" + phone)
         ])
         
     buttons.append([InlineKeyboardButton(text="➕ Yangi profil qo'shish", callback_data="add_account")])
@@ -1703,7 +1682,7 @@ async def menu_pro_tarif(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🔗 Taklif havolasini ulashish", url="https://t.me/share/url?url=" + ref_link + "&text=Guruhlarga+avtomatik+reklama+yuboruvchi+zor+botni+sinab+koring!")],
         [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")]
     ])
-    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    await message.answer(text, reply_markup=inline_kb, parse_mode="HTML") # TUZATILDI: reply_markup kalit so'zi bilan to'g'ri o'rnatildi!
 
 @router.callback_query(F.data == "buy_pro_balance")
 async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
@@ -1809,6 +1788,52 @@ async def start_web_server():
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     logging.info(f"Port {port}-portda muvaffaqiyatli ishga tushirildi!")
+
+
+# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+
+async def init_existing_sessions():
+    if not os.path.exists(SESSIONS_DIR):
+        return
+    for file in os.listdir(SESSIONS_DIR):
+        if file.endswith(".session") and "_" in file:
+            user_id_str = file.replace("session_", "").replace(".session", "")
+            parts = user_id_str.split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                user_id = int(parts[0])
+                phone_clean = parts[1]
+                
+                user_data = db_users.get(user_id)
+                if not user_data:
+                    continue
+                accounts_list = user_data.get("accounts", [])
+                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
+                
+                if not target_phone:
+                    target_phone = "+" + phone_clean
+                
+                client = await get_client(user_id, target_phone)
+                
+                if await client.is_user_authorized():
+                    session_key = f"{user_id}_{phone_clean}"
+                    active_clients[session_key] = client
+                    me = await client.get_me()
+                    
+                    ensure_user(user_id)
+                    accounts_list = db_users[user_id].get("accounts", [])
+                    if not any(acc["phone"] == target_phone for acc in accounts_list):
+                        accounts_list.append({
+                            "phone": target_phone,
+                            "name": me.first_name,
+                            "username": f"@{me.username}" if me.username else "@-"
+                        })
+                        db_users[user_id]["accounts"] = accounts_list
+                    save_db()
+                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
+            except Exception as e:
+                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
 
 # ================= MAIN MAIN MOTORS =================
