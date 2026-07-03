@@ -1902,7 +1902,7 @@ async def menu_interval(message: types.Message, state: FSMContext):
     text = (
         "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
         f"Joriy faol interval: <b>{interval_text}</b>\n\n"
-        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat dorasida to'xtab (kutib) turadi."
+        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat davomida to'xtab (kutib) turadi."
     )
     
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
@@ -2169,16 +2169,13 @@ async def main():
             logging.info(f"Telegram tarmoqlariga ulanishga urinish {attempt}/{max_retries}...")
             await dp.start_polling(bot)
             break
-        except aiogram.exceptions.TelegramNetworkError as e:
+        except Exception as e:
             logging.error(f"Tarmoq xatosi (Ulanish uzildi): {e}")
             if attempt == max_retries:
                 raise e
             wait_time = attempt * 5
             logging.info(f"{wait_time} soniyadan so'ng qayta urinib ko'riladi...")
             await asyncio.sleep(wait_time)
-        except Exception as e:
-            logging.error(f"Kutilmagan xatolik yuz berdi: {e}")
-            raise e
 
 if __name__ == "__main__":
     try:
