@@ -15,7 +15,7 @@ import json
 import base64
 from datetime import datetime
 
-# Loggerlarni eng tepada sozlaymiz (barcha xabarlar Renderda aniq ko'rinishi uchun)
+# Loggerlarni eng tepada sozlaymiz (barcha xabarlar Renderda adsiz ko'rinishi uchun)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -49,7 +49,7 @@ BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
-# Bot, Dispatcher va Routerlarni e'lon qilish (TUZATILDI: NameError butunlay yo'qotildi!)
+# Bot, Dispatcher va Routerlarni e'lon qilish
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
@@ -102,6 +102,46 @@ DEFAULT_DB = {
         "lang": "uz"
     }
 }
+
+# ================= GOOGLE FIRESTORE CLOUD DATABASE CONNECTION =================
+# TUZATILDI: db o'zgaruvchisi load_db() funksiyasidan oldin e'lon qilindi!
+db = None
+if FIREBASE_AVAILABLE:
+    print("[Firebase] Baza ulanish yo'llarini qidirish...")
+    possible_paths = [
+        "firebase_credentials.json", 
+        "/etc/secrets/firebase_credentials.json",
+        "../firebase_credentials.json"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                print(f"[Firebase] Topildi: {path} kalit fayli mavjud. Ulanyapti...")
+                cred = credentials.Certificate(path)
+                if not firebase_admin._apps:
+                    firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                print(f"[Firebase] MUVAFFAQIYAT: {path} orqali ulanish o'rnatildi!")
+                break
+            except Exception as e:
+                print(f"[Firebase] XATO: {path} faylidan foydalanishda xatolik: {e}")
+                
+    if not db:
+        print("[Firebase] Maxfiy fayllar topilmadi. Environment Variable tekshirilmoqda...")
+        firebase_config_env = os.environ.get("FIREBASE_CONFIG_JSON")
+        if firebase_config_env:
+            try:
+                cred_dict = json.loads(firebase_config_env)
+                cred = credentials.Certificate(cred_dict)
+                if not firebase_admin._apps:
+                    firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                print("[Firebase] MUVAFFAQIYAT: Render Environment Variable orqali ulandi!")
+            except Exception as e:
+                print(f"[Firebase] XATO: Env orqali ulanishda xato: {e}")
+else:
+    print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
+
 
 # ================= SESSIONS & DATABASE PERSISTENCE =================
 
@@ -161,8 +201,8 @@ def save_db():
         except Exception as e:
             logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
-# Firebase ulanishini yuklab olish
-db_users = {}
+# Mahalliy va bulutli ma'lumotlarni yuklash va foydalanuvchini tekshirishni e'lon qilish
+db_users = load_db()
 active_clients = {}
 
 def ensure_user(user_id: int):
@@ -201,6 +241,7 @@ def ensure_user(user_id: int):
             "lang": None
         }
     else:
+        # Maydonlarni xavfsiz to'ldirish
         if "referrals_count" not in db_users[user_id]:
             db_users[user_id]["referrals_count"] = 0
         if "referred_by" not in db_users[user_id]:
@@ -217,6 +258,12 @@ def ensure_user(user_id: int):
             db_users[user_id]["is_sending_started_at"] = 0
         if "accounts" not in db_users[user_id]:
             db_users[user_id]["accounts"] = []
+            if db_users[user_id].get("active_phone"):
+                db_users[user_id]["accounts"].append({
+                    "phone": db_users[user_id]["active_phone"],
+                    "name": db_users[user_id].get("active_name", "Foydalanuvchi"),
+                    "username": db_users[user_id].get("active_username", "@-")
+                })
         if "auto_sub_active" not in db_users[user_id]:
             db_users[user_id]["auto_sub_active"] = True
         if "auto_reply_active" not in db_users[user_id]:
@@ -266,9 +313,6 @@ async def restore_sessions_from_cloud():
                     print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}_{phone_clean}.session")
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
-
-# Baza yuklash
-db_users = load_db()
 
 # ================= STATES FOR LOGIN & ACTIONS =================
 class LoginStates(StatesGroup):
@@ -1167,53 +1211,6 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
         reply_markup=get_main_keyboard(message.from_user.id),
         parse_mode="HTML"
     )
-
-# ================= ========================================================
-
-@router.callback_query(F.data == "back_to_panel")
-async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    
-    phone = user_data.get("active_phone")
-    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
-    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
-    
-    auto_off = user_data.get("auto_off_hours")
-    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
-    
-    responseText = (
-        "🤠 <b>Boshqaruv paneli</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"{profilStatus}\n"
-        f"⚡ Holat: <b>{holatStatus}</b>\n"
-        f"✍️ Xabar turi: <b>Matn</b>\n"
-        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
-        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
-        "📢 Mention: <b>O'chiq</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-    
-    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
-    
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
-            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
-        ],
-        [
-            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
-            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
-        ]
-    ])
-    
-    try:
-        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
-        await callback_query.answer()
-    except Exception:
-        await callback_query.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
 # ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
 
