@@ -141,6 +141,7 @@ if FIREBASE_AVAILABLE:
 else:
     print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
+
 # ================= SESSIONS & DATABASE PERSISTENCE =================
 
 def load_db():
@@ -199,6 +200,7 @@ def save_db():
         except Exception as e:
             logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
+# Mahalliy va bulutli ma'lumotlarni yuklash va foydalanuvchini tekshirishni e'lon qilish
 db_users = load_db()
 active_clients = {}
 
@@ -535,7 +537,7 @@ async def get_client(user_id, phone):
 
 # ================= BOT HANDLERS =================
 
-# start buyrug'i barcha holatlardan break out qilishi uchun StateFilter("*") ulandi
+# start buyrug'i barcha holatlardan break out qilishi uchun StateFilter("*") ulandi (XATOLIK BUTUNLAY TUZATILDI!)
 @router.message(Command("start"), StateFilter("*"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
@@ -1519,6 +1521,161 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
+@router.callback_query(F.data == "set_groups_all")
+async def callback_groups_all(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["groups_choice"] = "all"
+    save_db()
+    await callback_query.answer("✓ Hamma guruhlar tanlandi!", show_alert=True)
+    await menu_guruhlar(callback_query.message, state)
+
+@router.callback_query(F.data == "set_groups_custom")
+async def callback_groups_custom(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["groups_choice"] = "custom"
+    save_db()
+    await callback_query.answer("✓ Qo'lda tanlash rejimi faollashdi!", show_alert=True)
+    await menu_guruhlar(callback_query.message, state)
+
+@router.callback_query(F.data == "clear_selected_groups")
+async def callback_clear_groups(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["selected_groups"] = []
+    save_db()
+    await callback_query.answer("🚨 Tanlangan barcha guruhlar tozalandi!", show_alert=True)
+    await callback_groups_list(callback_query)
+
+@router.callback_query(F.data == "refresh_groups_force")
+async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    active_phone = db_users[user_id].get("active_phone")
+    if not active_phone:
+        await callback_query.answer("⚠️ Avval profil bog'lashingiz kerak!", show_alert=True)
+        return
+    await callback_query.answer("Guruh keshini yangilash boshlandi...")
+    try:
+        client = await get_client(user_id, active_phone)
+        guruhlar = []
+        async for dialog in client.iter_dialogs():
+            if dialog.is_group:
+                guruhlar.append({
+                    "id": int(dialog.id),
+                    "name": str(dialog.name),
+                    "participants_count": 150
+                })
+        db_users[user_id]["cached_groups"] = guruhlar
+        save_db()
+        await callback_groups_list(callback_query)
+    except Exception as e:
+        await callback_query.message.answer(f"❌ Xatolik yuz berdi: {e}")
+
+@router.callback_query(F.data.startswith("groups_list_page_"))
+async def callback_groups_list(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    page = int(callback_query.data.split("_")[3])
+    guruhlar = user_data.get("cached_groups", [])
+    
+    if not guruhlar:
+        await callback_query.answer("⚠️ Kesh bo'sh, iltimos '+ Qo'shish (Yangilash)' tugmasini bosing!", show_alert=True)
+        return
+        
+    total_groups = len(guruhlar)
+    per_page = 14
+    start_idx = page * per_page
+    end_idx = start_idx + per_page
+    page_groups = guruhlar[start_idx:end_idx]
+    selected_ids = [int(x) for x in user_data.get("selected_groups", [])]
+    
+    buttons = []
+    row = []
+    for g in page_groups:
+        g_id = int(g["id"])
+        g_name = str(g["name"])
+        is_selected = g_id in selected_ids
+        icon = "✔" if is_selected else "➕"
+        btn_text = f"{icon} {g_name[:12]}"
+        row.append(InlineKeyboardButton(text=btn_text, callback_data=f"toggle_group_{g_id}_{page}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+        
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅ Oldingi", callback_data=f"groups_list_page_{page-1}"))
+    if end_idx < total_groups:
+        nav_buttons.append(InlineKeyboardButton(text="Keyingi ➡", callback_data=f"groups_list_page_{page+1}"))
+    if nav_buttons:
+        buttons.append(nav_buttons)
+        
+    buttons.append([
+        InlineKeyboardButton(text="✔ Hammasi", callback_data=f"select_all_groups_{page}"),
+        InlineKeyboardButton(text="❌ O'chirish", callback_data=f"deselect_all_groups_{page}")
+    ])
+    buttons.append([InlineKeyboardButton(text=f"💾 Saqlash ({len(selected_ids)} ta)", callback_data="save_groups_selection")])
+    
+    text = f"<b>Guruhlarni tanlang (Tanlangan: {len(selected_ids)} ta)</b>\nJami: <b>{total_groups} ta</b> guruh."
+    try:
+        await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+    except Exception:
+        await callback_query.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("toggle_group_"))
+async def callback_toggle_group(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    parts = callback_query.data.split("_")
+    group_id = int(parts[2])
+    page = int(parts[3])
+    
+    user_data = db_users.get(user_id)
+    selected_ids = [int(x) for x in user_data.get("selected_groups", [])]
+    
+    if group_id in selected_ids:
+        selected_ids.remove(group_id)
+    else:
+        selected_ids.append(group_id)
+        
+    db_users[user_id]["selected_groups"] = selected_ids
+    save_db()
+    await callback_groups_list(callback_query)
+
+@router.callback_query(F.data.startswith("select_all_groups_"))
+async def callback_select_all_groups(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    guruhlar = user_data.get("cached_groups", [])
+    selected_ids = [int(g["id"]) for g in guruhlar]
+    
+    db_users[user_id]["selected_groups"] = selected_ids
+    save_db()
+    await callback_groups_list(callback_query)
+
+@router.callback_query(F.data.startswith("deselect_all_groups_"))
+async def callback_deselect_all_groups(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["selected_groups"] = []
+    save_db()
+    await callback_groups_list(callback_query)
+
+@router.callback_query(F.data == "save_groups_selection")
+async def callback_save_groups(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    g_count = len(user_data.get("selected_groups", []))
+    await callback_query.answer(f"✓ {g_count} ta guruh saqlandi!", show_alert=True)
+    await menu_guruhlar(callback_query.message, state)
+
 # ================= 👤 PROFILLAR BO'LIMI (MULTI-ACCOUNT) =================
 
 # TUZATILDI: menu_profillar routerga StateFilter("*") ulandi, xotira holati tozalanishi faollashtirildi!
@@ -1728,7 +1885,7 @@ async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
 
 # ================= INTERVAL MENYUSI =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_interval"], LOCALIZATION["ru"]["btn_interval"], LOCALIZATION["en"]["btn_interval"]]))
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_interval"], LOCALIZATION["ru"]["btn_interval"], LOCALIZATION["en"]["btn_interval"]]), StateFilter("*"))
 async def menu_interval(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
