@@ -49,7 +49,7 @@ BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
-# Bot, Dispatcher va Routerlarni e'lon qilish (TUZATILDI: NameError butunlay yo'qotildi!)
+# Bot, Dispatcher va Routerlarni e'lon qilish
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
@@ -141,7 +141,6 @@ if FIREBASE_AVAILABLE:
 else:
     print("[Firebase] DIQQAT! Kutubxona o'rnatilmaganligi sababli Firebase tizimi o'chirildi.")
 
-
 # ================= SESSIONS & DATABASE PERSISTENCE =================
 
 def load_db():
@@ -200,7 +199,6 @@ def save_db():
         except Exception as e:
             logging.error(f"[Baza] Firestore'ga yozishda xatolik: {e}")
 
-# Mahalliy va bulutli ma'lumotlarni yuklash va foydalanuvchini tekshirishni e'lon qilish
 db_users = load_db()
 active_clients = {}
 
@@ -312,6 +310,27 @@ async def restore_sessions_from_cloud():
                     print(f"[Sessiya] Bulutdan muvaffaqiyatli tiklandi: user_{user_id}_{phone_clean}.session")
     except Exception as e:
         print(f"[Sessiya] Bulutdan qayta tiklashda xatolik: {e}")
+
+# ================= STATES FOR LOGIN & ACTIONS =================
+class LoginStates(StatesGroup):
+    waiting_phone = State()
+    waiting_code = State()
+    waiting_2fa = State()
+
+class TextStates(StatesGroup):
+    waiting_text = State()
+    waiting_photo = State()
+    waiting_buttons = State()
+    waiting_forward = State()
+    waiting_support_question = State()
+
+class AdminStates(StatesGroup):
+    waiting_search_id = State()
+    waiting_add_balans = State()
+    waiting_add_stars = State()
+    waiting_add_channel = State()
+    waiting_broadcast_msg = State()
+    waiting_admin_reply = State()
 
 # ================= MULTI-LANGUAGE LOCALIZATION SYSTEM =================
 LOCALIZATION = {
@@ -516,7 +535,7 @@ async def get_client(user_id, phone):
 
 # ================= BOT HANDLERS =================
 
-# TUZATILDI: start buyrug'i barcha holatlardan break out qilishi uchun StateFilter("*") ulandi (XATOLIK BUTUNLAY TUZATILDI!)
+# start buyrug'i barcha holatlardan break out qilishi uchun StateFilter("*") ulandi
 @router.message(Command("start"), StateFilter("*"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
@@ -841,7 +860,7 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
 
 # ================= ADMIN PANEL HANDLERS =================
 
-# TUZATILDI: Admin panel barcha holatlardan break out qilishi uchun StateFilter("*") ulandi!
+# Admin panel barcha holatlardan break out qilishi uchun StateFilter("*") ulandi!
 @router.message(F.text == "🛡️ Admin Panel", StateFilter("*"))
 async def cmd_admin(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
@@ -1834,546 +1853,42 @@ async def init_existing_sessions():
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
 
-# ================= OTHER ACTIONS & LOGIN WIZARD =================
+# ================= MAIN MAIN MOTORS =================
 
-@router.callback_query(F.data == "toggle_sending")
-async def callback_toggle_sending(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
+async def main():
+    global bot
+    print("==================================================")
+    print("🤖 AutoHabar Pro Telegram Bot ishga tushmoqda...")
+    print("==================================================")
+    print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
+    print(f"[Tizim] Admin ID: {ADMIN_ID}")
     
-    if not user_data.get("active_phone"):
-        await callback_query.answer("Avvalo profilingizni ulashingiz shart! 📱", show_alert=True)
-        return
-        
-    user_data["is_sending"] = not user_data.get("is_sending")
-    status_text = "ishga tushirildi! 🚀" if user_data["is_sending"] else "to'xtatildi! 🛑"
+    if db:
+        print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
+        await restore_sessions_from_cloud()
     
-    if user_data["is_sending"]:
-        user_data["next_run_timestamp"] = 0
-        user_data["is_sending_started_at"] = datetime.now().timestamp()
-    else:
-        user_data["is_sending_started_at"] = 0
-        
-    save_db()
-    await callback_query.answer(f"Avto-xabar tarqatish muvaffaqiyatli {status_text}", show_alert=True)
-    await menu_autohabar(callback_query.message, FSMContext(storage=MemoryStorage(), key=None))
+    bot = Bot(token=BOT_TOKEN)
     
-    if user_data["is_sending"]:
-        logging.info(f"[Sender] Foydalanuvchi {user_id} uchun reklama tarqatish darhol ishga tushirildi!")
-        asyncio.create_task(trigger_immediate_sending(user_id))
+    # Global majburiy obuna nazoratchisini dispatcherga ulash
+    dp.message.outer_middleware(MandatorySubMiddleware())
+    dp.callback_query.outer_middleware(MandatorySubMiddleware())
+    
+    asyncio.create_task(init_existing_sessions())
+    asyncio.create_task(auto_sender_worker())
+    logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
+    
+    asyncio.create_task(start_web_server())
+    
+    print("\n✅ BOT MUVAFFAQIYATLI ISHGA TUSHDI!")
+    print("💬 Endi Telegram ilovangizni oching va botingizga kiring.")
+    print("👉 Botingizga /start buyrug'ini yuboring.")
+    print("\n==================================================")
+    
+    await dp.start_polling(bot)
 
-async def trigger_immediate_sending(user_id):
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    if not user_data.get("is_sending"):
-        return
-    interval_minutes = user_data.get("interval", 15)
-    db_users[user_id]["next_run_timestamp"] = datetime.now().timestamp() + (interval_minutes * 60)
-    save_db()
-    await run_sending_cycle_for_user(user_id)
-
-@router.callback_query(F.data == "add_account")
-async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    
-    # Sadriddin, free / PRO cheklovlarini qat'iy tekshiramiz!
-    user_data = db_users.get(user_id)
-    accounts_list = user_data.get("accounts", [])
-    is_pro = user_data.get("is_pro", False)
-    limit = 5 if is_pro else 1
-    
-    if len(accounts_list) >= limit:
-        if not is_pro:
-            await callback_query.message.answer(
-                "⚠️ <b>Bepul tarif cheklovi!</b>\n\n"
-                "Free tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\n"
-                "Ko'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
-                parse_mode="HTML"
-            )
-        else:
-            await callback_query.message.answer(
-                "⚠️ <b>Maksimal profil cheklovi!</b>\n\n"
-                "PRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
-                parse_mode="HTML"
-            )
-        await callback_query.answer()
-        return
-
-    await callback_query.message.answer(
-        "📱 <b>Real Telegram akkaunt ulash</b>\n\n"
-        "Iltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
-        parse_mode="HTML"
-    )
-    await state.set_state(LoginStates.waiting_phone)
-    await callback_query.answer()
-
-@router.message(StateFilter(LoginStates.waiting_phone))
-async def state_phone_received(message: types.Message, state: FSMContext):
-    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
-    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    
-    if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
-        await message.answer(
-            "❌ <b>Noto'g'ri telefon raqam format kiritildi!</b>\n\n"
-            "Format: <code>+[davlat_kodi][raqam]</code>\n"
-            "<i>(Masalan: O'zbekiston: <code>+998901234567</code>, Rossiya: <code>+79001234567</code>, AQSh: <code>+12025550123</code>)</i>",
-            parse_mode="HTML"
-        )
-        return
-    
-    await state.update_data(phone=phone)
-    await message.answer("🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...")
-    
+if __name__ == "__main__":
     try:
-        client = await get_client(message.from_user.id, phone)
-        send_code_result = await client.send_code_request(phone)
-        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
-        await state.set_state(LoginStates.waiting_code)
-        
-        instructions = (
-            "💬 <b>Sms ulanish kodi yuborildi!</b>\n\n"
-            "⚠️ <b>MUHIM ESLATMA:</b>\n"
-            "Kodni albatta raqamlar orasiga <b>nuqta qo'yib</b> kiriting!\n"
-            "Format: <b>1.2.3.4.5</b>\n\n"
-            "Iltimos, Telegram ilovangizga kelgan 5 xonali kodni yozing:"
-        )
-        await message.answer(instructions, parse_mode="HTML")
-        
-    except Exception as e:
-        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
-        await state.clear()
-
-@router.message(StateFilter(LoginStates.waiting_code))
-async def state_code_received(message: types.Message, state: FSMContext):
-    code = message.text.strip().replace(".", "").replace(" ", "")
-    data = await state.get_data()
-    phone = data.get("phone")
-    phone_code_hash = data.get("phone_code_hash")
-    user_id = message.from_user.id
-    ensure_user(user_id)
-    
-    try:
-        client = await get_client(user_id, phone)
-        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
-        
-        me = await client.get_me()
-        
-        # Akkauntlar ro'yxatiga qo'shamiz
-        accounts_list = db_users[user_id].get("accounts", [])
-        if not any(acc["phone"] == phone for acc in accounts_list):
-            accounts_list.append({
-                "phone": phone,
-                "name": me.first_name,
-                "username": f"@{me.username}" if me.username else "@-"
-            })
-            db_users[user_id]["accounts"] = accounts_list
-            
-        db_users[user_id]["active_phone"] = phone
-        db_users[user_id]["active_name"] = me.first_name
-        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-        save_db()
-        
-        await backup_session_to_cloud(user_id, phone)
-        
-        await message.answer(
-            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
-            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
-            reply_markup=get_main_keyboard(user_id),
-            parse_mode="HTML"
-        )
-        await state.clear()
-        
-    except errors.PhoneCodeExpiredError:
-        await message.answer(
-            "❌ <b>Ulanish kodi muddati tugadi!</b>\n\n"
-            "Sessiya zanjiri buzilgan. Iltimos, qaytadan telefon raqamingizni kiritib ulaning.",
-            parse_mode="HTML"
-        )
-        await state.clear()
-        
-    except errors.PhoneCodeInvalidError:
-        await message.answer(
-            "❌ <b>Kiritilgan kod xato!</b>\n\n"
-            "Iltimos, kodni tekshirib qayta kiriting.",
-            parse_mode="HTML"
-        )
-        
-    except errors.SessionPasswordNeededError:
-        await state.set_state(LoginStates.waiting_2fa)
-        await message.answer(
-            "🛡️ <b>Akkauntingizda Ikki bosqichli himoya (2FA) aniqlandi!</b>\n\n"
-            "Iltimos, o'z shaxsiy 2-bosqichli parolingizni kiriting:",
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
-
-@router.message(StateFilter(LoginStates.waiting_2fa))
-async def state_2fa_received(message: types.Message, state: FSMContext):
-    password = message.text.strip()
-    user_id = message.from_user.id
-    ensure_user(user_id)
-    data = await state.get_data()
-    phone = data.get("phone")
-    
-    try:
-        client = await get_client(user_id, phone)
-        await client.sign_in(phone=phone, password=password)
-        me = await client.get_me()
-        
-        # Akkauntlar ro'yxatiga qo'shish
-        accounts_list = db_users[user_id].get("accounts", [])
-        if not any(acc["phone"] == phone for acc in accounts_list):
-            accounts_list.append({
-                "phone": phone,
-                "name": me.first_name,
-                "username": f"@{me.username}" if me.username else "@-"
-            })
-            db_users[user_id]["accounts"] = accounts_list
-            
-        db_users[user_id]["active_phone"] = phone
-        db_users[user_id]["active_name"] = me.first_name
-        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-        save_db()
-        
-        await backup_session_to_cloud(user_id, phone)
-        
-        await message.answer(
-            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
-            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
-            reply_markup=get_main_keyboard(user_id),
-            parse_mode="HTML"
-        )
-        await state.clear()
-    except errors.PasswordHashInvalidError:
-        await message.answer("❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.")
-    except Exception as e:
-        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
-
-@router.callback_query(F.data == "check_sub_status")
-async def callback_check_sub_status(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    
-    admin_data = db_users.get(ADMIN_ID, {})
-    channels = admin_data.get("channels", [])
-    
-    unsubscribed_channels = []
-    for channel in channels:
-        chat_id = channel if channel.startswith("@") else f"@{channel}"
-        try:
-            member = await callback_query.bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-            if member.status in ["left", "kicked"]:
-                unsubscribed_channels.append(channel)
-        except Exception:
-            unsubscribed_channels.append(channel)
-            
-    if unsubscribed_channels:
-        await callback_query.answer("⚠️ Diqqat! Barcha kanallarga a'zo bo'lishingiz shart!", show_alert=True)
-    else:
-        await callback_query.answer("🎉 Rahmat! Obuna to'liq tasdiqlandi. Bot faollashtirildi!", show_alert=True)
-        await callback_query.message.delete()
-        
-        text = (
-            "📊 <b>Asosiy menyu:</b>\n"
-            "<b>@Auto_Xabar_Yuborish_Bot</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "Assalomu alaykum, xush kelibsiz! 👋\n\n"
-            "› Botimizdan foydalanish uchun\n"
-            "› Akkaunt qo'shing\n"
-            "› Guruhlarni sozlang\n"
-            "› Habarni sozlang\n"
-            "› Autohabarni ishga tushuring\n\n"
-            "❓ Botdan qanday foydalanishni bilmasangiz, quyidagi <b>📖 Qo'llanma</b> tugmasini bosing!"
-        )
-        
-        user_data = db_users.get(user_id)
-        if user_data and not user_data.get("active_phone"):
-            inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="➕ Akkaunt qo'shish", callback_data="add_account")]
-            ])
-            await callback_query.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
-        else:
-            await callback_query.message.answer(text, parse_mode="HTML")
-            
-        await callback_query.message.answer(
-            "🎛️ <b>Asosiy boshqaruv menyusi faollashtirildi!</b>\n"
-            "Botdan to'liq foydalanish uchun pastdagi tugmalardan foydalaning 👇",
-            reply_markup=get_main_keyboard(user_id),
-            parse_mode="HTML"
-        )
-
-@router.callback_query(F.data == "refresh_status")
-async def callback_refresh_status(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    
-    phone = user_data.get("active_phone")
-    profilStatus = f"👤 Profil: [ {phone} ]" if phone else "👤 Profil: [ Profil ulanmagan ]"
-    holatStatus = "🟢 Faol (Yuborilmoqda...)" if user_data.get("is_sending") else "🔴 O'chiq"
-    
-    auto_off = user_data.get("auto_off_hours")
-    auto_off_text = "∞ Cheksiz" if auto_off is None else f"{auto_off} soat"
-    
-    responseText = (
-        "🤠 <b>Boshqaruv paneli (Yangilandi 🔄)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"{profilStatus}\n"
-        f"⚡ Holat: <b>{holatStatus}</b>\n"
-        f"✍️ Xabar turi: <b>Matn</b>\n"
-        f"💬 Guruhlar: <b>{len(user_data.get('selected_groups', [])) if user_data.get('groups_choice') == 'custom' else 'Barchasi'} ta</b>\n"
-        f"⏱️ Interval: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-o'chish: <b>{auto_off_text}</b>\n"
-        "📢 Mention: <b>O'chiq</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-    
-    start_stop_text = "🛑 To'xtatish" if user_data.get("is_sending") else "▶️ Ishga tushirish"
-    
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
-            InlineKeyboardButton(text="📊 Statistika", callback_data="statistika")
-        ],
-        [
-            InlineKeyboardButton(text="⏳ Avto-o'chirish taymeri", callback_data="timer_setup"),
-            InlineKeyboardButton(text="🔄 Yangilash", callback_data="refresh_status")
-        ]
-    ])
-    
-    try:
-        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
-        await callback_query.answer("🔄 Boshqaruv paneli muvaffaqiyatli yangilandi!")
-    except Exception:
-        await callback_query.answer("Boshqaruv paneli joriy holatda.")
-
-@router.callback_query(F.data == "statistika")
-async def callback_user_statistika(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    
-    selected_g_count = len(user_data.get("selected_groups", []))
-    choice = user_data.get("groups_choice", "custom")
-    g_text = f"Tanlangan ({selected_g_count} ta)" if choice == "custom" else "Barcha a'zo bo'lingan guruhlar"
-    
-    status_text = "🟢 Faol tarqatilmoqda" if user_data.get("is_sending") else "🔴 To'xtatilgan"
-    
-    stat_text = (
-        "📊 <b>Sizning shaxsiy statistikangiz</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 Akkaunt: <b>{user_data.get('active_phone', 'Ulanmagan ❌')}</b>\n"
-        f"🟢 Bugun yuborildi: <b>{user_data.get('today_sent', 0)} ta xabar</b>\n"
-        f"🔄 Jami yuborildi: <b>{user_data.get('total_sent', 0)} ta xabar</b>\n"
-        f"💬 Maqsadli guruhlar: <b>{g_text}</b>\n"
-        f"⏱️ Joriy kutish intervali: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-yuborish holati: <b>{status_text}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-    
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Yangilash", callback_data="statistika")],
-        [InlineKeyboardButton(text="⬅️ Boshqaruv Paneliga Qaytish", callback_data="back_to_panel")]
-    ])
-    
-    try:
-        await callback_query.message.edit_text(stat_text, reply_markup=inline_kb, parse_mode="HTML")
-    except Exception:
-        await callback_query.message.answer(stat_text, reply_markup=inline_kb, parse_mode="HTML")
-    await callback_query.answer()
-
-@router.callback_query(F.data == "timer_setup")
-async def callback_timer_setup(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    await show_timer_settings(callback_query.message, user_id)
-    await callback_query.answer()
-
-@router.callback_query(F.data.startswith("set_timer_"))
-async def callback_set_timer(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    
-    timer_val = callback_query.data.split("_")[2]
-    if timer_val == "inf":
-        db_users[user_id]["auto_off_hours"] = None
-        alert_text = "✓ Avto-o'chirish muddati Cheksiz qilib belgilandi!"
-    else:
-        hours = int(timer_val)
-        db_users[user_id]["auto_off_hours"] = hours
-        alert_text = f"✓ Avto-o'chirish muddati {hours} soat qilib belgilandi!"
-        
-    save_db()
-    await callback_query.answer(alert_text, show_alert=True)
-    await show_timer_settings(callback_query.message, user_id)
-
-async def show_timer_settings(message: types.Message, user_id: int):
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    current_timer = user_data.get("auto_off_hours")  # None yoki int
-    
-    def get_btn_text(hours, label):
-        if current_timer == hours:
-            return f"✓ {label}"
-        return label
-        
-    kb = [
-        [
-            InlineKeyboardButton(text=get_btn_text(1, "1 soat"), callback_data="set_timer_1"),
-            InlineKeyboardButton(text=get_btn_text(2, "2 soat"), callback_data="set_timer_2"),
-            InlineKeyboardButton(text=get_btn_text(3, "3 soat"), callback_data="set_timer_3")
-        ],
-        [
-            InlineKeyboardButton(text=get_btn_text(6, "6 soat"), callback_data="set_timer_6"),
-            InlineKeyboardButton(text=get_btn_text(12, "12 soat"), callback_data="set_timer_12"),
-            InlineKeyboardButton(text=get_btn_text(24, "24 soat"), callback_data="set_timer_24")
-        ],
-        [
-            InlineKeyboardButton(text=get_btn_text(48, "48 soat"), callback_data="set_timer_48"),
-            InlineKeyboardButton(text=get_btn_text(72, "72 soat"), callback_data="set_timer_72"),
-            InlineKeyboardButton(text=get_btn_text(None, "Cheksiz"), callback_data="set_timer_inf")
-        ],
-        [
-            InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_panel")
-        ]
-    ]
-    
-    timer_text = "Cheksiz ∞" if current_timer is None else f"{current_timer} soat"
-    
-    text = (
-        "⏱️ <b>Avto-o'chirish taymerini sozlash</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Joriy o'chish vaqti: <b>{timer_text}</b>\n\n"
-        "Ushbu taymer reklama tarqatish ishga tushganidan so'ng, "
-        "belgilangan muddat o'tgach avtomatik ravishda to'xtatish imkonini beradi. "
-        "Bu guruhlar orasida ko'p reklama tarqatib, spamga tushib qolmaslikka yordam beradi."
-    )
-    
-    try:
-        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
-    except Exception:
-        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
-
-# ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
-
-async def send_reklama_message(client, chat_id, user_data, user_id):
-    if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
-        try:
-            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
-        except Exception as e:
-            logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
-            await client.send_message(chat_id, user_data.get("reklama_matni", ""))
-    else:
-        text = user_data.get("reklama_matni", "")
-        text += "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi"
-            
-        photo_path = user_data.get("reklama_rasm") 
-        buttons_data = user_data.get("inline_buttons", [])
-        
-        telethon_buttons = None
-        if buttons_data:
-            telethon_buttons = []
-            for btn in buttons_data:
-                try:
-                    telethon_buttons.append(Button.url(btn["text"], btn["url"]))
-                except Exception:
-                    continue
-                    
-        if photo_path and os.path.exists(photo_path):
-            try:
-                await client.send_message(chat_id, text, file=photo_path, buttons=telethon_buttons)
-            except Exception as e:
-                logging.warning(f"Rasm bilan yuborishda muammo: {e}. Faqat matn ko'rinishida yuborilmoqda.")
-                await client.send_message(chat_id, text, buttons=telethon_buttons)
-        else:
-            await client.send_message(chat_id, text, buttons=telethon_buttons)
-
-async def auto_sender_worker():
-    while True:
-        current_time = datetime.now().timestamp()
-        
-        for user_id, user_data in list(db_users.items()):
-            if user_data.get("is_sending") and user_data.get("active_phone"):
-                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
-                started_at = user_data.get("is_sending_started_at", 0)
-                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
-                
-                if auto_off_hours and started_at:
-                    elapsed_hours = (current_time - started_at) / 3600.0
-                    if elapsed_hours >= auto_off_hours:
-                        db_users[user_id]["is_sending"] = False
-                        db_users[user_id]["is_sending_started_at"] = 0
-                        save_db()
-                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
-                        try:
-                            await bot.send_message(
-                                user_id, 
-                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
-                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
-                                parse_mode="HTML"
-                            )
-                        except Exception:
-                            pass
-                        continue
-                # =====================================================================
-
-                next_run = user_data.get("next_run_timestamp", 0)
-                if current_time >= next_run:
-                    interval_minutes = user_data.get("interval", 15)
-                    db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
-                    save_db()
-                    
-                    asyncio.create_task(run_sending_cycle_for_user(user_id))
-                        
-        await asyncio.sleep(10)
-
-async def run_sending_cycle_for_user(user_id):
-    user_data = db_users.get(user_id)
-    if not user_data or not user_data.get("is_sending"):
-        return
-        
-    try:
-        active_phone = user_data.get("active_phone")
-        if not active_phone:
-            return
-            
-        client = await get_client(user_id, active_phone)
-        if await client.is_user_authorized():
-            guruhlar = []
-            choice = user_data.get("groups_choice", "custom")
-            
-            if choice == "custom":
-                guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
-            else:
-                async for dialog in client.iter_dialogs():
-                    if dialog.is_group:
-                        guruhlar.append(int(dialog.id))
-            
-            if not guruhlar:
-                logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
-                return
-                
-            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
-            
-            for g_id in guruhlar:
-                if not db_users.get(user_id, {}).get("is_sending"):
-                    break
-                    
-                try:
-                    await send_reklama_message(client, g_id, user_data, user_id)
-                    user_data["today_sent"] = user_data.get("today_sent", 0) + 1
-                    user_data["total_sent"] = user_data.get("total_sent", 0) + 1
-                    save_db()
-                    logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
-                    await asyncio.sleep(15)
-                except errors.FloodWaitError as e:
-                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
-                    await asyncio.sleep(e.seconds)
-                except Exception as e:
-                    continue
-                    
-    except Exception as e:
-        logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[👋] Avtomatlashtirish jarayoni foydalanuvchi tomonidan to'xtatildi.")
+        sys.exit()
