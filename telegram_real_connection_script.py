@@ -1698,7 +1698,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
         "Free tarifda faqat 1 ta profil qo'shish mumkin.\n"
         "<b>👑 PRO tarifda 5 tagacha profil qo'shishingiz va boshqarishingiz mumkin!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Quyidagi ro'yxatdan faollashtirish yoki o'chirish untuk profilni tanlang:"
+        "Quyidagi ro'yxatdan faollashtirish yoki o'chirish uchun profilni tanlang:"
     )
     
     buttons = []
@@ -2131,188 +2131,6 @@ async def run_sending_cycle_for_user(user_id):
     except Exception as e:
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
 
-# ================= OTHER ACTIONS & LOGIN WIZARD =================
-
-@router.callback_query(F.data == "add_account")
-async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    
-    # Sadriddin, free / PRO cheklovlarini qat'iy tekshiramiz!
-    user_data = db_users.get(user_id)
-    accounts_list = user_data.get("accounts", [])
-    is_pro = user_data.get("is_pro", False)
-    limit = 5 if is_pro else 1
-    
-    if len(accounts_list) >= limit:
-        if not is_pro:
-            await callback_query.message.answer(
-                "⚠️ <b>Bepul tarif cheklovi!</b>\n\n"
-                "Free tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\n"
-                "Ko'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
-                parse_mode="HTML"
-            )
-        else:
-            await callback_query.message.answer(
-                "⚠️ <b>Maksimal profil cheklovi!</b>\n\n"
-                "PRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
-                parse_mode="HTML"
-            )
-        await callback_query.answer()
-        return
-
-    await callback_query.message.answer(
-        "📱 <b>Real Telegram akkaunt ulash</b>\n\n"
-        "Iltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
-        parse_mode="HTML"
-    )
-    await state.set_state(LoginStates.waiting_phone)
-    await callback_query.answer()
-
-@router.message(StateFilter(LoginStates.waiting_phone))
-async def state_phone_received(message: types.Message, state: FSMContext):
-    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
-    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    
-    if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
-        await message.answer(
-            "❌ <b>Noto'g'ri telefon raqam format kiritildi!</b>\n\n"
-            "Format: <code>+[davlat_kodi][raqam]</code>\n"
-            "<i>(Masalan: O'zbekiston: <code>+998901234567</code>, Rossiya: <code>+79001234567</code>, AQSh: <code>+12025550123</code>)</i>",
-            parse_mode="HTML"
-        )
-        return
-    
-    await state.update_data(phone=phone)
-    await message.answer("🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...")
-    
-    try:
-        client = await get_client(message.from_user.id, phone)
-        send_code_result = await client.send_code_request(phone)
-        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
-        await state.set_state(LoginStates.waiting_code)
-        
-        instructions = (
-            "💬 <b>Sms ulanish kodi yuborildi!</b>\n\n"
-            "⚠️ <b>MUHIM ESLATMA:</b>\n"
-            "Kodni albatta raqamlar orasiga <b>nuqta qo'yib</b> kiriting!\n"
-            "Format: <b>1.2.3.4.5</b>\n\n"
-            "Iltimos, Telegram ilovangizga kelgan 5 xonali kodni yozing:"
-        )
-        await message.answer(instructions, parse_mode="HTML")
-        
-    except Exception as e:
-        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
-        await state.clear()
-
-@router.message(StateFilter(LoginStates.waiting_code))
-async def state_code_received(message: types.Message, state: FSMContext):
-    code = message.text.strip().replace(".", "").replace(" ", "")
-    data = await state.get_data()
-    phone = data.get("phone")
-    phone_code_hash = data.get("phone_code_hash")
-    user_id = message.from_user.id
-    ensure_user(user_id)
-    
-    try:
-        client = await get_client(user_id, phone)
-        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
-        
-        me = await client.get_me()
-        
-        # Akkauntlar ro'yxatiga qo'shamiz
-        accounts_list = db_users[user_id].get("accounts", [])
-        if not any(acc["phone"] == phone for acc in accounts_list):
-            accounts_list.append({
-                "phone": phone,
-                "name": me.first_name,
-                "username": f"@{me.username}" if me.username else "@-"
-            })
-            db_users[user_id]["accounts"] = accounts_list
-            
-        db_users[user_id]["active_phone"] = phone
-        db_users[user_id]["active_name"] = me.first_name
-        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-        save_db()
-        
-        await backup_session_to_cloud(user_id, phone)
-        
-        await message.answer(
-            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
-            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
-            reply_markup=get_main_keyboard(user_id),
-            parse_mode="HTML"
-        )
-        await state.clear()
-        
-    except errors.PhoneCodeExpiredError:
-        await message.answer(
-            "❌ <b>Ulanish kodi muddati tugadi!</b>\n\n"
-            "Sessiya zanjiri buzilgan. Iltimos, qaytadan telefon raqamingizni kiritib ulaning.",
-            parse_mode="HTML"
-        )
-        await state.clear()
-        
-    except errors.PhoneCodeInvalidError:
-        await message.answer(
-            "❌ <b>Kiritilgan kod xato!</b>\n\n"
-            "Iltimos, kodni tekshirib qayta kiriting.",
-            parse_mode="HTML"
-        )
-        
-    except errors.SessionPasswordNeededError:
-        await state.set_state(LoginStates.waiting_2fa)
-        await message.answer(
-            "🛡️ <b>Akkauntingizda Ikki bosqichli himoya (2FA) aniqlandi!</b>\n\n"
-            "Iltimos, o'z shaxsiy 2-bosqichli parolingizni kiriting:",
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
-
-@router.message(StateFilter(LoginStates.waiting_2fa))
-async def state_2fa_received(message: types.Message, state: FSMContext):
-    password = message.text.strip()
-    user_id = message.from_user.id
-    ensure_user(user_id)
-    data = await state.get_data()
-    phone = data.get("phone")
-    
-    try:
-        client = await get_client(user_id, phone)
-        await client.sign_in(phone=phone, password=password)
-        me = await client.get_me()
-        
-        # Akkauntlar ro'yxatiga qo'shish
-        accounts_list = db_users[user_id].get("accounts", [])
-        if not any(acc["phone"] == phone for acc in accounts_list):
-            accounts_list.append({
-                "phone": phone,
-                "name": me.first_name,
-                "username": f"@{me.username}" if me.username else "@-"
-            })
-            db_users[user_id]["accounts"] = accounts_list
-            
-        db_users[user_id]["active_phone"] = phone
-        db_users[user_id]["active_name"] = me.first_name
-        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
-        save_db()
-        
-        await backup_session_to_cloud(user_id, phone)
-        
-        await message.answer(
-            "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\n"
-            "Endi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
-            reply_markup=get_main_keyboard(user_id),
-            parse_mode="HTML"
-        )
-        await state.clear()
-    except errors.PasswordHashInvalidError:
-        await message.answer("❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.")
-    except Exception as e:
-        await message.answer(f"❌ Ulanishda xatolik yuz berdi: {str(e)}")
-
-
 # ================= MAIN MAIN MOTORS =================
 
 async def main():
@@ -2344,7 +2162,23 @@ async def main():
     print("👉 Botingizga /start buyrug'ini yuboring.")
     print("\n==================================================")
     
-    await dp.start_polling(bot)
+    # Tarmoq uzilishlari uchun auto-retry polling (TUZATILDI!)
+    max_retries = 10
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"Telegram tarmoqlariga ulanishga urinish {attempt}/{max_retries}...")
+            await dp.start_polling(bot)
+            break
+        except aiogram.exceptions.TelegramNetworkError as e:
+            logging.error(f"Tarmoq xatosi (Ulanish uzildi): {e}")
+            if attempt == max_retries:
+                raise e
+            wait_time = attempt * 5
+            logging.info(f"{wait_time} soniyadan so'ng qayta urinib ko'riladi...")
+            await asyncio.sleep(wait_time)
+        except Exception as e:
+            logging.error(f"Kutilmagan xatolik yuz berdi: {e}")
+            raise e
 
 if __name__ == "__main__":
     try:
