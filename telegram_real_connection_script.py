@@ -15,7 +15,7 @@ import json
 import base64
 from datetime import datetime
 
-# Loggerlarni sozlash
+# Loggerlarni sozlash (Render loglarini kuzatish uchun)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -43,7 +43,8 @@ except ImportError:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
+# SADRIDDIN: Yangi va toza token integratsiya qilindi (Manybot qoldiqlari o'chadi!)
+BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"
 
@@ -77,7 +78,7 @@ DEFAULT_DB = {
         "joined_time": datetime.now().strftime("%H:%M"),
         "today_sent": 0,
         "total_sent": 0,
-        "channels": [],
+        "channels": [],  # Boshlang'ich kanallar mutlaqo ochiq (bo'sh)
         "auto_off_hours": None,
         "is_sending_started_at": 0,
         "referrals_count": 0,
@@ -125,7 +126,7 @@ def load_db():
                 data = doc.to_dict()
                 parsed_data = {int(k): v for k, v in data.items()}
                 
-                # SADRIDDIN: Eski keraksiz kanallarni bulutdan avtomatik 100% tozalash
+                # SADRIDDIN: Eski keraksiz kanallarni bulutdan ham avtomatik tozalaymiz
                 for u_id in parsed_data:
                     if "channels" in parsed_data[u_id]:
                         parsed_data[u_id]["channels"] = [
@@ -250,7 +251,7 @@ LOCALIZATION = {
         "btn_cabinet": "👤 Кабинет", "btn_settings": "⚙️ Настройки",
         "btn_support": "❓ Вопрос и Помощь", "btn_add_acc": "➕ Добавить аккаунт",
         "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Тип: <b>{turi}</b>\n💬 Группы: <b>{guruhlar}</b>\n⏱️ Интервал: <b>{interval}</b>\n⏳ Таймер: <b>{avto_ochish}</b>\n━━━━━━━━━━━━━━━━━━━━",
-        "deposit_title": "💰 <b>Пополнение баланса</b>\n━━━━━━━━━━━━━━━━━━━━\nTelegram ID: <code>{user_id}</code>\nБаланс: <b>{balans} сум</b>\n\nДля оплаты напишите администратору:\n👉 <b>@AbduIIayev_7</b>",
+        "deposit_title": "💰 <b>Пополнение баланса</b>\n━━━━━━━━━━━━━━━━━━━━\nВаш Telegram ID: <code>{user_id}</code>\nБаланс: <b>{balans} сум</b>\n\nДля оплаты напишите администратору:\n👉 <b>@AbduIIayev_7</b>",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\nИмя: <b>{name}</b>\n💰 Баланс: <b>{balans} сум</b>\n✔️ Отправлено сегодня: <b>{today_sent}</b>\n🔄 Всего: <b>{total_sent}</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "profile_title": "👥 <b>Управление Профилями</b>\n━━━━━━━━━━━━━━━━━━━━\nАктивный профиль: <b>{active}</b>"
     },
@@ -262,7 +263,7 @@ LOCALIZATION = {
         "btn_cabinet": "👤 Cabinet", "btn_settings": "⚙️ Settings",
         "btn_support": "❓ Support & Help", "btn_add_acc": "➕ Add Account",
         "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Type: <b>{turi}</b>\n💬 Groups: <b>{guruhlar}</b>\n⏱️ Interval: <b>{interval}</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n━━━━━━━━━━━━━━━━━━━━",
-        "deposit_title": "💰 <b>Balance Recharge</b>\n━━━━━━━━━━━━━━━━━━━━\nTelegram ID: <code>{user_id}</code>\nBalance: <b>{balans} UZS</b>\n\nContact admin to pay:\n👉 <b>@AbduIIayev_7</b>",
+        "deposit_title": "💰 <b>Balance Recharge</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nBalance: <b>{balans} UZS</b>\n\nContact admin to pay:\n👉 <b>@AbduIIayev_7</b>",
         "cabinet_title": "👤 <b>Your Cabinet</b>\n\nName: <b>{name}</b>\n💰 Balance: <b>{balans} UZS</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total: <b>{total_sent}</b>\n🔗 Link: <code>{ref_link}</code>",
         "profile_title": "👥 <b>Manage Profiles</b>\n━━━━━━━━━━━━━━━━━━━━\nActive profile: <b>{active}</b>"
     }
@@ -348,7 +349,9 @@ class MandatorySubMiddleware(BaseMiddleware):
                 member = await event.bot.get_chat_member(chat_id=chat_id, user_id=user_id)
                 if member.status in ["left", "kicked"]:
                     unsubscribed.append(chan)
-            except Exception:
+            except Exception as e:
+                logging.error(f"[Xavfsizlik] {channel} obunasini tekshirishda xato: {e}")
+                # Agar bot kanalda admin bo'lmasa, uni obunadan chiqmagan deb hisoblaymiz (TUZATILDI!)
                 pass
 
         if unsubscribed:
@@ -962,6 +965,21 @@ async def callback_delete_acc(callback_query: types.CallbackQuery, state: FSMCon
             db_users[user_id]["active_name"] = cleaned[0]["name"]
             db_users[user_id]["active_username"] = cleaned[0]["username"]
     save_db()
+    
+    # Sessiyani uzish drayveri (TUZATILDI - TO'LIQ QO'SHILDI!)
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception: pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try: os.remove(session_file)
+        except Exception: pass
+        
     await callback_query.answer("⚠️ O'chirildi!")
     await show_profillar_settings(callback_query.message, user_id)
 
@@ -986,11 +1004,13 @@ async def callback_check_sub(callback_query: types.CallbackQuery, state: FSMCont
 
 # ================= WEB SERVER =================
 async def handle_ping(request):
-    return web.Response(text="Smoothly!")
+    return web.Response(text="Bot is running smoothly!")
 
 async def start_web_server():
     app = web.Application()
     app.router.add_get('/', handle_ping)
+    app.router.add_get('/ping', handle_ping)
+    
     port = int(os.environ.get("PORT", 10000))
     runner = web.AppRunner(app)
     await runner.setup()
@@ -1012,13 +1032,19 @@ async def auto_sender_worker():
                         db_users[user_id]["is_sending_started_at"] = 0
                         save_db()
                         try:
-                            await bot.send_message(user_id, f"⏱️ Avto-o'chirish muddati tugadi va tarqatish to'xtatildi! 🛑")
+                            await bot.send_message(
+                                user_id, 
+                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                                f"Belgilangan vaqt tugashi sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                                parse_mode="HTML"
+                            )
                         except Exception: pass
                         continue
                 
                 next_run = user_data.get("next_run_timestamp", 0)
                 if current_time >= next_run:
-                    db_users[user_id]["next_run_timestamp"] = current_time + (user_data.get("interval", 15) * 60)
+                    interval_minutes = user_data.get("interval", 15)
+                    db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
                     save_db()
                     asyncio.create_task(run_sending_cycle_for_user(user_id))
         await asyncio.sleep(10)
@@ -1077,14 +1103,10 @@ async def main():
     if db:
         await restore_sessions_from_cloud()
     
-    dp.message.outer_middleware(MandatorySubMiddleware())
-    dp.callback_query.outer_middleware(MandatorySubMiddleware())
-    
     asyncio.create_task(init_existing_sessions())
     asyncio.create_task(auto_sender_worker())
     asyncio.create_task(start_web_server())
     
-    # Tarmoq ulanishi
     await dp.start_polling(bot)
 
 async def init_existing_sessions():
