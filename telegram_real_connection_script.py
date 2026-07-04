@@ -335,6 +335,65 @@ class AdminStates(StatesGroup):
     waiting_broadcast_msg = State()
     waiting_admin_reply = State()
 
+# ================= KEYBOARD MARKUPS GENERATORS (TUZATILDI) =================
+
+def get_interval_keyboard(current_interval):
+    def check(val, text):
+        return f"✓ {text}" if current_interval == val else text
+
+    kb = [
+        [
+            InlineKeyboardButton(text=check(2, "2daq"), callback_data="set_int_2"),
+            InlineKeyboardButton(text=check(3, "3daq"), callback_data="set_int_3"),
+            InlineKeyboardButton(text=check(4, "4daq"), callback_data="set_int_4"),
+            InlineKeyboardButton(text=check(5, "5daq"), callback_data="set_int_5"),
+            InlineKeyboardButton(text=check(6, "6daq"), callback_data="set_int_6")
+        ],
+        [
+            InlineKeyboardButton(text=check(7, "7daq"), callback_data="set_int_7"),
+            InlineKeyboardButton(text=check(8, "8daq"), callback_data="set_int_8"),
+            InlineKeyboardButton(text=check(9, "9daq"), callback_data="set_int_9"),
+            InlineKeyboardButton(text=check(10, "10daq"), callback_data="set_int_10"),
+            InlineKeyboardButton(text=check(11, "11daq"), callback_data="set_int_11")
+        ],
+        [
+            InlineKeyboardButton(text=check(12, "12daq"), callback_data="set_int_12"),
+            InlineKeyboardButton(text=check(13, "13daq"), callback_data="set_int_13"),
+            InlineKeyboardButton(text=check(14, "14daq"), callback_data="set_int_14"),
+            InlineKeyboardButton(text=check(15, "15daq"), callback_data="set_int_15")
+        ],
+        [
+            InlineKeyboardButton(text=check(30, "30daq"), callback_data="set_int_30"),
+            InlineKeyboardButton(text=check(60, "1 soat"), callback_data="set_int_60"),
+            InlineKeyboardButton(text=check(90, "1.5 soat"), callback_data="set_int_90"),
+            InlineKeyboardButton(text=check(120, "2 soat"), callback_data="set_int_120"),
+            InlineKeyboardButton(text=check(180, "3 soat"), callback_data="set_int_180")
+        ],
+        [
+            InlineKeyboardButton(text="⁉️ Interval nima", callback_data="explain_interval")
+        ],
+        [
+            InlineKeyboardButton(text="✍️ Qo'lda kiritish", callback_data="custom_interval")
+        ],
+        [
+            InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def get_admin_main_markup():
+    kb = [
+        [
+            InlineKeyboardButton(text="📊 Statistika", callback_data="adm_stats"),
+            InlineKeyboardButton(text="Foydalanuvchini tahrirlash 👤", callback_data="adm_search_user")
+        ],
+        [
+            InlineKeyboardButton(text="📢 Majburiy obuna kanallari", callback_data="adm_mandatory_sub"),
+            InlineKeyboardButton(text="✉️ Ommaviy reklama yuborish", callback_data="adm_broadcast_prompt")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
 # ================= MULTI-LANGUAGE LOCALIZATION SYSTEM =================
 LOCALIZATION = {
     "uz": {
@@ -351,7 +410,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Iltimos, o'zingizga qulay bo'lgan tilni tanlang:\n\n🌐 Пожалуйста, выберите удобный для вас язык:\n\n🌐 Please select your preferred language:",
         "support_prompt": "✍️ <b>Savol yuborish bo'limi</b>\n\nIltimos, o'z savolingizni yoki murojaatingizni batafsil yozib yuboring. Tizim administratori tez fursatda sizga bot orqali javob yo'llaydi!",
         "support_sent": "✅ Savolingiz administratorga muvaffaqiyatli yetkazildi! Tez fursatda javob yo'llaymiz.",
-        "settings_title": "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>Eng yuqori darajada (Maksimal) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:",
+        "settings_title": "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:",
         "guide_text": "📖 <b>AutoHabar Pro - Foydalanish Bo'yicha Batafsil Qo'llanma</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Akkaunt ulash:</b>\n• Profil bo'limidan akkaunt qo'shish tugmasini bosing va telefon raqamingizni xalqaro formatda kiriting.\n• SMS kod kelganda raqamlar orasiga albatta <b>nuqta qo'yib</b> kiriting (Format: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Guruhlarni sozlash:</b>\n• Guruhlarni sozlash bo'limiga kirib, xabar yuboriladigan guruhlarni belgilang va saqlang.\n\n3️⃣ <b>Interval va Taymer:</b>\n• Guruhlar orasidagi kutish vaqtini (Interval) va bot avtomatik o'chadigan taymer muddatini belgilang.\n\n4️⃣ <b>Tugatish:</b>\n• Autohabar yuborish bo'limidan <b>▶️ Ishga tushirish</b> tugmasini bosing!",
         "cabinet_title": "👤 <b>Sizning Kabinetingiz</b>\n\n👥 Ism: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balans: <b>{balans} so'm</b>\n\n📊 <b>Statistika:</b>\n✔️ Bugun yuborildi: <b>{today_sent}</b>\n🔄 Jami yuborilgan: <b>{total_sent}</b>\n👥 Ulangan akkauntlar: <b>{acc_count} / 5 ta</b>\n👥 Taklif qilingan a'zolar: <b>{referrals} / 6 ta</b>\n🔗 Havola: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Tilni o'zgartirish",
@@ -361,7 +420,41 @@ LOCALIZATION = {
         "profile_title": "👥 <b>Ulangan Akkauntlarni Boshqarish</b>\n━━━━━━━━━━━━━━━━━━━━\nJoriy faol ulanish: <b>{active}</b>\n\nFree tarifda faqat 1 ta profil qo'shish mumkin.\n👑 PRO tarifda 5 tagacha profil qo'shishingiz va boshqarishingiz mumkin!\n━━━━━━━━━━━━━━━━━━━━\nQuyidagi ro'yxatdan faollashtirish yoki o'chirish uchun profilni tanlang:",
         "msg_setup": "💬 <b>Habarni sozlash</b>\n\n📝 <b>Joriy matn:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Biriktirilgan rasm:</b> <b>{rasm}</b>\n🔘 <b>Inline tugmalar:</b> <b>{tugmalar}</b>\n📤 <b>Forward Rejim status:</b> <b>{status}</b>\n\n📌 <b>Xabar turini tanlang:</b>",
         "groups_setup": "🎯 <b>Guruhlarni sozlash</b>\n\nQaysi guruhlarga xabar yuboramiz?\nJoriy tanlov: <b>{tanlov}</b>\n\nGuruhlar ro'yxatini yuklash va sozlash uchun pastdagi tugmalardan foydalaning:",
-        "pro_info": "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n📤 <b>Forward xabarlarni tarqatish:</b>\n<i>Kanal postlarini barcha guruhlarga forward qilib uzatadi. Bu esa kanalingiz ko'rishlar sonini (views) jadal oshirishga yordam beradi!</i>\n\n👤 <b>Ko'p profil ulanishi:</b>\n• Botga 5 tagacha turli profil qo'shish imkoniyati\n\n🔘 <b>Tugmali inline xabarlar:</b>\n• Reklamalar tagiga havolali tugmalar biriktirish\n\n❌ <b>Watermarksiz toza interfeys:</b>\n• Xabar tagidagi reklama so'zlarini butunlay olib tashlash\n\n💰 <b>Narxi:</b>\n• <b>10,000 so'm</b> (Kabinetingizdagi pul hisobidan)\n• Yoki <b>6 ta yangi do'stlarni</b> taklif qilish (Mutlaqo bepul!)\n\n🔗 <b>Sizning shaxsiy taklif havolangiz:</b>\n<code>{ref_link}</code>"
+        "pro_info": "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n📤 <b>Forward xabarlarni tarqatish:</b>\n<i>Kanal postlarini barcha guruhlarga forward qilib uzatadi. Bu esa kanalingiz ko'rishlar sonini (views) jadal oshirishga yordam beradi!</i>\n\n👤 <b>Ko'p profil ulanishi:</b>\n• Botga 5 tagacha turli profil qo'shish imkoniyati\n\n🔘 <b>Tugmali inline xabarlar:</b>\n• Reklamalar tagiga havolali tugmalar biriktirish\n\n❌ <b>Watermarksiz toza interfeys:</b>\n• Xabar tagidagi reklama so'zlarini butunlay olib tashlash\n\n💰 <b>Narxi:</b>\n• <b>10,000 so'm</b> (Kabinetingizdagi pul hisobidan)\n• Yoki <b>6 ta yangi do'stlarni</b> taklif qilish (Mutlaqo bepul!)\n\n🔗 <b>Sizning shaxsiy taklif havolangiz:</b>\n<code>{ref_link}</code>",
+        "already_pro": "👑 Sizda allaqachon PRO tarif faollashtirilgan!",
+        "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
+        "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qilib, bepul PRO oling!",
+        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik mavjud emas!",
+        "disconnected_success": "⚠️ Faol profil muvaffaqiyatli uzildi!",
+        "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
+        "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
+        "enter_phone": "📱 <b>Real Telegram akkaunt ulash</b>\n\nIltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
+        "invalid_phone": "❌ <b>Format xato kiritildi!</b>\n\nFormat: <code>+[davlat_kodi][raqam]</code>\n<i>(Masalan: +998901234567, +79001234567, +12025550123)</i>",
+        "connecting_tg": "🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...",
+        "sms_sent": "💬 <b>Sms ulanish kodi yuborildi!</b>\n\n⚠️ <b>MUHIM ESLATMA:</b>\nKodni albatta raqamlar orasiga <b>nuqta qo'yib</b> kiriting!\nFormat: <b>1.2.3.4.5</b>\n\nIltimos, Telegram ilovangizga kelgan 5 xonali kodni yozing:",
+        "conn_error": "❌ Ulanishda xatolik yuz berdi: {error}",
+        "acc_bound": "<b>Tabriklaymiz! Akkauntingiz muvaffaqiyatli bog'landi va bulutga xavfsiz zaxiralandi.</b>\n\nEndi autohabar bo'limiga o'tib, botni faollashtirishingiz mumkin!",
+        "sms_expired": "❌ <b>Ulanish kodi muddati tugadi!</b>\n\nSessiya zanjiri buzilgan. Iltimos, qaytadan telefon raqamingizni kiritib ulaning.",
+        "sms_invalid": "❌ <b>Kiritilgan kod xato!</b>\n\nIltimos, kodni tekshirib qayta kiriting.",
+        "two_fa_required": "🛡️ <b>Akkauntingizda Ikki bosqichli himoya (2FA) aniqlandi!</b>\n\nIltimos, o'z shaxsiy 2-bosqichli parolingizni kiriting:",
+        "two_fa_invalid": "❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.",
+        "custom_interval_prompt": "✍️ <b>Xabar yuborish oralig'ini (Intervalni) daqiqalarda kiriting (masalan: 20):</b>",
+        "min_interval_error": "❌ Minimal interval vaqti - 1 daqiqa!",
+        "interval_set_success": "✅ <b>Interval {val} daqiqaga sozlandi!</b>",
+        "invalid_integer": "❌ Iltimos, faqat butun son kiriting (masalan: 25):",
+        "groups_all_selected": "✓ Hamma guruhlar tanlandi!",
+        "groups_custom_selected": "✓ Qo'lda tanlash rejimi faollashdi!",
+        "groups_cleared": "🚨 Tanlangan barcha guruhlar tozalandi!",
+        "groups_refreshing": "Guruh keshini yangilash boshlandi...",
+        "need_profile_first": "⚠️ Avval profil bog'lashingiz kerak!",
+        "group_cache_empty": "⚠️ Kesh bo'sh, iltimos '+ Qo'shish' (Yangilash) tugmasini bosing!",
+        "profile_not_found": "⚠️ Profil topilmadi!",
+        "profile_activated": "✓ {phone} muvaffaqiyatli faollashtirildi!",
+        "profile_deleted": "⚠️ Profil muvaffaqiyatli o'chirildi!",
+        "sub_channels_alert": "⚠️ Diqqat! Barcha kanallarga a'zo bo'lishingiz shart!",
+        "sub_confirmed": "🎉 Rahmat! Obuna to'liq tasdiqlandi. Bot faollashtirildi!",
+        "panel_reloaded": "Boshqaruv paneli joriy holatda.",
+        "panel_refreshed": "🔄 Boshqaruv paneli muvaffaqiyatli yangilandi!"
     },
     "ru": {
         "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Чтобы использовать нашего бота\n› Добавьте аккаунт\n› Настройте группы\n› Настройте сообщение\n› Запустите авторассылку\n\n❓ Если вы не знаете, как использовать бота, нажмите кнопку <b>📖 Руководство</b> ниже!",
@@ -377,9 +470,9 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>На высшем уровне (Максимальный) 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
-        "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5</b>\n👥 Приглашено друзей: <b>{referrals} / 6</b>\n🔗 Ссылка: <code>{ref_link}</code>",
+        "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
         "btn_add_acc": "➕ Добавить аккаунт",
         "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Тип сообщения: <b>{turi}</b>\n💬 Группы: <b>{guruhlar}</b>\n⏱️ Интервал: <b>{interval}</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Упоминание: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
@@ -387,11 +480,45 @@ LOCALIZATION = {
         "profile_title": "👥 <b>Управление подключенными аккаунтами</b>\n━━━━━━━━━━━━━━━━━━━━\nТекущее активное подключение: <b>{active}</b>\n\nНа бесплатном тарифе можно подключить только 1 профиль.\n👑 На тарифе PRO вы можете подключить и управлять до 5 профилей!\n━━━━━━━━━━━━━━━━━━━━\nВыберите профиль из списка ниже, чтобы активировать или отключить его:",
         "msg_setup": "💬 <b>Настройка сообщения</b>\n\n📝 <b>Текущий текст:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Прикрепленное изображение:</b> <b>{rasm}</b>\n🔘 <b>Инлайн-кнопки:</b> <b>{tugmalar}</b>\n📤 <b>Статус режима Forward:</b> <b>{status}</b>\n\n📌 <b>Выберите тип сообщения:</b>",
         "groups_setup": "🎯 <b>Настройка групп</b>\n\nВ какие группы отправлять сообщения?\nТекущий выбор: <b>{tanlov}</b>\n\nИспользуйте кнопки ниже для загрузки и настройки групп:",
-        "pro_info": "👑 <b>Возможности AutoXabar Pro:</b>\n\n📤 <b>Рассылка пересланных (Forward) сообщений:</b>\n<i>Пересылает посты каналов во все группы. Это помогает быстро увеличить количество просмотров (views) вашего канала и сохраняет ссылки!</i>\n\n👤 <b>Мультиаккаунт:</b>\n• Возможность добавить до 5 различных профилей в бот\n\n🔘 <b>Кнопки под сообщением:</b>\n• Прикрепление интерактивных кнопок-ссылок под рекламой\n\n❌ <b>Чистый интерфейс без водяных знаков:</b>\n• Полное удаление рекламной подписи бота в конце сообщения\n\n💰 <b>Стоимость:</b>\n• <b>10,000 сум</b> (спишется с баланса вашего кабинета)\n• Либо бесплатно за приглашение <b>6 новых друзей</b>!\n\n🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>"
+        "pro_info": "👑 <b>Возможности AutoXabar Pro:</b>\n\n📤 <b>Рассылка пересланных (Forward) сообщений:</b>\n<i>Пересылает посты каналов во все группы. Это помогает быстро увеличить количество просмотров (views) вашего канала и сохраняет ссылки!</i>\n\n👤 <b>Мультиаккаунт:</b>\n• Возможность добавить до 5 различных профилей в бот\n\n🔘 <b>Кнопки под сообщением:</b>\n• Прикрепление интерактивных кнопок-ссылок под рекламой\n\n❌ <b>Чистый интерфейс без водяных знаков:</b>\n• Полное удаление рекламной подписи бота в конце сообщения\n\n💰 <b>Стоимость:</b>\n• <b>10,000 сум</b> (спишется с баланса вашего кабинета)\n• Либы бесплатно за приглашение <b>6 новых друзей</b>!\n\n🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>",
+        "already_pro": "👑 У вас уже активирован тариф PRO!",
+        "pro_activated": "🎉 Поздравляем! Тариф PRO успешно активирован! 👑",
+        "insufficient_funds": "❌ Недостаточно средств на балансе!\nТекущий баланс: {balans} сум\nСтоимость PRO: 10,000 сум.\n\nПригласите 6 друзей и получите PRO бесплатно!",
+        "no_active_conn": "⚠️ Нет активного подключения!",
+        "disconnected_success": "⚠️ Профиль успешно отключен!",
+        "acc_limit_free": "⚠️ <b>Ограничение бесплатного тарифа!</b>\n\nВы можете подключить только <b>1</b> профиль.\nДля подключения большего количества профилей (до 5) приобретите <b>👑 тариф Pro</b> или приглашайте друзей!",
+        "acc_limit_pro": "⚠️ <b>Максимальный предел аккаунтов!</b>\n\nНа тарифе PRO разрешено подключать не более <b>5</b> профилей.",
+        "enter_phone": "📱 <b>Подключение реального Telegram аккаунта</b>\n\nПожалуйста, введите ваш номер телефона в международном формате (например: <code>+998901234567</code>):",
+        "invalid_phone": "❌ <b>Введен неверный формат номера телефона!</b>\n\nФормат: <code>+[код_страны][номер]</code>\n<i>(Пример: Узбекистан: <code>+998901234567</code>, Россия: <code>+79001234567</code>)</i>",
+        "connecting_tg": "🔄 Устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
+        "sms_sent": "💬 <b>СМС-код отправлен!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nОбязательно вводите код, разделяя цифры <b>точками</b>!\nФормат: <b>1.2.3.4.5</b>\n\nПожалуйста, введите 5-значный код из вашего приложения Telegram:",
+        "conn_error": "❌ Ошибка подключения: {error}",
+        "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
+        "sms_expired": "❌ <b>Срок действия кода истек!</b>\n\nЦепочка сессий нарушена. Пожалуйста, заново введите номер телефона.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
+        "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аутентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
+        "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>\n\nПожалуйста, попробуйте ввести пароль еще раз.",
+        "custom_interval_prompt": "✍️ <b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>",
+        "min_interval_error": "❌ Минимальный интервал - 1 минута!",
+        "interval_set_success": "✅ <b>Интервал настроен на {val} минут!</b>",
+        "invalid_integer": "❌ Пожалуйста, вводите только целые числа (например: 25):",
+        "groups_all_selected": "✓ Выбраны все группы!",
+        "groups_custom_selected": "✓ Режим ручного выбора активирован!",
+        "groups_cleared": "🚨 Списки выбранных групп очищены!",
+        "groups_refreshing": "Запущено обновление списка групп...",
+        "need_profile_first": "⚠️ Сначала вам нужно подключить аккаунт!",
+        "group_cache_empty": "⚠️ Кэш пуст, пожалуйста, нажмите кнопку '+ Добавить' (Обновить)!",
+        "profile_not_found": "⚠️ Профиль не найден!",
+        "profile_activated": "✓ {phone} успешно активирован!",
+        "profile_deleted": "⚠️ Профиль успешно удален!",
+        "sub_channels_alert": "⚠️ Внимание! Вы должны быть подписаны на все каналы!",
+        "sub_confirmed": "🎉 Спасибо! Подписка успешно подтверждена. Бот активирован!",
+        "panel_reloaded": "Панель управления в актуальном состоянии.",
+        "panel_refreshed": "🔄 Панель управления успешно обновлена!"
     },
     "en": {
         "welcome": "📊 <b>Main Menu:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nHello, welcome! 👋\n\n› To use our bot\n› Add an account\n› Configure groups\n› Configure message\n› Start auto-send\n\n❓ If you don't know how to use the bot, click the <b>📖 Guide</b> button below!",
-        "btn_auto_send": "⚪ Auto-send",
+        "btn_auto_send": "⚪ Auto-Send",
         "btn_msg_text": "📝 Message Text",
         "btn_interval": "⏱️ Interval",
         "btn_groups": "💬 Configure Groups",
@@ -399,13 +526,13 @@ LOCALIZATION = {
         "btn_guide": "📖 Guide",
         "btn_cabinet": "👤 Cabinet",
         "btn_settings": "⚙️ Settings",
-        "btn_support": "❓ Q&A & Support",
+        "btn_support": "❓ Support & Help",
         "select_lang_text": "🌐 Please select your preferred language:",
         "support_prompt": "✍️ <b>Support & Question Section</b>\n\nPlease write your question or appeal in detail. The administrator will reply to you through the bot shortly!",
         "support_sent": "✅ Your question has been successfully delivered to the admin! We will reply shortly.",
-        "settings_title": "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>On maximum level 🛡️</b>\n━━━━━━━━━━━━━━━━━━━━\nClick a button to change settings:",
+        "settings_title": "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nClick a button to change settings:",
         "guide_text": "📖 <b>AutoHabar Pro - Detailed User Guide</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Connecting Account:</b>\n• Go to Profiles, click add account and enter your phone number in international format.\n• When you receive the SMS code, enter it with <b>dots</b> between numbers (Format: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Configure Groups:</b>\n• Go to Configure Groups, select targeted groups and save.\n\n3️⃣ <b>Interval & Timer:</b>\n• Set the delay between groups (Interval) and auto-off timer duration.\n\n4️⃣ <b>Start:</b>\n• Click <b>▶️ Start</b> in the Auto-send section!",
-        "cabinet_title": "👤 <b>Your Cabinet</b>\n\n👥 Name: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balance: <b>{balans} UZS</b>\n\n📊 <b>Statistics:</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total sent: <b>{total_sent}</b>\n👥 Accounts connected: <b>{acc_count} / 5</b>\n👥 Referrals invited: <b>{referrals} / 6</b>\n🔗 Link: <code>{ref_link}</code>",
+        "cabinet_title": "👤 <b>Your Cabinet</b>\n\n👥 Name: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balance: <b>{balans} UZS</b>\n\n📊 <b>Statistics:</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total sent: <b>{total_sent}</b>\n👥 Accounts connected: <b>{acc_count} / 5 ta</b>\n👥 Referrals invited: <b>{referrals} / 6 ta</b>\n🔗 Link: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Change Language",
         "btn_add_acc": "➕ Add Account",
         "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>{turi}</b>\n💬 Groups: <b>{guruhlar}</b>\n⏱️ Interval: <b>{interval}</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
@@ -413,7 +540,34 @@ LOCALIZATION = {
         "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.\n👑 On the PRO plan, you can connect and manage up to 5 profiles!\n━━━━━━━━━━━━━━━━━━━━\nSelect a profile from the list below to activate or disconnect it:",
         "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Attached image:</b> <b>{rasm}</b>\n🔘 <b>Inline buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward Mode status:</b> <b>{status}</b>\n\n📌 <b>Select message type:</b>",
         "groups_setup": "🎯 <b>Setup Groups</b>\n\nWhich groups should messages be sent to?\nCurrent choice: <b>{tanlov}</b>\n\nUse the buttons below to load and configure groups:",
-        "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n<i>Forward posts from your channel to groups. This helps rapidly increase your views!</i>\n\n👤 <b>Multi-Accounts:</b>\n• Up to 5 Telegram accounts connected simultaneously\n\n🔘 <b>Buttoned Inline Messages:</b>\n• Attach custom links & buttons below ads\n\n❌ <b>Ad-Free Interace:</b>\n• Remove default bot watermarks entirely"
+        "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n<i>Forward posts from your channel to groups. This helps rapidly increase your views!</i>\n\n👤 <b>Multi-Accounts:</b>\n• Up to 5 Telegram accounts connected simultaneously\n\n🔘 <b>Buttoned Inline Messages:</b>\n• Attach custom links & buttons below ads\n\n❌ <b>Ad-Free Interace:</b>\n• Remove default bot watermarks entirely",
+        "already_pro": "👑 You already have PRO status enabled!",
+        "pro_activated": "🎉 Congratulations! PRO status successfully enabled! 👑",
+        "insufficient_funds": "❌ Insufficient funds!\nCurrent balance: {balans} UZS\nPRO price: 10,000 UZS.\n\nInvite 6 friends to unlock PRO for free!",
+        "no_active_conn": "⚠️ No active connection!",
+        "disconnected_success": "⚠️ Profile successfully disconnected!",
+        "acc_limit_free": "⚠️ <b>Free Plan Limit!</b>\n\nYou can only connect <b>1</b> profile.\nFor more accounts (up to 5) buy <b>👑 Pro Plan</b> or invite friends!",
+        "acc_limit_pro": "⚠️ <b>Maximum Account Limit!</b>\n\nUnder PRO plan, you can connect at most <b>5</b> profiles.",
+        "enter_phone": "📱 <b>Connect Real Telegram Account</b>\n\nPlease enter your phone number in international format (e.g. <code>+998901234567</code>):",
+        "invalid_phone": "❌ <b>Invalid phone format!</b>\n\nFormat: <code>+[country_code][number]</code>\n<i>(e.g., Uzbekistan: <code>+998901234567</code>, Russia: <code>+79001234567</code>, USA: <code>+12025550123</code>)</i>",
+        "connecting_tg": "🔄 Establishing a clean connection to Telegram servers. Please wait...",
+        "sms_sent": "💬 <b>SMS verification code sent!</b>\n\n⚠️ <b>IMPORTANT NOTE:</b>\nEnter the code with <b>dots</b> between numbers!\nFormat: <b>1.2.3.4.5</b>\n\nPlease enter the 5-digit code sent to your Telegram app:",
+        "conn_error": "❌ Connection error occurred: {error}",
+        "acc_bound": "<b>Congratulations! Your account has been successfully linked and backed up to the cloud.</b>\n\nYou can now go to the autohabar section to start auto-sending!",
+        "sms_expired": "❌ <b>Verification code expired!</b>\n\nPlease enter your phone number again.",
+        "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
+        "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
+        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>\n\nPlease enter again.",
+        "custom_interval_prompt": "✍️ <b>Enter custom interval in minutes (e.g. 20):</b>",
+        "min_interval_error": "❌ Minimum interval is 1 minute!",
+        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
+        "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
+        "groups_all_selected": "✓ All groups selected!",
+        "groups_custom_selected": "✓ Custom selection mode activated!",
+        "groups_cleared": "🚨 Selected groups cleared!",
+        "groups_refreshing": "Group list reload started...",
+        "need_profile_first": "⚠️ You must connect an account first!",
+        "group_cache_empty": "⚠️ List is empty, please click the '+ Reload' button!"
     }
 }
 
@@ -789,11 +943,11 @@ async def menu_kabinet_msg(message: types.Message, user_id: int):
     
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     header_acc = "👥 <b>Ulangan barcha profillaringiz:</b>\n" if lang == "uz" else ("👥 <b>Все подключенные профили:</b>\n" if lang == "ru" else "👥 <b>All connected profiles:</b>\n")
-    text += f"\n\n{header_all_acc}\n{profiles_text}"
+    text += f"\n\n{header_acc}\n{profiles_text}"
     
     btn_deposit = "💰 Hisobni to'ldirish" if lang == "uz" else ("💰 Пополнить баланс" if lang == "ru" else "💰 Deposit")
     btn_disconnect = "⚠️ Profilni uzish" if lang == "uz" else ("⚠️ Отключить профиль" if lang == "ru" else "⚠️ Disconnect profile")
-    btn_close = "❌ Yopish" if lang === "uz" else ("❌ Закрыть" if lang === "ru" else "❌ Close")
+    btn_close = "❌ Yopish" if lang == "uz" else ("❌ Закрыть" if lang == "ru" else "❌ Close")
 
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -822,8 +976,8 @@ async def show_sozlamalar_menu(message: types.Message, user_id: int):
     status_off = "O'chirilgan 🔴" if lang == "uz" else ("Выключено 🔴" if lang == "ru" else "Disabled 🔴")
     anti_ban_text = "Eng yuqori darajada (Maksimal) 🛡️" if lang == "uz" else ("На высшем уровне (Максимальный) 🛡️" if lang == "ru" else "Maximum safety 🛡️")
     
-    auto_sub = auto_sub_active = status_on if user_data.get("auto_sub_active", True) else auto_reply_active = status_off
-    auto_reply = auto_reply_active = status_on if user_data.get("auto_reply_active", False) else auto_reply_active = status_off
+    auto_sub = status_on if user_data.get("auto_sub_active", True) else status_off
+    auto_reply = status_on if user_data.get("auto_reply_active", False) else status_off
     
     lang_name = "O'zbekcha 🇺🇿" if lang == "uz" else ("Русский 🇷🇺" if lang == "ru" else "English 🇺🇸")
     
@@ -1156,7 +1310,7 @@ async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
         for idx, chan in enumerate(channels, 1):
             text += f"{idx}. <b>{chan}</b>\n"
     else:
-        text += "❌ Hozirda hech qanday majburiy kanal o'rнатilmagan."
+        text += "❌ Hozirda hech qanday majburiy kanal o'rnatilmagan."
         
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -1657,7 +1811,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     btn_all = "+ Hamma guruhlarga" if lang == "uz" else ("+ Во все группы" if lang == "ru" else "+ All groups")
     btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю сам" if lang == "ru" else "✓ Custom selection")
     btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
-    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Обновить" if lang == "ru" else "+ Reload")
+    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
     btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
     btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
