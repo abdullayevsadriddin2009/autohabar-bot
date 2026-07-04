@@ -3584,8 +3584,8 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     
     # Global majburiy obuna nazoratchisini dispatcherga ulash
-    dp.message.outer_middleware(MandatorySubMiddleware())
-    dp.callback_query.outer_middleware(MandatorySubMiddleware())
+    # dp.message.outer_middleware(MandatorySubMiddleware())
+    # dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
     asyncio.create_task(init_existing_sessions())
     asyncio.create_task(auto_sender_worker())
