@@ -425,7 +425,7 @@ LOCALIZATION = {
         "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
         "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qilib, bepul PRO oling!",
         "no_active_conn": "⚠️ Faol ulanish vaqtinchalik mavjud emas!",
-        "disconnected_success": "⚠️ Faol profil muvaffaqiyatli uzildi!",
+        "disconnected_success": "⚠️ Profilni uzish muvaffaqiyatli bajarildi!",
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
         "enter_phone": "📱 <b>Real Telegram akkaunt ulash</b>\n\nIltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
@@ -470,7 +470,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настреек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Установите время ожидания между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -1421,7 +1421,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
     phone = user_data.get("active_phone")
     
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
-    p_status = f"👤 Profil: [ {phone} ]" if phone else ("👤 Profil: [ Profil ulanmagan ]" if lang == "uz" else ("👤 Профиль: [ Профиль не подключен ]" if lang == "ru" else "👤 Profile: [ Profile not connected ]"))
+    p_status = f"👤 Profil: [ {phone} ]" if phone else (f"👤 Profil: [ {get_text(user_id, 'no_active_conn')} ]")
     s_status_on = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно (Идет рассылка...)" if lang == "ru" else "🟢 Active (Sending...)")
     s_status_off = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Disabled")
     holatStatus = s_status_on if user_data.get("is_sending") else s_status_off
@@ -1767,7 +1767,7 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
-    pro_alert = "👑 Bu funksiyadan foydalanish uchun PRO bo'lishingiz shart!" if lang == "uz" else ("👑 Для использования этой функции у вас должен быть статус PRO!" if lang == "ru" else "👑 You need PRO status to use this feature!")
+    pro_alert = "👑 Bu funksiyadan foydalanish Architectural bo'lishingiz shart!" if lang == "uz" else ("👑 Для использования этой функции у вас должен быть статус PRO!" if lang == "ru" else "👑 You need PRO status to use this feature!")
     if not db_users[user_id].get("is_pro", False):
         await callback_query.answer(pro_alert, show_alert=True)
         return
@@ -1775,11 +1775,7 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     db_users[user_id]["is_forward_mode"] = not db_users[user_id].get("is_forward_mode", False)
     save_db()
     
-    # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
-    status_msg = ("Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝") if lang == "uz" else (
-        ("Включен режим Forward! 📤" if db_users[user_id]["is_forward_mode"] else "Включен обычный режим текста! 📝") if lang == "ru" else
-        ("Forward mode enabled! 📤" if db_users[user_id]["is_forward_mode"] else "Text/Media mode enabled! 📝")
-    )
+    status_msg = "Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝"
     await callback_query.answer(f"✓ {status_msg}", show_alert=True)
     await show_message_settings(callback_query.message, user_id)
 
@@ -2185,7 +2181,7 @@ async def callback_delete_acc(callback_query: types.CallbackQuery):
 
 # ===================================================================================
 
-@router.message(F.text == "👑 Pro tarif")
+@router.message(F.text == "👑 Pro tarif", StateFilter("*"))
 async def menu_pro_tarif(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -2263,20 +2259,20 @@ async def menu_interval(message: types.Message, state: FSMContext):
         unit = "soat" if lang == "uz" else ("час" if lang == "ru" else "hours")
         interval_text = f"{int(hours) if hours.is_integer() else hours} {unit}"
     else:
-        unit = "daqiqa" if lang == "uz" else ("миunut" if lang == "ru" else "minutes")
+        unit = "daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes")
         interval_text = f"{current_interval} {unit}"
         
     text = (
         "⏱️ <b>Xabar yuborish oralig'i (Interval)</b>\n\n"
         f"Joriy faol interval: <b>{interval_text}</b>\n\n"
-        "Har bir xabar yuborish oralig'i tugagach, bot guruhlar orasida tanaffus qiladi."
+        "Har bir reklama tarqatish sikli to'liq yakunlangach, bot belgilangan muddat dorasida to'xtab (kutib) turadi."
     ) if lang == "uz" else (
         "⏱️ <b>Интервал отправки сообщений</b>\n\n"
         f"Текущий интервал: <b>{interval_text}</b>\n\n"
-        "После отправки сообщений бот будет ждать указанный интервал." if lang == "ru" else
+        "После завершения каждого цикла рассылки бот приостанавливает работу на выбранное время." if lang == "ru" else
         "⏱️ <b>Message Sending Delay (Interval)</b>\n\n"
         f"Current active interval: <b>{interval_text}</b>\n\n"
-        "After sending messages, the bot will pause for the specified interval."
+        "After completing each sending cycle, the bot pauses operations for the selected duration."
     )
     
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
@@ -2609,6 +2605,196 @@ async def run_sending_cycle_for_user(user_id):
                     
     except Exception as e:
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
+
+# ================= OTHER ACTIONS & LOGIN WIZARD =================
+
+# TUZATILDI: add_account callback query uchun StateFilter ulandi va asinxron xotira tozalandi!
+@router.callback_query(F.data == "add_account", StateFilter("*"))
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        msg = get_text(user_id, "acc_limit_pro") if is_pro else get_text(user_id, "acc_limit_free")
+        await callback_query.message.answer(msg, parse_mode="HTML")
+        await callback_query.answer()
+        return
+
+    await callback_query.message.answer(get_text(user_id, "enter_phone"), parse_mode="HTML")
+    await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    
+    # MUHIM TUZATISH: Agar foydalanuvchi + belgisiz kiritsa, avtomatik ravishda qo'shiladi!
+    if not phone.startswith("+"):
+        phone = "+" + phone
+        
+    if not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
+        await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
+        return
+    
+    # FSM xotirasiga to'g'ri yangilab saqlab qo'yamiz! (TUZATILDI!)
+    await state.update_data(phone=phone)
+    await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, phone)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shamiz
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(get_text(user_id, "sms_expired"), parse_mode="HTML")
+        await state.clear()
+    except errors.PhoneCodeInvalidError:
+        await message.answer(get_text(user_id, "sms_invalid"), parse_mode="HTML")
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(get_text(user_id, "two_fa_required"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, password=password)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shish
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer(get_text(user_id, "two_fa_invalid"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+# TUZATILDI: callback_disconnect asinxron drayveri to'liq xalqaro formatda localization qilindi!
+@router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
+async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer(get_text(user_id, "no_active_conn"), show_alert=True)
+        return
+        
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
+    
+    # Ro'yxatdan o'chirish
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
+    await menu_kabinet_msg(callback_query.message, user_id)
 
 # ================= MAIN MAIN MOTORS =================
 
