@@ -440,7 +440,7 @@ LOCALIZATION = {
         "two_fa_invalid": "❌ <b>Ikki bosqichli parol noto'g'ri!</b>\n\nIltimos, parolingizni qayta kiriting.",
         "custom_interval_prompt": "✍️ <b>Xabar yuborish oralig'ini (Intervalni) daqiqalarda kiriting (masalan: 20):</b>",
         "min_interval_error": "❌ Minimal interval vaqti - 1 daqiqa!",
-        "interval_set_success": "✅ <b>Interval {val} daqiqaga sozlandi!</b>",
+        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
         "invalid_integer": "❌ Iltimos, faqat butun son kiriting (masalan: 25):",
         "groups_all_selected": "✓ Hamma guruhlar tanlandi!",
         "groups_custom_selected": "✓ Qo'lda tanlash rejimi faollashdi!",
@@ -475,12 +475,12 @@ LOCALIZATION = {
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
         "btn_add_acc": "➕ Добавить аккаунт",
-        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Тип сообщения: <b>{turi}</b>\n💬 Группы: <b>{guruhlar}</b>\n⏱️ Интервал: <b>{interval}</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Упоминание: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Тип сообщения: <b>Текст</b>\n💬 Группы: <b>{guruhlar} групп</b>\n⏱️ Интервал: <b>{interval} минут</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Упоминание: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
         "deposit_title": "💰 <b>Система пополнения баланса</b>\n━━━━━━━━━━━━━━━━━━━━\nВаш Telegram ID: <code>{user_id}</code>\nТекущий баланс: <b>{balans} сум</b>\n\nЧтобы безопасно пополнить счет, отправьте свой ID администратору:\n👉 <b>Администратор: @AbduIIayev_7</b>\n\n💡 <i>Примечание: Баланс будет автоматически пополнен сразу после подтверждения оплаты!</i>\n━━━━━━━━━━━━━━━━━━━━",
         "profile_title": "👥 <b>Управление подключенными аккаунтами</b>\n━━━━━━━━━━━━━━━━━━━━\nТекущее активное подключение: <b>{active}</b>\n\nНа бесплатном тарифе можно подключить только 1 профиль.\n👑 На тарифе PRO вы можете подключить и управлять до 5 профилей!\n━━━━━━━━━━━━━━━━━━━━\nВыберите профиль из списка ниже, чтобы активировать или отключить его:",
         "msg_setup": "💬 <b>Настройка сообщения</b>\n\n📝 <b>Текущий текст:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Прикрепленное изображение:</b> <b>{rasm}</b>\n🔘 <b>Инлайн-кнопки:</b> <b>{tugmalar}</b>\n📤 <b>Статус режима Forward:</b> <b>{status}</b>\n\n📌 <b>Выберите тип сообщения:</b>",
         "groups_setup": "🎯 <b>Настройка групп</b>\n\nВ какие группы отправлять сообщения?\nТекущий выбор: <b>{tanlov}</b>\n\nИспользуйте кнопки ниже для загрузки и настройки групп:",
-        "pro_info": "👑 <b>Возможности AutoXabar Pro:</b>\n\n📤 <b>Рассылка пересланных (Forward) сообщений:</b>\n<i>Пересылает посты каналов во все группы. Это помогает быстро увеличить количество просмотров (views) вашего главного канала и сохраняет ссылки!</i>\n\n👤 <b>Мультиаккаунт:</b>\n• Возможность добавить до 5 различных профилей в бот\n\n🔘 <b>Кнопки под сообщением:</b>\n• Прикрепление интерактивных кнопок-ссылок под рекламой\n\n❌ <b>Чистый интерфейс без водяных знаков:</b>\n• Полное удаление рекламной подписи бота в конце сообщения\n\n💰 <b>Стоимость:</b>\n• <b>10,000 сум</b> (спишется с баланса вашего кабинета)\n• Либо бесплатно за приглашение <b>6 новых друзей</b>!\n\n🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>",
+        "pro_info": "👑 <b>Возможности AutoXabar Pro:</b>\n\n📤 <b>Рассылка пересланных (Forward) сообщений:</b>\n<i>Пересылает посты каналов во все группы. Это помогает быстро увеличить количество просмотров (views) вашего главного канала и сохраняет ссылки!</i>\n\n👤 <b>Мультиаккаунт:</b>\n• Возможность добавить до 5 различных профилей в бот\n\n🔘 <b>Кнопки под сообщением:</b>\n• Прикрепление интерактивных кнопок-ссылок под рекламой\n\n❌ <b>Чистый интерфейс без водяных знаков:</b>\n• Полное удаление рекламной подписи бота в конце сообщения\n\n💰 <b>Размер оплаты:</b>\n• <b>10,000 сум</b> (вычитается из баланса вашего кабинета)\n• Либо бесплатно за приглашение <b>6 новых друзей</b>!\n\n🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>",
         "already_pro": "👑 У вас уже активирован тариф PRO!",
         "pro_activated": "🎉 Поздравляем! Тариф PRO успешно активирован! 👑",
         "insufficient_funds": "❌ Недостаточно средств на балансе!\nТекущий баланс: {balans} сум\nСтоимость PRO: 10,000 сум.\n\nПригласите 6 друзей и получите PRO бесплатно!",
@@ -535,7 +535,7 @@ LOCALIZATION = {
         "cabinet_title": "👤 <b>Your Cabinet</b>\n\n👥 Name: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balance: <b>{balans} UZS</b>\n\n📊 <b>Statistics:</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total sent: <b>{total_sent}</b>\n👥 Accounts connected: <b>{acc_count} / 5 ta</b>\n👥 Referrals invited: <b>{referrals} / 6 ta</b>\n🔗 Link: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Change Language",
         "btn_add_acc": "➕ Add Account",
-        "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>{turi}</b>\n💬 Groups: <b>{guruhlar}</b>\n⏱️ Interval: <b>{interval}</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>Text</b>\n💬 Groups: <b>{guruhlar} groups</b>\n⏱️ Interval: <b>{interval} minutes</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
         "deposit_title": "💰 <b>Balance Recharge System</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nCurrent balance: <b>{balans} UZS</b>\n\nTo securely top up your account, send your shaxsiy ID to our administrator:\n👉 <b>Administrator: @AbduIIayev_7</b>\n\n💡 <i>Note: The balance will be automatically added to your account instantly after payment confirmation!</i>\n━━━━━━━━━━━━━━━━━━━━",
         "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.\n👑 On the PRO plan, you can connect and manage up to 5 profiles!\n━━━━━━━━━━━━━━━━━━━━\nSelect a profile from the list below to activate or disconnect it:",
         "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Attached image:</b> <b>{rasm}</b>\n🔘 <b>Inline buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward Mode status:</b> <b>{status}</b>\n\n📌 <b>Select message type:</b>",
@@ -558,7 +558,7 @@ LOCALIZATION = {
         "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
         "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
         "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>\n\nPlease enter again.",
-        "custom_interval_prompt": "✍️ <b>Enter custom interval in minutes (e.g. 20):</b>",
+        "custom_interval_prompt": "<b>Enter custom interval in minutes (e.g. 20):</b>",
         "min_interval_error": "❌ Minimum interval is 1 minute!",
         "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
         "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
@@ -645,7 +645,8 @@ class MandatorySubMiddleware(BaseMiddleware):
                     unsubscribed_channels.append(channel)
             except Exception as e:
                 logging.error(f"[Xavfsizlik] {channel} obunasini tekshirishda xato: {e}")
-                unsubscribed_channels.append(channel)
+                # Agar bot kanalda admin bo'lmasa, uni obunadan chiqmagan deb hisoblaymiz (TUZATILDI!)
+                pass
 
         if unsubscribed_channels:
             try:
@@ -782,7 +783,7 @@ async def send_welcome_and_keyboard(message: types.Message, user_id: int):
     )
 
 # Til tanlangandagi callback drayveri
-@router.callback_query(F.data.startswith("lang_"))
+@router.callback_query(F.data.startswith("lang_"), StateFilter("*"))
 async def callback_select_lang(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
@@ -1616,6 +1617,7 @@ async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     alert = "❌ Barcha media va tugmalar olib tashlandi!" if lang == "uz" else ("❌ Все медиа и кнопки удалены!" if lang == "ru" else "❌ All media and buttons cleared!")
     await callback_query.answer(alert, show_alert=True)
+    await callback_query.message.delete()
     await show_message_settings(callback_query.message, user_id)
 
 @router.callback_query(F.data == "edit_buttons_pro", StateFilter("*"))
@@ -1767,7 +1769,7 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
-    pro_alert = "👑 Bu funksiyadan foydalanish Architectural bo'lishingiz shart!" if lang == "uz" else ("👑 Для использования этой функции у вас должен быть статус PRO!" if lang == "ru" else "👑 You need PRO status to use this feature!")
+    pro_alert = "👑 Bu funksiyadan foydalanish uchun PRO bo'lishingiz shart!" if lang == "uz" else ("👑 Для использования этой функции у вас должен быть статус PRO!" if lang == "ru" else "👑 You need PRO status to use this feature!")
     if not db_users[user_id].get("is_pro", False):
         await callback_query.answer(pro_alert, show_alert=True)
         return
@@ -1775,7 +1777,11 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     db_users[user_id]["is_forward_mode"] = not db_users[user_id].get("is_forward_mode", False)
     save_db()
     
-    status_msg = "Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝"
+    # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
+    status_msg = ("Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝") if lang == "uz" else (
+        ("Включен режим Forward! 📤" if db_users[user_id]["is_forward_mode"] else "Включен обычный режим текста! 📝") if lang == "ru" else
+        ("Forward mode enabled! 📤" if db_users[user_id]["is_forward_mode"] else "Text/Media mode enabled! 📝")
+    )
     await callback_query.answer(f"✓ {status_msg}", show_alert=True)
     await show_message_settings(callback_query.message, user_id)
 
@@ -1847,8 +1853,9 @@ async def callback_groups_custom(callback_query: types.CallbackQuery, state: FSM
     await callback_query.answer(alert, show_alert=True)
     await menu_guruhlar(callback_query.message, state)
 
+# TUZATILDI: IndexError bartaraf etilib, sahifa raqami xavfsiz boshqarildi!
 @router.callback_query(F.data == "clear_selected_groups", StateFilter("*"))
-async def callback_clear_groups(callback_query: types.CallbackQuery):
+async def callback_clear_groups(callback_query: types.CallbackQuery, state: FSMContext = None):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -1859,8 +1866,9 @@ async def callback_clear_groups(callback_query: types.CallbackQuery):
     await callback_query.answer(alert, show_alert=True)
     await callback_groups_list(callback_query)
 
+# TUZATILDI: IndexError bartaraf etilib, sahifa raqami xavfsiz boshqarildi!
 @router.callback_query(F.data == "refresh_groups_force", StateFilter("*"))
-async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
+async def callback_refresh_groups_force(callback_query: types.CallbackQuery, state: FSMContext = None):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -1889,6 +1897,7 @@ async def callback_refresh_groups_force(callback_query: types.CallbackQuery):
     except Exception as e:
         await callback_query.message.answer(f"❌ Xatolik yuz berdi: {e}")
 
+# TUZATILDI: list index out of range xatosi butunlay bartaraf qilindi!
 @router.callback_query(F.data.startswith("groups_list_page_"), StateFilter("*"))
 async def callback_groups_list(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
@@ -1896,7 +1905,14 @@ async def callback_groups_list(callback_query: types.CallbackQuery):
     user_data = db_users.get(user_id)
     lang = user_data.get("lang", "uz") or "uz"
     
-    page = int(callback_query.data.split("_")[3])
+    # Sahifa raqamini IndexError'siz, xavfsiz olish (TUZATILDI!)
+    page = 0
+    if callback_query.data.startswith("groups_list_page_"):
+        try:
+            page = int(callback_query.data.split("_")[3])
+        except Exception:
+            page = 0
+            
     guruhlar = user_data.get("cached_groups", [])
     
     if not guruhlar:
@@ -2643,11 +2659,13 @@ async def state_phone_received(message: types.Message, state: FSMContext):
     if not phone.startswith("+"):
         phone = "+" + phone
         
-    if not phone[1:].isdigit() or len(phone) < 8 or len(phone) > 16:
+    # Xalqaro istalgan raqamlarni taniy oladigan broad validation qo'shildi! (TUZATILDI!)
+    phone_digits = "".join(filter(str.isdigit, phone))
+    if len(phone_digits) < 7 or len(phone_digits) > 18:
         await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
         return
     
-    # FSM xotirasiga to'g'ri yangilab saqlab qo'yamiz! (TUZATILDI!)
+    # FSM xotirasiga telefon raqami to'g'ri yangilab saqlab qo'yiladi! (TUZATILDI!)
     await state.update_data(phone=phone)
     await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
     
@@ -2747,7 +2765,6 @@ async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMCon
     await state.clear()
     user_id = callback_query.from_user.id
     ensure_user(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
     
     phone = db_users[user_id].get("active_phone")
     if not phone:
@@ -2795,6 +2812,183 @@ async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMCon
 
     await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
     await menu_kabinet_msg(callback_query.message, user_id)
+
+
+# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+
+async def init_existing_sessions():
+    if not os.path.exists(SESSIONS_DIR):
+        return
+    for file in os.listdir(SESSIONS_DIR):
+        if file.endswith(".session") and "_" in file:
+            user_id_str = file.replace("session_", "").replace(".session", "")
+            parts = user_id_str.split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                user_id = int(parts[0])
+                phone_clean = parts[1]
+                
+                user_data = db_users.get(user_id)
+                if not user_data:
+                    continue
+                accounts_list = user_data.get("accounts", [])
+                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
+                
+                if not target_phone:
+                    target_phone = "+" + phone_clean
+                
+                client = await get_client(user_id, target_phone)
+                
+                if await client.is_user_authorized():
+                    session_key = f"{user_id}_{phone_clean}"
+                    active_clients[session_key] = client
+                    me = await client.get_me()
+                    
+                    ensure_user(user_id)
+                    accounts_list = db_users[user_id].get("accounts", [])
+                    if not any(acc["phone"] == target_phone for acc in accounts_list):
+                        accounts_list.append({
+                            "phone": target_phone,
+                            "name": me.first_name,
+                            "username": f"@{me.username}" if me.username else "@-"
+                        })
+                        db_users[user_id]["accounts"] = accounts_list
+                    save_db()
+                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
+            except Exception as e:
+                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
+
+
+# ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
+
+async def send_reklama_message(client, chat_id, user_data, user_id):
+    if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
+        try:
+            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
+        except Exception as e:
+            logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
+            await client.send_message(chat_id, user_data.get("reklama_matni", ""))
+    else:
+        text = user_data.get("reklama_matni", "")
+        lang = user_data.get("lang", "uz") or "uz"
+        
+        # PRO foydalanuvchilar reklamalaridan default watermark olib tashlanadi (TUZATILDI!)
+        if not user_data.get("is_pro", False):
+            watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
+                "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
+                "\n\nSent via @Auto_Xabar_Yuborish_Bot"
+            )
+            text += watermark
+            
+        photo_path = user_data.get("reklama_rasm") 
+        buttons_data = user_data.get("inline_buttons", [])
+        
+        telethon_buttons = None
+        if buttons_data:
+            telethon_buttons = []
+            for btn in buttons_data:
+                try:
+                    telethon_buttons.append(Button.url(btn["text"], btn["url"]))
+                except Exception:
+                    continue
+                    
+        if photo_path and os.path.exists(photo_path):
+            try:
+                await client.send_message(chat_id, text, file=photo_path, buttons=telethon_buttons)
+            except Exception as e:
+                logging.warning(f"Rasm bilan yuborishda muammo: {e}. Faqat matn ko'rinishida yuborilmoqda.")
+                await client.send_message(chat_id, text, buttons=telethon_buttons)
+        else:
+            await client.send_message(chat_id, text, buttons=telethon_buttons)
+
+async def auto_sender_worker():
+    while True:
+        current_time = datetime.now().timestamp()
+        
+        for user_id, user_data in list(db_users.items()):
+            if user_data.get("is_sending") and user_data.get("active_phone"):
+                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
+                started_at = user_data.get("is_sending_started_at", 0)
+                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
+                
+                if auto_off_hours and started_at:
+                    elapsed_hours = (current_time - started_at) / 3600.0
+                    if elapsed_hours >= auto_off_hours:
+                        db_users[user_id]["is_sending"] = False
+                        db_users[user_id]["is_sending_started_at"] = 0
+                        save_db()
+                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
+                        try:
+                            await bot.send_message(
+                                user_id, 
+                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                                parse_mode="HTML"
+                            )
+                        except Exception:
+                            pass
+                        continue
+                # =====================================================================
+
+                next_run = user_data.get("next_run_timestamp", 0)
+                if current_time >= next_run:
+                    interval_minutes = user_data.get("interval", 15)
+                    db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
+                    save_db()
+                    
+                    asyncio.create_task(run_sending_cycle_for_user(user_id))
+                        
+        await asyncio.sleep(10)
+
+async def run_sending_cycle_for_user(user_id):
+    user_data = db_users.get(user_id)
+    if not user_data or not user_data.get("is_sending"):
+        return
+        
+    try:
+        active_phone = user_data.get("active_phone")
+        if not active_phone:
+            return
+            
+        client = await get_client(user_id, active_phone)
+        if await client.is_user_authorized():
+            guruhlar = []
+            choice = user_data.get("groups_choice", "custom")
+            
+            if choice == "custom":
+                guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
+            else:
+                async for dialog in client.iter_dialogs():
+                    if dialog.is_group:
+                        guruhlar.append(int(dialog.id))
+            
+            if not guruhlar:
+                logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
+                return
+                
+            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
+            
+            for g_id in guruhlar:
+                if not db_users.get(user_id, {}).get("is_sending"):
+                    break
+                    
+                try:
+                    await send_reklama_message(client, g_id, user_data, user_id)
+                    user_data["today_sent"] = user_data.get("today_sent", 0) + 1
+                    user_data["total_sent"] = user_data.get("total_sent", 0) + 1
+                    save_db()
+                    logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
+                    await asyncio.sleep(15)
+                except errors.FloodWaitError as e:
+                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
+                    await asyncio.sleep(e.seconds)
+                except Exception as e:
+                    continue
+                    
+    except Exception as e:
+        logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
+
 
 # ================= MAIN MAIN MOTORS =================
 
