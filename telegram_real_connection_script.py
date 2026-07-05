@@ -5,7 +5,7 @@ Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon)
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
 Render, Railway va barcha bulutli platformalarda 24/7 ishlaydi.
 
-Tuzatilgan va optimallashtirilgan mukammal 100% to'liq, benuqson versiya!
+Sadriddin tahrirlagan to'liq, benuqson va qulashlardan to'liq himoyalangan versiya!
 """
 
 import asyncio
@@ -165,6 +165,37 @@ def load_db():
                 data = doc.to_dict()
                 print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
                 parsed_data = {int(k): v for k, v in data.items()}
+                
+                # MERGE LOGIC: Mahalliy ma'lumotlarni o'chib ketishdan asraymiz (TUZATILDI!)
+                for k, v in local_data.items():
+                    if k not in parsed_data:
+                        parsed_data[k] = v
+                    else:
+                        # Akkauntlarni asinxron birlashtirish
+                        local_accs = v.get("accounts", [])
+                        fire_accs = parsed_data[k].get("accounts", [])
+                        merged_accs_dict = {}
+                        for acc in local_accs + fire_accs:
+                            merged_accs_dict[acc["phone"]] = acc
+                        parsed_data[k]["accounts"] = list(merged_accs_dict.values())
+                        
+                        # Profil ulanishini saqlaymiz
+                        if v.get("active_phone") and not parsed_data[k].get("active_phone"):
+                            parsed_data[k]["active_phone"] = v.get("active_phone")
+                            parsed_data[k]["active_name"] = v.get("active_name")
+                            parsed_data[k]["active_username"] = v.get("active_username")
+                            
+                        # Tanlangan guruhlarni saqlaymiz
+                        if v.get("selected_groups") and not parsed_data[k].get("selected_groups"):
+                            parsed_data[k]["selected_groups"] = v.get("selected_groups")
+                            
+                        # Kesh guruhlarni saqlaymiz
+                        if v.get("cached_groups") and not parsed_data[k].get("cached_groups"):
+                            parsed_data[k]["cached_groups"] = v.get("cached_groups")
+                            
+                        # Reklama matnini saqlaymiz
+                        if v.get("reklama_matni") and (not parsed_data[k].get("reklama_matni") or parsed_data[k].get("reklama_matni") == "🔥 AutoHabar Pro yordamida ishingizni yengillating!"):
+                            parsed_data[k]["reklama_matni"] = v.get("reklama_matni")
                 
                 # SADRIDDIN: Eski keraksiz kanallarni bulutdan avtomatik 100% tozalash
                 for u_id in parsed_data:
@@ -643,6 +674,75 @@ def get_language_markup() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
+# ================= REAL TIME REDIRECTION SYSTEM (TRAP-PROOF) =================
+
+async def check_and_redirect_if_menu(message: types.Message, state: FSMContext) -> bool:
+    """Tuzoq holatlarini butunlay yo'qotuvchi aqlli menyu yo'naltiruvchisi"""
+    text = message.text
+    if not text:
+        return False
+        
+    if text.startswith("/start"):
+        await state.clear()
+        await cmd_start(message, state)
+        return True
+        
+    if text == "🛡️ Admin Panel":
+        await state.clear()
+        await cmd_admin(message, state)
+        return True
+
+    # Barcha tugmalar matnlarini tekshiramiz
+    all_btn_auto = get_localization_values("btn_auto_send")
+    all_btn_msg = get_localization_values("btn_msg_text")
+    all_btn_int = get_localization_values("btn_interval")
+    all_btn_grp = get_localization_values("btn_groups")
+    all_btn_prf = get_localization_values("btn_profiles")
+    all_btn_gd = get_localization_values("btn_guide")
+    all_btn_cab = get_localization_values("btn_cabinet")
+    all_btn_set = get_localization_values("btn_settings")
+    all_btn_sup = get_localization_values("btn_support")
+
+    if text in all_btn_auto:
+        await state.clear()
+        await menu_autohabar(message, state)
+        return True
+    elif text in all_btn_msg:
+        await state.clear()
+        await menu_habar_matni_msg(message, state)
+        return True
+    elif text in all_btn_int:
+        await state.clear()
+        await menu_interval_handler(message, state)
+        return True
+    elif text in all_btn_grp:
+        await state.clear()
+        await menu_groups_handler(message, state)
+        return True
+    elif text in all_btn_prf:
+        await state.clear()
+        await menu_profillar(message, state)
+        return True
+    elif text in all_btn_gd:
+        await state.clear()
+        await menu_guide_handler(message, state)
+        return True
+    elif text in all_btn_cab:
+        await state.clear()
+        await menu_kabinet(message, state)
+        return True
+    elif text in all_btn_set:
+        await state.clear()
+        await menu_sozlamalar(message, state)
+        return True
+    elif text in all_btn_sup:
+        await state.clear()
+        await menu_support_handler(message, state)
+        return True
+
+    return False
+
+
 # ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE) =================
 
 class MandatorySubMiddleware(BaseMiddleware):
@@ -905,7 +1005,7 @@ async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_
     lang_name = "O'zbekcha 🇺🇿" if lang == "uz" else ("Русский 🇷🇺" if lang == "ru" else "English 🇺🇸")
     
     settings_template = "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:" if lang == "uz" else (
-        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
+        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
         "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nClick a button to change settings:"
     )
     
@@ -1049,6 +1149,10 @@ async def menu_support_handler(message: types.Message, state: FSMContext):
 
 @router.message(StateFilter(TextStates.waiting_support_question))
 async def message_receive_support_question(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     ensure_user(user_id)
     
@@ -1623,6 +1727,10 @@ async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMCont
 
 @router.message(StateFilter(TextStates.waiting_text))
 async def message_receive_text(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -1653,6 +1761,10 @@ async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMCon
 
 @router.message(StateFilter(TextStates.waiting_photo), F.photo)
 async def message_receive_photo(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -1677,7 +1789,11 @@ async def message_receive_photo(message: types.Message, state: FSMContext):
     await state.clear()
 
 @router.message(StateFilter(TextStates.waiting_photo))
-async def message_receive_photo_invalid(message: types.Message):
+async def message_receive_photo_invalid(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     lang = db_users[user_id].get("lang", "uz") or "uz"
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
@@ -1743,6 +1859,10 @@ async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: 
 
 @router.message(StateFilter(TextStates.waiting_buttons))
 async def message_receive_buttons(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -1809,6 +1929,10 @@ async def callback_edit_forward(callback_query: types.CallbackQuery, state: FSMC
 
 @router.message(StateFilter(TextStates.waiting_forward))
 async def message_receive_forward(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
@@ -2163,6 +2287,10 @@ async def callback_add_account_wizard(callback_query: types.CallbackQuery, state
 
 @router.message(StateFilter(LoginStates.waiting_phone))
 async def state_phone_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     user_id = message.from_user.id
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -2190,6 +2318,10 @@ async def state_phone_received(message: types.Message, state: FSMContext):
 
 @router.message(StateFilter(LoginStates.waiting_code))
 async def state_code_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     code = message.text.strip().replace(".", "").replace(" ", "")
     data = await state.get_data()
     phone = data.get("phone")
@@ -2233,6 +2365,10 @@ async def state_code_received(message: types.Message, state: FSMContext):
 
 @router.message(StateFilter(LoginStates.waiting_2fa))
 async def state_2fa_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
     password = message.text.strip()
     user_id = message.from_user.id
     ensure_user(user_id)
