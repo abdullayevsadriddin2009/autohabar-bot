@@ -5,7 +5,7 @@ Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon)
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
 Render, Railway va barcha bulutli platformalarda 24/7 ishlaydi.
 
-Sadriddin tahrirlagan to'liq, benuqson va qulashlardan to'liq himoyalangan versiya!
+Sadriddin tahrirlagan to'liq, benuqson va guruhlarga tarqatish drayveri mukammal qilingan versiya!
 """
 
 import asyncio
@@ -373,7 +373,9 @@ async def restore_sessions_from_cloud():
         for user_doc in users_docs:
             user_id = user_doc.id
             sessions_ref = users_ref.document(user_id).collection('telethon_sessions')
-            for session_doc in sessions_ref.stream():
+            sessions_docs = sessions_ref.stream()
+            
+            for session_doc in sessions_docs:
                 phone_clean = session_doc.id
                 binary_data_b64 = session_doc.to_dict().get("binary_data")
                 if binary_data_b64:
@@ -650,17 +652,14 @@ def get_localization_values(key: str) -> list:
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id, key: str) -> str:
-    try:
-        user_id = int(user_id)
-        if user_id not in db_users:
-            ensure_user(user_id)
-        lang = db_users.get(user_id, {}).get("lang", "uz") or "uz"
-    except Exception:
-        lang = "uz"
+    user_id = int(user_id)
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
     return get_lang_value(lang, key)
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
     user_id = int(user_id)
+    ensure_user(user_id)
     kb = [
         [KeyboardButton(text=get_text(user_id, "btn_auto_send")), KeyboardButton(text=get_text(user_id, "btn_msg_text"))],
         [KeyboardButton(text=get_text(user_id, "btn_interval")), KeyboardButton(text=get_text(user_id, "btn_groups"))],
@@ -1380,7 +1379,6 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
         pass
     await callback_query.answer()
 
-
 # ================= ADMIN PANEL HANDLERS =================
 
 # Admin panel barcha holatlardan break out qilishi uchun StateFilter("*") ulandi!
@@ -1425,12 +1423,227 @@ async def callback_adm_stats(callback_query: types.CallbackQuery):
     text = (
         "📊 <b>Botning real vaqt rejimidagi statistikasi:</b>\n\n"
         f"👥 Jami foydalanuvchilar: <b>{total_users} ta</b>\n"
-        f"👑 VIP (PRO) a'zolar: <b>{pro_users} ta</b>\n"
-        f"🟢 Faol yuboruvchilar: <b>{active_senders} ta</b>\n"
-        f"📤 Jami tarqatilgan xabarlar: <b>{total_sent} ta</b>\n\n"
-        f"🕒 Yangilangan vaqt: <i>{datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</i>"
+        f"👑 VIP (PRO) а'золар: <b>{pro_users} та</b>\n"
+        f"🟢 Актив юборувчилар: <b>{active_senders} та</b>\n"
+        f"📤 Жами таркатилган хабарлар: <b>{total_sent} та</b>\n\n"
+        f"🕒 Янгиланган вакт: <i>{datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</i>"
     )
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "adm_search_user", StateFilter("*"))
+async def callback_adm_search_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    await state.set_state(AdminStates.waiting_search_id)
+    text = (
+        "👤 <b>Foydalanuvchini sozlash bo'limi</b>\n\n"
+        "Iltimos, boshqarmoqchi bo'lgan foydalanuvchining <b>Telegram ID</b> raqamini kiriting:"
+    )
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="adm_main_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_search_id))
+async def admin_user_search_process(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        target_id = int(message.text.strip())
+        if target_id in db_users:
+            await state.update_data(target_id=target_id)
+            user_data = db_users[target_id]
+            
+            tarif_nomi = "PRO 👑" if user_data.get("is_pro") else "FREE 👤"
+            active_phone = user_data.get("active_phone") or "Ulanmagan"
+            
+            text = (
+                f"👤 <b>Foydalanuvchi topildi! (ID: {target_id})</b>\n\n"
+                f"🏷️ Ism: <b>{user_data.get('active_name', 'Mavjud emas')}</b>\n"
+                f"🌐 Username: <b>{user_data.get('active_username', '@-')}</b>\n"
+                f"📞 Aloqa raqam: <b>+{active_phone.replace('+', '') if active_phone != 'Ulanmagan' else active_phone}</b>\n"
+                f"🛡️\n🛡️ Joriy tarif: <b>{tarif_nomi}</b>\n"
+                f"💰 Pul Balans: <b>{user_data.get('balans', 0):,} so'm</b>\n"
+                f"⭐ Stars Balans: <b>{user_data.get('stars', 0)} ⭐️</b>\n"
+                f"📤 Jami yuborgan xabarlari: <b>{user_data.get('total_sent', 0)} ta</b>"
+            )
+            
+            inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="💰 Balans tahrirlash", callback_data=f"adm_chg_bal_{target_id}"),
+                    InlineKeyboardButton(text="⭐️ Stars tahrirlash", callback_data=f"adm_chg_stars_{target_id}"),
+                ],
+                [
+                    InlineKeyboardButton(text="👑 PRO / FREE o'tkazish", callback_data=f"adm_chg_tarif_{target_id}")
+                ],
+                [
+                    InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")
+                ]
+            ])
+            await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+            await state.clear()
+        else:
+            await message.answer("❌ ID raqamiga ega foydalanuvchi topilmadi! Qaytadan kiriting yoki ⬅️ Orqaga tugmasini bosing:")
+    except ValueError:
+        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lishi kerak! Qaytadan kiriting:")
+
+@router.callback_query(F.data.startswith("adm_chg_bal_"), StateFilter("*"))
+async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    await state.update_data(target_id=target_id)
+    await state.set_state(AdminStates.waiting_add_balans)
+    
+    await callback_query.message.edit_text(
+        f"💰 <b>Balansni tahrirlash (User ID: {target_id})</b>\n\n"
+        "Balansga pul qo'shish uchun: <code>+50000</code>\n"
+        "Hisobdan pul ayirish uchun: <code>-30000</code> kabi qiymat yuboring:",
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_add_balans))
+async def state_process_add_balans(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    data = await state.get_data()
+    target_id = int(data.get("target_id"))
+    val_str = message.text.strip()
+    
+    try:
+        change_amount = int(val_str)
+        if target_id in db_users:
+            current_bal = db_users[target_id].get("balans", 0)
+            new_bal = current_bal + change_amount
+            if new_bal < 0:
+                new_bal = 0
+            db_users[target_id]["balans"] = new_bal
+            save_db()
+            
+            await message.answer(
+                f"✅ <b>Balans muvaffaqiyatli o'zgartirildi!</b>\n"
+                f"Eski balans: {current_bal:,} so'm\n"
+                f"Yangi balans: <b>{new_bal:,} so'm</b>",
+                reply_markup=get_main_keyboard(target_id),
+                parse_mode="HTML"
+            )
+            try:
+                await bot.send_message(target_id, f"💰 Tizim administratori hisobingiz balansini o'zgartirdi!\nJoriy balans: <b>{new_bal:,} so'm</b>", parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            await message.answer("❌ Foydalanuvchi bazadan o'chib ketgan.")
+    except ValueError:
+        await message.answer("❌ Noto'g'ri qiymat kiritildi. Faqat raqam yoki + / - belgisidan foydalaning (masalan: +25000):")
+    await state.clear()
+
+@router.callback_query(F.data.startswith("adm_chg_stars_"), StateFilter("*"))
+async def callback_adm_chg_stars_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    await state.update_data(target_id=target_id)
+    await state.set_state(AdminStates.waiting_add_stars)
+    
+    await callback_query.message.edit_text(
+        f"⭐️ <b>Telegram Stars balansini tahrirlash (User ID: {target_id})</b>\n\n"
+        "Stars qo'shish uchun: <code>+50</code>\n"
+        "Stars ayirish uchun: <code>-30</code> kabi qiymat yuboring:",
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
+
+@router.message(StateFilter(AdminStates.waiting_add_stars))
+async def state_process_add_stars(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    data = await state.get_data()
+    target_id = int(data.get("target_id"))
+    val_str = message.text.strip()
+    
+    try:
+        change_amount = int(val_str)
+        if target_id in db_users:
+            current_stars = db_users[target_id].get("stars", 0)
+            new_stars = current_stars + change_amount
+            if new_stars < 0:
+                new_stars = 0
+            db_users[target_id]["stars"] = new_stars
+            save_db()
+            
+            await message.answer(
+                f"✅ <b>Stars balans o'zgartirildi!</b>\n"
+                f"Eski: {current_stars} ⭐️\n"
+                f"Yangi: <b>{new_stars} ⭐️</b>",
+                reply_markup=get_main_keyboard(target_id),
+                parse_mode="HTML"
+            )
+            try:
+                await bot.send_message(target_id, f"⭐️ Tizim administratori hisobingizga Stars taqdim etdi!\nJoriy stars: <b>{new_stars} ⭐️</b>", parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            await message.answer("❌ Foydalanuvchi topilmadi.")
+    except ValueError:
+        await message.answer("❌ Noto'g'ri format! Faqat son yozing (masalan: +10):")
+    await state.clear()
+
+@router.callback_query(F.data.startswith("adm_chg_tarif_"), StateFilter("*"))
+async def callback_adm_chg_tarif(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    target_id = int(callback_query.data.split("_")[3])
+    if target_id in db_users:
+        current_status = db_users[target_id].get("is_pro", False)
+        new_status = not current_status
+        db_users[target_id]["is_pro"] = new_status
+        save_db()
+        
+        status_nomi = "PRO 👑" if new_status else "FREE 👤"
+        await callback_query.answer(f"Tarif muvaffaqiyatli {status_nomi} ga o'zgartirildi!", show_alert=True)
+        try:
+            tabrik = "👑 <b>Tabriklaymiz! Tizim administratori sizga cheksiz PRO tarifini taqdim etdi!</b>\nEndi barcha yopiq xizmatlar siz uchun ochiq." if new_status else "⚠️ Hisobingizdagi PRO tarifi administrator tomonidan bekor qilindi va bepul rejimga qaytarildingiz."
+            await bot.send_message(target_id, tabrik, parse_mode="HTML")
+        except Exception:
+            pass
+        
+        text = (
+            "🛡️ <b>AutoHabar Pro - Tizim Admin Paneli</b>\n\n"
+            "Boshqaruv bo'limini tanlang:"
+        )
+        try:
+            await callback_query.message.edit_text(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
+        except Exception:
+            pass
+    else:
+        await callback_query.answer("Foydalanuvchi topilmadi!", show_alert=True)
+
+@router.callback_query(F.data == "adm_mandatory_sub", StateFilter("*"))
+async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        return
+    channels = db_users[ADMIN_ID].get("channels", [])
+    text = (
+        "📢 <b>Majburiy obuna kanallarini sozlash</b>\n\n"
+        "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qilib ko'rsatiladi:\n\n"
+    )
+    if channels:
+        for idx, chan in enumerate(channels, 1):
+            text += f"{idx}. <b>{chan}</b>\n"
+    else:
+        text += "❌ Hozirda hech qanday majburiy kanal o'rnatilmagan."
+        
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="adm_sub_add_chan"),
+            InlineKeyboardButton(text="❌ Hammasini tozalash", callback_data="adm_sub_clear_chan")
+        ],
         [InlineKeyboardButton(text="⬅️ Admin Menyu", callback_data="adm_main_menu")]
     ])
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
