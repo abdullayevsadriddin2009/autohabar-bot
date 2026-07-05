@@ -275,7 +275,7 @@ def ensure_user(user_id: int):
             "joined_time": datetime.now().strftime("%H:%M"),
             "today_sent": 0,
             "total_sent": 0,
-            "channels": [],  # Boshlang'ich kanallar mutlaqo ochiq (bo'sh)
+            "channels": [],
             "auto_off_hours": None,
             "is_sending_started_at": 0,
             "referrals_count": 0,
@@ -286,7 +286,7 @@ def ensure_user(user_id: int):
             "accounts": [],  # Barcha ulangan akkauntlar ro'yxati
             "auto_sub_active": True,
             "auto_reply_active": False,
-            "lang": "uz"
+            "lang": None  # Set to None on first creation so they can select language on start!
         }
     else:
         # Maydonlarni xavfsiz to'ldirish
@@ -316,8 +316,8 @@ def ensure_user(user_id: int):
             db_users[user_id]["auto_sub_active"] = True
         if "auto_reply_active" not in db_users[user_id]:
             db_users[user_id]["auto_reply_active"] = False
-        if "lang" not in db_users[user_id] or db_users[user_id]["lang"] is None:
-            db_users[user_id]["lang"] = "uz"
+        if "lang" not in db_users[user_id]:
+            db_users[user_id]["lang"] = None
             
         # Eski kanallarni mahalliy xotiradan ham tozalash
         db_users[user_id]["channels"] = [
@@ -621,7 +621,6 @@ def get_localization_values(key: str) -> list:
             cleaned = val.replace("\ufe0f", "")
             values.append(cleaned)
             # \ufe0f ni qo'shilgan holati
-            # Har qanday emojidan keyin \ufe0f qo'shilgan versiyasini qo'shish
             with_selector = ""
             for char in val:
                 if ord(char) > 255:
@@ -855,7 +854,7 @@ async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_
         phone = user_data.get("active_phone")
         p_status = f"👤 Profil: [ {phone} ]" if phone else (f"👤 Profil: [ {get_text(real_user_id, 'no_active_conn')} ]")
         
-        s_status_on = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно (Идет рассылка...)" if lang == "ru" else "🟢 Active (Sending...)")
+        s_status_on = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно" if lang == "ru" else "🟢 Active")
         s_status_off = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Disabled")
         holatStatus = s_status_on if user_data.get("is_sending") else s_status_off
         
@@ -1204,7 +1203,7 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
         return
         
     data = await state.get_data()
-    target_id = data.get("target_user_id")
+    target_id = int(data.get("target_user_id"))
     reply_text = message.text
     
     if not reply_text:
@@ -1296,7 +1295,7 @@ async def cmd_admin(message: types.Message, state: FSMContext):
     await state.clear()
     
     text = (
-        "🛡️ <b>AutoHabar Pro - Tizim Admin Paneli</b>\n\n"
+        "🛡️ <b>AutoHabar Pro - Tizim Admin Panel</b>\n\n"
         "Boshqaruv bo'limini tanlang:"
     )
     await message.answer(text, reply_markup=get_admin_main_markup(), parse_mode="HTML")
@@ -2197,6 +2196,258 @@ async def run_sending_cycle_for_user(user_id):
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
 
 
+# ================= INTERVAL MENYUSI HANDLERS =================
+
+@router.message(F.text.in_(get_localization_values("btn_interval")), StateFilter("*"))
+async def menu_interval_handler(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    user_data = db_users.get(user_id)
+    await message.answer(f"⏱️ <b>Hozirgi interval:</b> {user_data.get('interval', 15)} daqiqa", reply_markup=get_interval_keyboard(user_data.get("interval", 15)), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("set_int_"), StateFilter("*"))
+async def callback_set_interval_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    val = int(callback_query.data.split("_")[2])
+    db_users[user_id]["interval"] = val
+    save_db()
+    await callback_query.answer(f"✓ Interval {val} daqiqaga sozlandi!")
+    await callback_query.message.edit_text(f"⏱️ <b>Hozirgi interval:</b> {val} daqiqa", reply_markup=get_interval_keyboard(val), parse_mode="HTML")
+
+
+# ================= GROUPS SETUP HANDLERS =================
+
+@router.message(F.text.in_(get_localization_values("btn_groups")), StateFilter("*"))
+async def menu_groups_handler(message: types.Message, state: FSMContext):
+    await state.clear()
+    await menu_guruhlar(message, state)
+
+
+# ================= PROFILLAR SETUP HANDLERS =================
+
+@router.callback_query(F.data == "go_to_profillar", StateFilter("*"))
+async def callback_go_to_profillar_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await show_profillar_settings(callback_query.message, callback_query.from_user.id)
+
+
+# ================= PUBLIC OBUNA TEKSHIRISH HANDLER =================
+
+@router.callback_query(F.data == "check_sub_status", StateFilter("*"))
+async def callback_check_sub_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    await callback_query.answer("🎉 Obunangiz tasdiqlandi!")
+    await callback_query.message.delete()
+    await callback_query.message.answer(get_text(user_id, "welcome"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+
+
+# ================= OTHER ACTIONS & INTERFACES =================
+
+@router.callback_query(F.data == "back_to_kabinet", StateFilter("*"))
+async def callback_back_to_kabinet_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await show_cabinet_panel(callback_query, callback_query.from_user.id)
+    await callback_query.answer()
+
+
+# ================= REAL TIME LOGIN HANDLERS =================
+
+@router.callback_query(F.data == "add_account", StateFilter("*"))
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        msg = get_text(user_id, "acc_limit_pro") if is_pro else get_text(user_id, "acc_limit_free")
+        await callback_query.message.answer(msg, parse_mode="HTML")
+        await callback_query.answer()
+        return
+
+    await callback_query.message.answer(get_text(user_id, "enter_phone"), parse_mode="HTML")
+    await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
+    user_id = message.from_user.id
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not phone.startswith("+"):
+        phone = "+" + phone
+        
+    phone_digits = "".join(filter(str.isdigit, phone))
+    if len(phone_digits) < 7 or len(phone_digits) > 18:
+        await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
+        return
+    
+    await state.update_data(phone=phone)
+    await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, phone)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shish
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(get_text(user_id, "sms_expired"), parse_mode="HTML")
+        await state.clear()
+    except errors.PhoneCodeInvalidError:
+        await message.answer(get_text(user_id, "sms_invalid"), parse_mode="HTML")
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(get_text(user_id, "two_fa_required"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    # Anti-Trap redirection
+    if await check_and_redirect_if_menu(message, state):
+        return
+
+    password = message.text.strip()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, password=password)
+        me = await client.get_me()
+        
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer(get_text(user_id, "two_fa_invalid"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
+async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer(get_text(user_id, "no_active_conn"), show_alert=True)
+        return
+        
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
+    
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
+    await show_cabinet_panel(callback_query, user_id)
+
+
 # ================= HIGHLY DETAILED PANEL CALLBACKS (TUZATILDI - ISHLAYDI!) =================
 
 @router.callback_query(F.data == "toggle_sending", StateFilter("*"))
@@ -2485,7 +2736,7 @@ async def callback_groups_list(callback_query: types.CallbackQuery, page: int = 
             await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
         except TelegramBadRequest as e:
             if "message is not modified" in str(e).lower():
-                await event.answer()
+                await callback_query.answer()
             else:
                 await callback_query.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
         except Exception:
@@ -2765,6 +3016,52 @@ async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMCon
 
     await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
     await show_cabinet_panel(callback_query, user_id)
+
+
+# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+
+async def init_existing_sessions():
+    if not os.path.exists(SESSIONS_DIR):
+        return
+    for file in os.listdir(SESSIONS_DIR):
+        if file.endswith(".session") and "_" in file:
+            user_id_str = file.replace("session_", "").replace(".session", "")
+            parts = user_id_str.split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                user_id = int(parts[0])
+                phone_clean = parts[1]
+                
+                user_data = db_users.get(user_id)
+                if not user_data:
+                    continue
+                accounts_list = user_data.get("accounts", [])
+                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
+                
+                if not target_phone:
+                    target_phone = "+" + phone_clean
+                
+                client = await get_client(user_id, target_phone)
+                
+                if await client.is_user_authorized():
+                    session_key = f"{user_id}_{phone_clean}"
+                    active_clients[session_key] = client
+                    me = await client.get_me()
+                    
+                    ensure_user(user_id)
+                    accounts_list = db_users[user_id].get("accounts", [])
+                    if not any(acc["phone"] == target_phone for acc in accounts_list):
+                        accounts_list.append({
+                            "phone": target_phone,
+                            "name": me.first_name,
+                            "username": f"@{me.username}" if me.username else "@-"
+                        })
+                        db_users[user_id]["accounts"] = accounts_list
+                    save_db()
+                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
+            except Exception as e:
+                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
 
 # ================= WEB SERVER =================
