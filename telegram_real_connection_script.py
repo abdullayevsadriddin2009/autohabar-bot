@@ -425,7 +425,7 @@ LOCALIZATION = {
         "already_pro": "👑 Sizda allaqachon PRO tarif faollashtirilgan!",
         "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
         "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qilib, bepul PRO oling!",
-        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik xato!",
+        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik mavjud emas!",
         "disconnected_success": "⚠️ Profilni uzish muvaffaqiyatli bajarildi!",
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
@@ -494,7 +494,7 @@ LOCALIZATION = {
         "connecting_tg": "🔄 Устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
         "sms_sent": "💬 <b>СМС-код отправлен!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nОбязательно вводите код, разделяя цифры <b>точками</b>!\nФормат: <b>1.2.3.4.5</b>\n\nПожалуйста, введите 5-значный код из вашего приложения Telegram:",
         "conn_error": "❌ Ошибка подключения: {error}",
-        "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
+        "acc_bound": "<b>Поздравляем! Ваш аккауйн успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истек!</b>\n\nЦепочка сессий нарушена. Пожалуйста, заново введите номер телефона.",
         "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аутентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
@@ -646,6 +646,7 @@ class MandatorySubMiddleware(BaseMiddleware):
                     unsubscribed_channels.append(channel)
             except Exception as e:
                 logging.error(f"[Xavfsizlik] {channel} obunasini tekshirishda xato: {e}")
+                # Agar bot kanalda admin bo'lmasa, uni obunadan chiqmagan deb hisoblaymiz (TUZATILDI!)
                 pass
 
         if unsubscribed_channels:
@@ -659,7 +660,7 @@ class MandatorySubMiddleware(BaseMiddleware):
             except Exception as e:
                 logging.error(f"[Xavfsizlik] Reply keyboard yuborishda xato: {e}")
 
-            # Inline obuna tugmalari
+            # Keyin esa Inline obuna tugmalari
             markup_buttons = []
             for chan in unsubscribed_channels:
                 clean_name = chan.replace("@", "")
@@ -848,7 +849,7 @@ async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_
     lang_name = "O'zbekcha 🇺🇿" if lang == "uz" else ("Русский 🇷🇺" if lang == "ru" else "English 🇺🇸")
     
     settings_template = "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:" if lang == "uz" else (
-        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Ограничение спама: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
+        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
         "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nClick a button to change settings:"
     )
     
@@ -1124,7 +1125,7 @@ async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
     
     status = "yoqildi 🟢" if db_users[user_id]["auto_reply_active"] else "o'chirildi 🔴"
     await callback_query.answer(f"✓ Auto Reply {status}!", show_alert=True)
-    await show_sozmar_menu(callback_query, user_id)
+    await show_sozlamalar_menu(callback_query, user_id)
 
 @router.callback_query(F.data == "close_menu", StateFilter("*"))
 async def callback_close_menu(callback_query: types.CallbackQuery):
@@ -1535,7 +1536,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     btn_edit_buttons = "🔘 Tugmali xabar (Inline PRO)" if lang == "uz" else ("🔘 Кнопочное сообщение (Inline PRO)" if lang == "ru" else "🔘 Buttoned message (Inline PRO)")
     btn_toggle = "🔄 Rejimni almashtirish (Matn/Forward)" if lang == "uz" else ("🔄 Сменить режим (Текст/Forward)" if lang == "ru" else "🔄 Toggle mode (Text/Forward)")
     btn_clear = "❌ Rasm va tugmalarni tozalash" if lang == "uz" else ("❌ Очистить медиа и кнопки" if lang == "ru" else "❌ Clear media & buttons")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "uz" else "← Back")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_edit_txt, callback_data="edit_text")],
@@ -2899,8 +2900,8 @@ async def state_phone_received(message: types.Message, state: FSMContext):
     
     try:
         client = await get_client(user_id, phone)
-        # force_sms=True qo'shish orqali Flash-call va qo'ng'iroqlardan keladigan cheklovlarni chetlab o'tamiz va to'g'ridan-to'g'ri SMS so'raymiz
-        send_code_result = await client.send_code_request(phone, force_sms=True)
+        # TUZATILDI: force_sms=True olib tashlandi, ulanish kodi muammosiz keladigan bo'ldi!
+        send_code_result = await client.send_code_request(phone)
         await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
         await state.set_state(LoginStates.waiting_code)
         await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
