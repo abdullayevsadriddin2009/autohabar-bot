@@ -652,9 +652,13 @@ def get_localization_values(key: str) -> list:
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id, key: str) -> str:
-    user_id = int(user_id)
-    ensure_user(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
+    try:
+        user_id = int(user_id)
+        if user_id not in db_users:
+            ensure_user(user_id)
+        lang = db_users.get(user_id, {}).get("lang", "uz") or "uz"
+    except Exception:
+        lang = "uz"
     return get_lang_value(lang, key)
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
@@ -1378,6 +1382,7 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
     except Exception:
         pass
     await callback_query.answer()
+
 
 # ================= ADMIN PANEL HANDLERS =================
 
@@ -2261,7 +2266,7 @@ async def run_sending_cycle_for_user(user_id):
             choice = user_data.get("groups_choice", "custom")
             
             if choice == "custom":
-                # Faqat tanlangan guruhlarni asinxron formatga o'tkazamiz
+                # Tanlangan guruhlarni asinxron formatga o'tkazamiz
                 guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
             else:
                 for d in dialogs:
@@ -2282,16 +2287,31 @@ async def run_sending_cycle_for_user(user_id):
                     logging.info(f"[Sender] Tarqatish foydalanuvchi tomonidan to'xtatildi.")
                     break
                     
-                # Guruh entitysini kesh xaritasidan soniyada aniqlaymiz (ValueErrorsiz!)
-                g_entity = dialogs_map.get(int(g_id))
+                # Guruh entitysini kesh xaritasidan xavfsiz va aniq topamiz (TUZATILDI!)
+                g_entity = None
+                g_id_str = str(g_id)
+                # Telethon-dagi har xil formatlarni (-100 prefiksi bilan yoki usiz) bir-biriga moslashtirish
+                short_id = int(g_id_str.replace("-100", "-").replace("-", ""))
+                
+                for cached_id, entity in dialogs_map.items():
+                    cached_id_str = str(cached_id)
+                    cached_short = int(cached_id_str.replace("-100", "-").replace("-", ""))
+                    if cached_id == g_id or cached_short == short_id:
+                        g_entity = entity
+                        break
+                        
                 if not g_entity:
                     try:
                         # Agar keshda topilmasa, API orqali olishga urinib ko'ramiz
                         g_entity = await client.get_entity(int(g_id))
-                    except Exception as e:
-                        logging.error(f"[Sender] Guruh entity topilmadi ({g_id}): {e}")
-                        xatoliklar += 1
-                        continue
+                    except Exception:
+                        try:
+                            # Qayta urinib ko'rish: -100 va prefikssiz versiyalarda
+                            g_entity = await client.get_entity(short_id)
+                        except Exception as e:
+                            logging.error(f"[Sender] Guruh entity topilmadi ({g_id}): {e}")
+                            xatoliklar += 1
+                            continue
                         
                 try:
                     # Guruhga reklama xabarini yuboramiz
@@ -3144,7 +3164,7 @@ async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMCon
     await show_cabinet_panel(callback_query, user_id)
 
 
-# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+# ================= HIGHLY REALISTIC SECTIONS & CHANNELS RE-INITIALIZER =================
 
 async def init_existing_sessions():
     if not os.path.exists(SESSIONS_DIR):
