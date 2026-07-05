@@ -434,12 +434,12 @@ LOCALIZATION = {
         "deposit_title": "💰 <b>Hisobni to'ldirish tizimi</b>\n━━━━━━━━━━━━━━━━━━━━\nSizning Telegram ID raqamingiz: <code>{user_id}</code>\nJoriy balansingiz: <b>{balans} so'm</b>\n\nHisobingizni xavfsiz to'ldirish orqali administratorga murojaat qiling:\n👉 <b>Administrator: @AbduIIayev_7</b>\n\n💡 <i>Eslatma: To'lovingiz tasdiqlanishi bilanoq balans hisobingizga soniyada avtomatik qo'shiladi!</i>\n━━━━━━━━━━━━━━━━━━━━",
         "profile_title": "👥 <b>Ulangan Akkauntlarni Boshqarish</b>\n━━━━━━━━━━━━━━━━━━━━\nJoriy faol ulanish: <b>{active}</b>\n\nFree tarifda faqat 1 ta profil qo'shish mumkin.\n👑 PRO tarifda 5 tagacha profil qo'shishingiz va boshqarishingiz mumkin!\n━━━━━━━━━━━━━━━━━━━━\nQuyidagi ro'yxatdan faollashtirish yoki o'chirishref uchun profilni tanlang:",
         "msg_setup": "💬 <b>Habarni sozlash</b>\n\n📝 <b>Joriy matn:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Biriktirilgan rasm:</b> <b>{rasm}</b>\n🔘 <b>Inline tugmalar:</b> <b>{tugmalar}</b>\n📤 <b>Forward Rejim status:</b> <b>{status}</b>\n\n📌 <b>Xabar turini tanlang:</b>",
-        "groups_setup": "🎯 <b>Guruhlarni sozlash</b>\n\nQaysi guruhlarga xabar yuboramiz?\nJoriy tanlov: <b>{tanlov}</b>\n\nGuruhlar ro'yxatini yuklash va sozlash uchun pastdagi tugmalardan foydalaning:",
-        "pro_info": "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n📤 <b>Forward xabarlarni tarqatish:</b>\n<i>Kanal postlarini barcha guruhlarga forward qilib uzatadi. Bu esa kanalingiz ko'rishlar sonini (views) jadal oshirishga yordam beradi!</i>\n\n👤 <b>Ko'p profil ulanishi:</b>\n• Botga 5 tagacha turli profil qo'shish imkoniyati\n\n🔘 <b>Tugmali inline xabarlar:</b>\n• Reklamalar tagiga havolali tugmalar biriktirish\n\n❌ <b>Watermarksiz toza interfeys:</b>\n• Xabar tagidagi reklama so'zlarini butunlay olib tashlash\n\n💰 <b>Narxi:</b>\n• <b>10,000 so'm</b> (Kabinetingizdagi pul hisobidan)\n• Yoki <b>6 ta yangi do'stlarni</b> taklif qilish (Mutlaqo bepul!)\n\n🔗 <b>Sizning shaxsiy taklif havolangiz:</b>\n<code>{ref_link}</code>",
+        "groups_setup": "🎯 <b>Guruhlarni sozlash</b>\n\nQaysi guruhlarga xabar yuboramiz?\nJoriy tanlov: <b>{tanlov}</b>\n\nGuruhlar ro'yxatini yuklash va sozlashcopy uchun pastdagi tugmalardan foydalaning:",
+        "pro_info": "👑 <b>AutoXabar Pro imkoniyatlari:</b>\n\n📤 <b>Forward xabarlarni tarqatish:</b>\n<i>Kanal postlarini barcha guruhlarga forward qilib uzatadi. Bu viewsni jadal oshiradi!</i>\n\n👤 <b>Ko'p profil ulanishi:</b>\n• Botga 5 tagacha turli profil qo'shish imkoniyati\n\n🔘 <b>Tugmali inline xabarlar:</b>\n• Reklamalar tagiga havolali tugmalar biriktirish\n\n❌ <b>Watermarksiz toza interfeys:</b>\n• Xabar tagidagi reklama so'zlarini butunlay olib tashlash\n\n💰 <b>Narxi:</b>\n• <b>10,000 so'm</b> (Kabinetingizdagi pul hisobidan)\n• Yoki <b>6 ta yangi do'stlarni</b> taklif qilish (Mutlaqo bepul!)\n\n🔗 <b>Sizning shaxsiy taklif havolangiz:</b>\n<code>{ref_link}</code>",
         "already_pro": "👑 Sizda allaqachon PRO tarif faollashtirilgan!",
         "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
         "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qilib, bepul PRO oling!",
-        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik mavjud emas!",
+        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik vaqtincha mavjud emas!",
         "disconnected_success": "⚠️ Profilni uzish muvaffaqiyatli bajarildi!",
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
@@ -472,7 +472,7 @@ LOCALIZATION = {
         "panel_refreshed": "🔄 Boshqaruv paneli muvaffaqiyatli yangilandi!"
     },
     "ru": {
-        "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Чтобы использовать нашего бота\n› Добавьте аккаунт\n› Настройте группы\n› Настройте сообщение\n› Запустите авторассылку\n\n❓ Если вы не знаете, как использовать бота, нажмите кнопку <b>📖 Руководство</b> ниже!",
+        "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Подключите аккаунт и настройте группы для старта!",
         "btn_auto_send": "⚪ Авторассылка",
         "btn_msg_text": "📝 Текст сообщения",
         "btn_interval": "⏱️ Интервал",
@@ -486,19 +486,137 @@ LOCALIZATION = {
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайшее время.",
         "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
-        "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Настройка групп:</b>\n• Перейдите в раздел настройки групп, выберите группы для рассылки и сохраните.\n\n3️⃣ <b>Интервал и Таймер:</b>\n• Ожидайте время между группами (Интервал) и время автоотключения таймера.\n\n4️⃣ <b>Запуск:</b>\n• В разделе авторассылки нажмите кнопку <b>▶️ Запустить</b>!",
-        "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Balance: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
+        "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).",
+        "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
         "btn_add_acc": "➕ Добавить аккаунт",
-        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍ " # Truncated correctly
+        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Очередь: <b>Текст</b>\n💬 Группы: <b>{guruhlar} групп</b>\n⏱️ Интервал: <b>{interval} минут</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Mention: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "deposit_title": "💰 <b>Система пополнения баланса</b>\n━━━━━━━━━━━━━━━━━━━━\nВаш Telegram ID: <code>{user_id}</code>\nТекущий баланс: <b>{balans} сум</b>\n\nЧтобы пополнить баланс, напишите администратору:\n👉 <b>Администратор: @AbduIIayev_7</b>",
+        "profile_title": "👥 <b>Управление подключенными аккаунтами</b>\n━━━━━━━━━━━━━━━━━━━━\nТекущее активное подключение: <b>{active}</b>\n\nНа бесплатном тарифе можно подключить только 1 профиль.\n👑 На тарифе PRO вы можете подключить и управлять до 5 профилей!",
+        "msg_setup": "💬 <b>Настройка сообщения</b>\n\n📝 <b>Текущий текст:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Изображение:</b> <b>{rasm}</b>\n🔘 <b>Кнопки:</b> <b>{tugmalar}</b>\n📤 <b>Forward:</b> <b>{status}</b>",
+        "groups_setup": "🎯 <b>Настройка групп</b>\n\nТекущий выбор: <b>{tanlov}</b>\n\nИспользуйте кнопки ниже для загрузки и настройки групп:",
+        "pro_info": "👑 <b>Возможности AutoXabar Pro:</b>\n\n📤 <b>Рассылка Forward сообщений:</b>\n<i>Пересылает посты каналов во все группы. Это помогает быстро увеличить количество просмотров!</i>\n\n👤 <b>Мультиаккаунт:</b>\n• До 5 различных профилей\n\n🔘 <b>Кнопки:</b>\n• Кнопки-ссылки под рекламой\n\n❌ <b>Без подписи бота:</b>\n• Полное удаление рекламной подписи бота в конце",
+        "already_pro": "👑 У вас уже активирован тариф PRO!",
+        "pro_activated": "🎉 Поздравляем! Тариф PRO успешно активирован! 👑",
+        "insufficient_funds": "❌ Недостаточно средств на балансе!\nТекущий баланс: {balans} сум\nСтоимость PRO: 10,000 сум.\n\nПригласите 6 друзей и получите PRO бесплатно!",
+        "no_active_conn": "⚠️ Нет активного подключения!",
+        "disconnected_success": "⚠️ Профиль успешно отключен!",
+        "acc_limit_free": "⚠️ <b>Ограничение бесплатного тарифа!</b>\n\nВы можете подключить только <b>1</b> профиль.\nДля подключения большего количества профилей (до 5) приобретите <b>👑 тариф Pro</b> или приглашайте друзей!",
+        "acc_limit_pro": "⚠️ <b>Максимальный предел аккаунтов!</b>\n\nНа тарифе PRO разрешено подключать не более <b>5</b> профилей.",
+        "enter_phone": "📱 <b>Подключение реального Telegram аккаунта</b>\n\nПожалуйста, введите ваш номер телефона в международном формате (например: <code>+998901234567</code>):",
+        "invalid_phone": "❌ <b>Введен неверный формат номера телефона!</b>\n\nФормат: <code>+[код_страны][номер]</code>",
+        "connecting_tg": "🔄 Устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
+        "sms_sent": "💬 <b>СМС-код отправлен в ваше приложение Telegram!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nКод придет не по СМС, а только в ваше официальное приложение <b>Telegram (в чат Telegram Service Message)</b>!\nВведите код, разделяя цифры <b>точками</b> (Формат: 1.2.3.4.5).\n\nПожалуйста, введите 5-значный код:",
+        "conn_error": "❌ Ошибка подключения: {error}",
+        "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
+        "sms_expired": "❌ <b>Срок действия кода истек!</b>\n\nПожалуйста, заново введите номер телефона.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, введите код еще раз.",
+        "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аутентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
+        "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>",
+        "custom_interval_prompt": "✍️ <b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>",
+        "min_interval_error": "❌ Минимальный интервал - 1 минута!",
+        "interval_set_success": "✅ <b>Интервал настроен на {val} минут!</b>",
+        "invalid_integer": "❌ Пожалуйста, вводите только целые числа (например: 25):",
+        "groups_all_selected": "✓ Выбраны все группы!",
+        "groups_custom_selected": "✓ Режим ручного выбора активирован!",
+        "groups_cleared": "🚨 Списки выбранных групп очищены!",
+        "groups_refreshing": "Запущено обновление списка групп...",
+        "need_profile_first": "⚠️ Сначала вам нужно подключить аккаунт!",
+        "group_cache_empty": "⚠️ Кэш пуст, пожалуйста, нажмите кнопку '+ Добавить' (Обновить)!",
+        "profile_not_found": "⚠️ Профиль не найден!",
+        "profile_activated": "✓ {phone} успешно активирован!",
+        "profile_deleted": "⚠️ Профиль успешно удален!",
+        "sub_channels_alert": "⚠️ Внимание! Вы должны быть подписаны на все каналы!",
+        "sub_confirmed": "🎉 Спасибо! Подписка успешно подтверждена. Бот активирован!",
+        "panel_reloaded": "Панель управления в актуальном состоянии.",
+        "panel_refreshed": "🔄 Панель управления успешно обновлена!"
+    },
+    "en": {
+        "welcome": "📊 <b>Main Menu:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nHello, welcome! 👋\n\n› Please add an account and configure groups!",
+        "btn_auto_send": "⚪ Auto-Send",
+        "btn_msg_text": "📝 Message Text",
+        "btn_interval": "⏱️ Interval",
+        "btn_groups": "💬 Configure Groups",
+        "btn_profiles": "👤 Profiles",
+        "btn_guide": "📖 Guide",
+        "btn_cabinet": "👤 Cabinet",
+        "btn_settings": "⚙️ Settings",
+        "btn_support": "❓ Support & Help",
+        "select_lang_text": "🌐 Please select your preferred language:",
+        "support_prompt": "✍️ <b>Support & Question Section</b>\n\nPlease write your question or appeal in detail. The administrator will reply shortly!",
+        "support_sent": "✅ Your question has been successfully delivered! We will reply shortly.",
+        "settings_title": "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>",
+        "guide_text": "📖 <b>AutoHabar Pro - Detailed User Guide</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Connecting Account:</b>\n• Go to Profiles, click add account and enter your phone number.",
+        "cabinet_title": "👤 <b>Your Cabinet</b>\n\n👥 Name: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balance: <b>{balans} UZS</b>\n\n📊 <b>Statistics:</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total sent: <b>{total_sent}</b>\n👥 Accounts connected: <b>{acc_count} / 5 ta</b>\n👥 Referrals invited: <b>{referrals} / 6 ta</b>\n🔗 Link: <code>{ref_link}</code>",
+        "btn_change_lang": "🌐 Change Language",
+        "btn_add_acc": "➕ Add Account",
+        "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>Text</b>\n💬 Groups: <b>{guruhlar} groups</b>\n⏱️ Interval: <b>{interval} minutes</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "deposit_title": "💰 <b>Balance Recharge System</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nCurrent balance: <b>{balans} UZS</b>\n\nTo securely top up your account, contact administrator:\n👉 <b>Administrator: @AbduIIayev_7</b>",
+        "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.\n👑 On the PRO plan, you can connect up to 5 profiles!",
+        "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Image:</b> <b>{rasm}</b>\n🔘 <b>Buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward:</b> <b>{status}</b>",
+        "groups_setup": "🎯 <b>Setup Groups</b>\n\nWhich groups should messages be sent to?\nCurrent choice: <b>{tanlov}</b>",
+        "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n• Forward channel posts to groups to easily grow views!",
+        "already_pro": "👑 You already have PRO status enabled!",
+        "pro_activated": "🎉 Congratulations! PRO status successfully enabled! 👑",
+        "insufficient_funds": "❌ Insufficient funds!\nCurrent balance: {balans} UZS\nPRO price: 10,000 UZS.\n\nInvite 6 friends to unlock PRO for free!",
+        "no_active_conn": "⚠️ No active connection!",
+        "disconnected_success": "⚠️ Profile successfully disconnected!",
+        "acc_limit_free": "⚠️ <b>Free Plan Limit!</b>\n\nYou can only connect <b>1</b> profile.",
+        "acc_limit_pro": "⚠️ <b>Maximum Account Limit!</b>\n\nUnder PRO plan, you can connect at most <b>5</b> profiles.",
+        "enter_phone": "📱 <b>Connect Real Telegram Account</b>\n\nPlease enter your phone number in international format (e.g. <code>+998901234567</code>):",
+        "invalid_phone": "❌ <b>Invalid phone format!</b>",
+        "connecting_tg": "🔄 Establishing a clean connection to Telegram servers. Please wait...",
+        "sms_sent": "💬 <b>SMS verification code sent to Telegram app!</b>\n\n⚠️ <b>IMPORTANT NOTE:</b>\nThe code is sent directly to your official <b>Telegram app (inside Telegram Service Message chat)</b>, not via SMS!\nEnter the code with <b>dots</b> between numbers (Format: 1.2.3.4.5).\n\nPlease enter the 5-digit code sent to your Telegram app:",
+        "conn_error": "❌ Connection error occurred: {error}",
+        "acc_bound": "<b>Congratulations! Your account has been successfully linked and backed up to the cloud.</b>\n\nYou can now go to the autohabar section to start auto-sending!",
+        "sms_expired": "❌ <b>Verification code expired!</b>\n\nPlease enter your phone number again.",
+        "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
+        "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
+        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>",
+        "custom_interval_prompt": "<b>Enter custom interval in minutes (e.g. 20):</b>",
+        "min_interval_error": "❌ Minimum interval is 1 minute!",
+        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
+        "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
+        "groups_all_selected": "✓ All groups selected!",
+        "groups_custom_selected": "✓ Custom selection mode activated!",
+        "groups_cleared": "🚨 Selected groups cleared!",
+        "groups_refreshing": "Group list reload started...",
+        "need_profile_first": "⚠️ You must connect an account first!",
+        "group_cache_empty": "⚠️ List is empty, please click the '+ Reload' button!"
     }
 }
+
+# ================= DYNAMIC LOCALISED SAFE VALUE GETTERS (BUG-PROOF PROTECTION) =================
+
+def get_lang_value(lang: str, key: str) -> str:
+    """Til bo'limidan kalitni xavfsiz qaytaradi, agar bo'lmasa o'zbekchaga fallback qiladi"""
+    if lang not in LOCALIZATION:
+        lang = "uz"
+    val = LOCALIZATION[lang].get(key)
+    if val is None:
+        val = LOCALIZATION["uz"].get(key, "")
+    return val
+
+def get_localization_values(key: str) -> list:
+    """Barcha tillardagi mos tugma qiymatlarini qaytaradi. KeyError'ni 100% yo'qotadi!"""
+    values = []
+    for lang in ["uz", "ru", "en"]:
+        lang_dict = LOCALIZATION.get(lang, {})
+        val = lang_dict.get(key)
+        if val:
+            values.append(val)
+    # Agar hech qayerdan topilmasa uzbekchasini majburiy qaytaramiz
+    if not values:
+        val = LOCALIZATION["uz"].get(key)
+        if val:
+            values.append(val)
+    return list(set(values))
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id: int, key: str) -> str:
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
-    return LOCALIZATION.get(lang, LOCALIZATION["uz"]).get(key, LOCALIZATION["uz"].get(key, ""))
+    return get_lang_value(lang, key)
 
 def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     ensure_user(user_id)
@@ -655,7 +773,7 @@ async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_
     interval_text = f"{user_data.get('interval', 15)} " + ("daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes"))
     msg_type = "Matn" if lang == "uz" else ("Текст" if lang == "ru" else "Text")
     
-    cabinet_template = LOCALIZATION[lang]["control_panel"]
+    cabinet_template = get_lang_value(lang, "control_panel")
     responseText = cabinet_template.format(
         profil=p_status,
         holat=holatStatus,
@@ -722,7 +840,7 @@ async def show_cabinet_panel(event: types.Message | types.CallbackQuery, user_id
     else:
         profiles_text = "❌ Profillar ulanmagan.\n" if lang == "uz" else ("❌ Профили не подключены.\n" if lang == "ru" else "❌ Profiles not connected.\n")
         
-    cabinet_template = LOCALIZATION[lang]["cabinet_title"]
+    cabinet_template = get_lang_value(lang, "cabinet_title")
     
     text = cabinet_template.format(
         name=name,
@@ -787,7 +905,7 @@ async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_
     lang_name = "O'zbekcha 🇺🇿" if lang == "uz" else ("Русский 🇷🇺" if lang == "ru" else "English 🇺🇸")
     
     settings_template = "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:" if lang == "uz" else (
-        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Ограничение спама: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
+        "⚙️ <b>Дополнительные системные настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:" if lang == "ru" else
         "⚙️ <b>Additional System Settings</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Auto-subscribe: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Language: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nClick a button to change settings:"
     )
     
@@ -920,7 +1038,7 @@ async def callback_select_lang(callback_query: types.CallbackQuery):
 
 # ================= 📩 Savol va Yordam (SUPPORT SYSTEM) =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_support"], LOCALIZATION["ru"]["btn_support"], LOCALIZATION["en"]["btn_support"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_support")), StateFilter("*"))
 async def menu_support_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1014,21 +1132,21 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
 
 # ===================================================================================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_guide"], LOCALIZATION["ru"]["btn_guide"], LOCALIZATION["en"]["btn_guide"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_guide")), StateFilter("*"))
 async def menu_guide_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     await message.answer(get_text(user_id, "guide_text"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_cabinet"], LOCALIZATION["ru"]["btn_cabinet"], LOCALIZATION["en"]["btn_cabinet"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_cabinet")), StateFilter("*"))
 async def menu_kabinet(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
     await show_cabinet_panel(message, user_id)
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_settings"], LOCALIZATION["ru"]["btn_settings"], LOCALIZATION["en"]["btn_settings"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_settings")), StateFilter("*"))
 async def menu_sozlamalar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1429,7 +1547,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 # ================= ⚪ AUTOHABAR YUBORISH MENYUSI =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_auto_send"], LOCALIZATION["ru"]["btn_auto_send"], LOCALIZATION["en"]["btn_auto_send"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_auto_send")), StateFilter("*"))
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1438,7 +1556,7 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
 
 # ================= 📝 HABAR MATNI MENYUSI =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_msg_text"], LOCALIZATION["ru"]["btn_msg_text"], LOCALIZATION["en"]["btn_msg_text"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_msg_text")), StateFilter("*"))
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1461,7 +1579,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     status_off = "O'chirilgan 📝 (Matn rejim)" if lang == "uz" else ("Выключено 📝 (Режим текста)" if lang == "ru" else "Disabled 📝 (Text mode)")
     is_forward = status_on if user_data.get("is_forward_mode") else status_off
     
-    textDetail = LOCALIZATION[lang]["msg_setup"].format(
+    textDetail = get_lang_value(lang, "msg_setup").format(
         matn=user_data.get('reklama_matni'),
         rasm=reklama_rasm,
         tugmalar=tuglama_soni,
@@ -1759,7 +1877,7 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
 
 # ================= GURUHLARNI SOZLASH MENYUSI =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_groups"], LOCALIZATION["ru"]["btn_groups"], LOCALIZATION["en"]["btn_groups"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_groups")), StateFilter("*"))
 async def menu_guruhlar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1768,7 +1886,7 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
 
 # ================= PROFILLAR SETUP =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_profiles"], LOCALIZATION["ru"]["btn_profiles"], LOCALIZATION["en"]["btn_profiles"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_profiles")), StateFilter("*"))
 async def menu_profillar(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1964,7 +2082,7 @@ async def run_sending_cycle_for_user(user_id):
 
 # ================= INTERVAL MENYUSI HANDLERS =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_interval"], LOCALIZATION["ru"]["btn_interval"], LOCALIZATION["en"]["btn_interval"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_interval")), StateFilter("*"))
 async def menu_interval_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
@@ -1984,7 +2102,7 @@ async def callback_set_interval_handler(callback_query: types.CallbackQuery, sta
 
 # ================= GROUPS SETUP HANDLERS =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_groups"], LOCALIZATION["ru"]["btn_groups"], LOCALIZATION["en"]["btn_groups"]]), StateFilter("*"))
+@router.message(F.text.in_(get_localization_values("btn_groups")), StateFilter("*"))
 async def menu_groups_handler(message: types.Message, state: FSMContext):
     await state.clear()
     await menu_guruhlar(message, state)
@@ -2017,6 +2135,188 @@ async def callback_back_to_kabinet_handler(callback_query: types.CallbackQuery, 
     await state.clear()
     await show_cabinet_panel(callback_query, callback_query.from_user.id)
     await callback_query.answer()
+
+
+# ================= REAL TIME LOGIN HANDLERS =================
+
+@router.callback_query(F.data == "add_account", StateFilter("*"))
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        msg = get_text(user_id, "acc_limit_pro") if is_pro else get_text(user_id, "acc_limit_free")
+        await callback_query.message.answer(msg, parse_mode="HTML")
+        await callback_query.answer()
+        return
+
+    await callback_query.message.answer(get_text(user_id, "enter_phone"), parse_mode="HTML")
+    await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not phone.startswith("+"):
+        phone = "+" + phone
+        
+    phone_digits = "".join(filter(str.isdigit, phone))
+    if len(phone_digits) < 7 or len(phone_digits) > 18:
+        await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
+        return
+    
+    await state.update_data(phone=phone)
+    await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, phone)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        me = await client.get_me()
+        
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(get_text(user_id, "sms_expired"), parse_mode="HTML")
+        await state.clear()
+    except errors.PhoneCodeInvalidError:
+        await message.answer(get_text(user_id, "sms_invalid"), parse_mode="HTML")
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(get_text(user_id, "two_fa_required"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, password=password)
+        me = await client.get_me()
+        
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer(get_text(user_id, "two_fa_invalid"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
+async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer(get_text(user_id, "no_active_conn"), show_alert=True)
+        return
+        
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
+    
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
+    await show_cabinet_panel(callback_query, user_id)
 
 
 # ================= WEB SERVER =================
