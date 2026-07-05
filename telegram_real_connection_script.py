@@ -46,7 +46,7 @@ except ImportError as e:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
+BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
@@ -670,7 +670,7 @@ class MandatorySubMiddleware(BaseMiddleware):
 
             block_text = (
                 "⚠️ <b>Bot xizmatlaridan foydalanish uchun quyidagi kanallarga a'zo bo'lishingiz shart!</b>\n\n"
-                "Iltimos, obuna bo'ling va keyin pastdagi <b>✅ Obunani tekshirish</b> tugmasini bosing:"
+                "Iltimos, obuna bo'ling ogahiy, keyin pastdagi <b>✅ Obunani tekshirish</b> tugmasini bosing:"
             )
 
             if isinstance(event, types.Message):
@@ -2538,13 +2538,12 @@ async def send_reklama_message(client, chat_id, user_data, user_id):
         text = user_data.get("reklama_matni", "")
         lang = user_data.get("lang", "uz") or "uz"
         
-        # PRO foydalanuvchilar reklamalaridan default watermark olib tashlanadi
-        if not user_data.get("is_pro", False):
-            watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
-                "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
-                "\n\nSent via @Auto_Xabar_Yuborish_Bot"
-            )
-            text += watermark
+        # Barcha foydalanuvchilar (jumladan PRO va Adminlar) uchun majburiy watermark
+        watermark = "\n\n@Auto_Xabar_Yuborish_Bot shu bot orqali yuborildi" if lang == "uz" else (
+            "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
+            "\n\nSent via @Auto_Xabar_Yuborish_Bot"
+        )
+        text += watermark
             
         photo_path = user_data.get("reklama_rasm") 
         buttons_data = user_data.get("inline_buttons", [])
@@ -2618,6 +2617,11 @@ async def run_sending_cycle_for_user(user_id):
             
         client = await get_client(user_id, active_phone)
         if await client.is_user_authorized():
+            # MUHIM: Telethon guruh entity-larini keshda saqlashi uchun barcha muloqotlarni yuklab olamiz.
+            # Bu ValueError (Input entity not found) xatolarini butunlay yo'qotadi va barcha guruhlarga xabar borishini ta'minlaydi!
+            logging.info(f"[Sender] Guruh entities keshini yangilash uchun dialoglar o'qilmoqda...")
+            await client.get_dialogs()
+            
             guruhlar = []
             choice = user_data.get("groups_choice", "custom")
             
@@ -2648,7 +2652,8 @@ async def run_sending_cycle_for_user(user_id):
                 except errors.FloodWaitError as e:
                     logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
                     await asyncio.sleep(e.seconds)
-                except Exception:
+                except Exception as e:
+                    logging.error(f"[Sender] Guruhga ({g_id}) yuborishda muammo: {e}")
                     continue
                     
     except Exception as e:
