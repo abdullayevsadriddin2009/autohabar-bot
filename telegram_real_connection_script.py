@@ -46,7 +46,7 @@ except ImportError as e:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
+BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
@@ -425,7 +425,7 @@ LOCALIZATION = {
         "already_pro": "👑 Sizda allaqachon PRO tarif faollashtirilgan!",
         "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
         "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qilib, bepul PRO oling!",
-        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik mavjud emas!",
+        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik xato!",
         "disconnected_success": "⚠️ Profilni uzish muvaffaqiyatli bajarildi!",
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
@@ -1433,7 +1433,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         channels.append(chan_name)
         db_users[ADMIN_ID]["channels"] = channels
         save_db()
-        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaffaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
+        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
     else:
         await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
     await state.clear()
@@ -1535,7 +1535,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     btn_edit_buttons = "🔘 Tugmali xabar (Inline PRO)" if lang == "uz" else ("🔘 Кнопочное сообщение (Inline PRO)" if lang == "ru" else "🔘 Buttoned message (Inline PRO)")
     btn_toggle = "🔄 Rejimni almashtirish (Matn/Forward)" if lang == "uz" else ("🔄 Сменить режим (Текст/Forward)" if lang == "ru" else "🔄 Toggle mode (Text/Forward)")
     btn_clear = "❌ Rasm va tugmalarni tozalash" if lang == "uz" else ("❌ Очистить медиа и кнопки" if lang == "ru" else "❌ Clear media & buttons")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Наzad" if lang == "uz" else "← Back")
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_edit_txt, callback_data="edit_text")],
@@ -2530,7 +2530,9 @@ async def init_existing_sessions():
 async def send_reklama_message(client, chat_id, user_data, user_id):
     if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
         try:
-            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
+            # Forward qilinayotgan chat entitiesini ham keshdan yoki serverdan aniqlaymiz
+            forward_chat_entity = await client.get_entity(user_data.get("forward_chat_id"))
+            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), forward_chat_entity)
         except Exception as e:
             logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
             await client.send_message(chat_id, user_data.get("reklama_matni", ""))
@@ -2617,10 +2619,10 @@ async def run_sending_cycle_for_user(user_id):
             
         client = await get_client(user_id, active_phone)
         if await client.is_user_authorized():
-            # MUHIM: Telethon guruh entity-larini keshda saqlashi uchun barcha muloqotlarni yuklab olamiz.
-            # Bu ValueError (Input entity not found) xatolarini butunlay yo'qotadi va barcha guruhlarga xabar borishini ta'minlaydi!
-            logging.info(f"[Sender] Guruh entities keshini yangilash uchun dialoglar o'qilmoqda...")
-            await client.get_dialogs()
+            # MUHIM: Telethon guruh entity-larini to'liq keshda saqlashi uchun barcha muloqotlarni (limitsiz) yuklab olamiz.
+            # Bu ValueError (Input entity not found) xatolarini 100% yo'qotadi va barcha guruhlarga xabar borishini ta'minlaydi!
+            logging.info(f"[Sender] Guruh entities keshini yangilash uchun barcha dialoglar yuklanmoqda...")
+            await client.get_dialogs(limit=None)
             
             guruhlar = []
             choice = user_data.get("groups_choice", "custom")
@@ -2643,7 +2645,10 @@ async def run_sending_cycle_for_user(user_id):
                     break
                     
                 try:
-                    await send_reklama_message(client, g_id, user_data, user_id)
+                    # Har bir guruh entitiesini aniq aniqlab olamiz
+                    g_entity = await client.get_entity(g_id)
+                    await send_reklama_message(client, g_entity, user_data, user_id)
+                    
                     user_data["today_sent"] = user_data.get("today_sent", 0) + 1
                     user_data["total_sent"] = user_data.get("total_sent", 0) + 1
                     save_db()
