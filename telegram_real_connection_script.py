@@ -45,8 +45,7 @@ except ImportError as e:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-# SADRIDDIN: Yangi va toza tokeningiz integratsiya qilindi (Manybot ulanishlari butunlay uziladi!)
-BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
+BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
@@ -89,7 +88,7 @@ DEFAULT_DB = {
         "joined_time": datetime.now().strftime("%H:%M"),
         "today_sent": 0,
         "total_sent": 0,
-        "channels": [],  # Boshlang'ich kanallar mutlaqo ochiq (bo'sh)
+        "channels": ["@autoxabarc_news", "@autoxabar_chat"],
         "auto_off_hours": None,
         "is_sending_started_at": 0,
         "referrals_count": 0,
@@ -164,13 +163,13 @@ def load_db():
                 print("[Baza] MUVAFFAQIYAT: Ma'lumotlar Google Cloud-dan muvaffaqiyatli yuklandi!")
                 parsed_data = {int(k): v for k, v in data.items()}
                 
-                # SADRIDDIN: Eski keraksiz kanallarni bulutdan avtomatik 100% tozalash
-                for u_id in parsed_data:
-                    if "channels" in parsed_data[u_id]:
-                        parsed_data[u_id]["channels"] = [
-                            c for c in parsed_data[u_id]["channels"] 
-                            if "whatisthepriceTON" not in c and "PlsDontfuckthischannel" not in c
-                        ]
+                # Eski default kanallarni avtomatik tozalash
+                if ADMIN_ID in parsed_data:
+                    old_defaults = ["@autoxabarc_news", "@autoxabar_chat"]
+                    current_chans = parsed_data[ADMIN_ID].get("channels", [])
+                    cleaned_chans = [c for c in current_chans if c not in old_defaults]
+                    parsed_data[ADMIN_ID]["channels"] = cleaned_chans
+                    
                 return parsed_data
             else:
                 print("[Baza] Firestore - bo'sh. Mahalliy database.json bulutga nusxalanmoqda...")
@@ -270,12 +269,6 @@ def ensure_user(user_id: int):
             db_users[user_id]["auto_reply_active"] = False
         if "lang" not in db_users[user_id]:
             db_users[user_id]["lang"] = None
-            
-        # Eski kanallarni mahalliy xotiradan ham tozalash
-        db_users[user_id]["channels"] = [
-            c for c in db_users[user_id].get("channels", []) 
-            if "whatisthepriceTON" not in c and "PlsDontfuckthischannel" not in c
-        ]
     save_db()
 
 async def backup_session_to_cloud(user_id, phone):
@@ -307,7 +300,9 @@ async def restore_sessions_from_cloud():
         for user_doc in users_docs:
             user_id = user_doc.id
             sessions_ref = users_ref.document(user_id).collection('telethon_sessions')
-            for session_doc in sessions_ref.stream():
+            sessions_docs = sessions_ref.stream()
+            
+            for session_doc in sessions_docs:
                 phone_clean = session_doc.id
                 binary_data_b64 = session_doc.to_dict().get("binary_data")
                 if binary_data_b64:
@@ -503,7 +498,7 @@ LOCALIZATION = {
         "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аутентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
         "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>\n\nПожалуйста, попробуйте ввести пароль еще раз.",
-        "custom_interval_prompt": "<b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>",
+        "custom_interval_prompt": "✍️ <b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>",
         "min_interval_error": "❌ Минимальный интервал - 1 минута!",
         "interval_set_success": "✅ <b>Интервал настроен на {val} минут!</b>",
         "invalid_integer": "❌ Пожалуйста, вводите только целые числа (например: 25):",
@@ -898,20 +893,37 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
         return
         
     data = await state.get_data()
-    target_id = data.get("target_user_id")
+    target_user_id = data.get("target_user_id")
+    reply_text = message.text
+    
+    if not reply_text:
+        await message.answer("⚠️ Iltimos, javobni matn ko'rinishida yozing!")
+        return
+        
+    user_msg = (
+        f"🔔 <b>Administrator Javobi Yo'llandi</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"<i>\"{reply_text}\"</i>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"Yordam kerak bo'lsa, yana murojaat qilishingiz mumkin. Rahmat!"
+    )
+    
     try:
-        await bot.send_message(target_id, f"🔔 <b>Administrator Javobi:</b>\n\n<i>\"{message.text}\"</i>", parse_mode="HTML")
-        await message.answer("✅ Javob yuborildi!")
-    except Exception:
-        await message.answer("❌ Yuborishda xatolik!")
+        await bot.send_message(chat_id=target_user_id, text=user_msg, reply_markup=get_main_keyboard(target_user_id), parse_mode="HTML")
+        await message.answer("✅ Javobingiz foydalanuvchiga muvaffaqiyatli yuborildi!")
+    except Exception as e:
+        await message.answer(f"❌ Javobni yuborishda xatolik yuz berdi (Foydalanuvchi botni bloklagan bo'limda): {e}")
+        
     await state.clear()
+
+# ===================================================================================
 
 @router.message(F.text.in_([LOCALIZATION["uz"]["btn_guide"], LOCALIZATION["ru"]["btn_guide"], LOCALIZATION["en"]["btn_guide"]]), StateFilter("*"))
 async def menu_guide_handler(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
     ensure_user(user_id)
-    await message.answer(get_text(user_id, "guide_text"), parse_mode="HTML")
+    await message.answer(get_text(user_id, "guide_text"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
 @router.message(F.text.in_([LOCALIZATION["uz"]["btn_cabinet"], LOCALIZATION["ru"]["btn_cabinet"], LOCALIZATION["en"]["btn_cabinet"]]), StateFilter("*"))
 async def menu_kabinet(message: types.Message, state: FSMContext):
@@ -1761,7 +1773,7 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     success = (
         "✅ <b>Uzatilgan (Forward) xabaringiz muvaffaqiyatli saqlandi!</b>\n\n"
-        "Endi bot guruhlarga ushbu xabarni ko'rishlar sonini ko'paytiradigan va kanal havolasini saqlavotgan qilib yuboradi."
+        "Endi bot guruhlarga ushbu xabarni ko'rishlar sonini ko'paytiradigan va kanal havolasini saqlab qoladigan qilib yuboradi."
     ) if lang == "uz" else (
         "✅ <b>Пересланное сообщение успешно сохранено!</b>\n\n"
         "Теперь бот будет отправлять его в группы так, чтобы увеличивать количество просмотров." if lang == "ru" else
@@ -2069,7 +2081,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
         ])
         
     btn_add = "➕ Yangi profil qo'shish" if lang == "uz" else ("➕ Добавить новый аккаунт" if lang == "ru" else "➕ Add new profile")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Наzad" if lang == "ru" else "← Back")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
     buttons.append([InlineKeyboardButton(text=btn_add, callback_data="add_account")])
     buttons.append([InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")])
@@ -2322,7 +2334,7 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
         unit = "daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes")
         interval_text = f"{val} {unit}"
 
-    alert = f"✓ Interval {interval_text} ga sozlandi!" if lang == "uz" else (f"✓  Интервал настроен на {interval_text}!" if lang == "ru" else f"✓ Interval set to {interval_text}!")
+    alert = f"✓ Interval {interval_text} ga sozlandi!" if lang == "uz" else (f"✓ Интервал настроен на {interval_text}!" if lang == "ru" else f"✓ Interval set to {interval_text}!")
     await callback_query.answer(alert, show_alert=True)
     
     text = (
@@ -2516,12 +2528,380 @@ async def send_reklama_message(client, chat_id, user_data, user_id):
         text = user_data.get("reklama_matni", "")
         lang = user_data.get("lang", "uz") or "uz"
         
-        # SADRIDDIN: Hammada watermark chiqishi uchun PRO tekshiruvini butunlay olib tashladik! (TUZATILDI!)
-        watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
-            "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
-            "\n\nSent via @Auto_Xabar_Yuborish_Bot"
-        )
-        text += watermark
+        # PRO foydalanuvchilar reklamalaridan default watermark olib tashlanadi (TUZATILDI!)
+        if not user_data.get("is_pro", False):
+            watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
+                "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
+                "\n\nSent via @Auto_Xabar_Yuborish_Bot"
+            )
+            text += watermark
+            
+        photo_path = user_data.get("reklama_rasm") 
+        buttons_data = user_data.get("inline_buttons", [])
+        
+        telethon_buttons = None
+        if buttons_data:
+            telethon_buttons = []
+            for btn in buttons_data:
+                try:
+                    telethon_buttons.append(Button.url(btn["text"], btn["url"]))
+                except Exception:
+                    continue
+                    
+        if photo_path and os.path.exists(photo_path):
+            try:
+                await client.send_message(chat_id, text, file=photo_path, buttons=telethon_buttons)
+            except Exception as e:
+                logging.warning(f"Rasm bilan yuborishda muammo: {e}. Faqat matn ko'rinishida yuborilmoqda.")
+                await client.send_message(chat_id, text, buttons=telethon_buttons)
+        else:
+            await client.send_message(chat_id, text, buttons=telethon_buttons)
+
+async def auto_sender_worker():
+    while True:
+        current_time = datetime.now().timestamp()
+        
+        for user_id, user_data in list(db_users.items()):
+            if user_data.get("is_sending") and user_data.get("active_phone"):
+                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
+                started_at = user_data.get("is_sending_started_at", 0)
+                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
+                
+                if auto_off_hours and started_at:
+                    elapsed_hours = (current_time - started_at) / 3600.0
+                    if elapsed_hours >= auto_off_hours:
+                        db_users[user_id]["is_sending"] = False
+                        db_users[user_id]["is_sending_started_at"] = 0
+                        save_db()
+                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
+                        try:
+                            await bot.send_message(
+                                user_id, 
+                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                                parse_mode="HTML"
+                            )
+                        except Exception:
+                            pass
+                        continue
+                # =====================================================================
+
+                next_run = user_data.get("next_run_timestamp", 0)
+                if current_time >= next_run:
+                    interval_minutes = user_data.get("interval", 15)
+                    db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
+                    save_db()
+                    
+                    asyncio.create_task(run_sending_cycle_for_user(user_id))
+                        
+        await asyncio.sleep(10)
+
+async def run_sending_cycle_for_user(user_id):
+    user_data = db_users.get(user_id)
+    if not user_data or not user_data.get("is_sending"):
+        return
+        
+    try:
+        active_phone = user_data.get("active_phone")
+        if not active_phone:
+            return
+            
+        client = await get_client(user_id, active_phone)
+        if await client.is_user_authorized():
+            guruhlar = []
+            choice = user_data.get("groups_choice", "custom")
+            
+            if choice == "custom":
+                guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
+            else:
+                async for dialog in client.iter_dialogs():
+                    if dialog.is_group:
+                        guruhlar.append(int(dialog.id))
+            
+            if not guruhlar:
+                logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
+                return
+                
+            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
+            
+            for g_id in guruhlar:
+                if not db_users.get(user_id, {}).get("is_sending"):
+                    break
+                    
+                try:
+                    await send_reklama_message(client, g_id, user_data, user_id)
+                    user_data["today_sent"] = user_data.get("today_sent", 0) + 1
+                    user_data["total_sent"] = user_data.get("total_sent", 0) + 1
+                    save_db()
+                    logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
+                    await asyncio.sleep(15)
+                except errors.FloodWaitError as e:
+                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
+                    await asyncio.sleep(e.seconds)
+                except Exception as e:
+                    continue
+                    
+    except Exception as e:
+        logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
+
+# ================= OTHER ACTIONS & LOGIN WIZARD =================
+
+# TUZATILDI: add_account callback query uchun StateFilter ulandi va asinxron xotira tozalandi!
+@router.callback_query(F.data == "add_account", StateFilter("*"))
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        msg = get_text(user_id, "acc_limit_pro") if is_pro else get_text(user_id, "acc_limit_free")
+        await callback_query.message.answer(msg, parse_mode="HTML")
+        await callback_query.answer()
+        return
+
+    await callback_query.message.answer(get_text(user_id, "enter_phone"), parse_mode="HTML")
+    await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    
+    # MUHIM TUZATISH: Agar foydalanuvchi + belgisiz kiritsa, avtomatik ravishda qo'shiladi!
+    if not phone.startswith("+"):
+        phone = "+" + phone
+        
+    # Xalqaro istalgan raqamlarni taniy oladigan broad validation qo'shildi! (TUZATILDI!)
+    phone_digits = "".join(filter(str.isdigit, phone))
+    if len(phone_digits) < 7 or len(phone_digits) > 18:
+        await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
+        return
+    
+    # FSM xotirasiga telefon raqami to'g'ri yangilab saqlab qo'yiladi! (TUZATILDI!)
+    await state.update_data(phone=phone)
+    await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, phone)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shamiz
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(get_text(user_id, "sms_expired"), parse_mode="HTML")
+        await state.clear()
+    except errors.PhoneCodeInvalidError:
+        await message.answer(get_text(user_id, "sms_invalid"), parse_mode="HTML")
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(get_text(user_id, "two_fa_required"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, password=password)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shish
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer(get_text(user_id, "two_fa_invalid"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+# TUZATILDI: callback_disconnect asinxron drayveri to'liq xalqaro formatda localization qilindi!
+@router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
+async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer(get_text(user_id, "no_active_conn"), show_alert=True)
+        return
+        
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
+    
+    # Ro'yxatdan o'chirish
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
+    await menu_kabinet_msg(callback_query.message, user_id)
+
+
+# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+
+async def init_existing_sessions():
+    if not os.path.exists(SESSIONS_DIR):
+        return
+    for file in os.listdir(SESSIONS_DIR):
+        if file.endswith(".session") and "_" in file:
+            user_id_str = file.replace("session_", "").replace(".session", "")
+            parts = user_id_str.split("_")
+            if len(parts) < 2:
+                continue
+            try:
+                user_id = int(parts[0])
+                phone_clean = parts[1]
+                
+                user_data = db_users.get(user_id)
+                if not user_data:
+                    continue
+                accounts_list = user_data.get("accounts", [])
+                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
+                
+                if not target_phone:
+                    target_phone = "+" + phone_clean
+                
+                client = await get_client(user_id, target_phone)
+                
+                if await client.is_user_authorized():
+                    session_key = f"{user_id}_{phone_clean}"
+                    active_clients[session_key] = client
+                    me = await client.get_me()
+                    
+                    ensure_user(user_id)
+                    accounts_list = db_users[user_id].get("accounts", [])
+                    if not any(acc["phone"] == target_phone for acc in accounts_list):
+                        accounts_list.append({
+                            "phone": target_phone,
+                            "name": me.first_name,
+                            "username": f"@{me.username}" if me.username else "@-"
+                        })
+                        db_users[user_id]["accounts"] = accounts_list
+                    save_db()
+                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
+            except Exception as e:
+                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
+
+
+# ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
+
+async def send_reklama_message(client, chat_id, user_data, user_id):
+    if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
+        try:
+            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
+        except Exception as e:
+            logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
+            await client.send_message(chat_id, user_data.get("reklama_matni", ""))
+    else:
+        text = user_data.get("reklama_matni", "")
+        lang = user_data.get("lang", "uz") or "uz"
+        
+        # PRO foydalanuvchilar reklamalaridan default watermark olib tashlanadi (TUZATILDI!)
+        if not user_data.get("is_pro", False):
+            watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
+                "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
+                "\n\nSent via @Auto_Xabar_Yuborish_Bot"
+            )
+            text += watermark
             
         photo_path = user_data.get("reklama_rasm") 
         buttons_data = user_data.get("inline_buttons", [])
@@ -2700,7 +3080,7 @@ async def callback_statistika(callback_query: types.CallbackQuery, state: FSMCon
         f"🟢 Отправлено сегодня: <b>{user_data.get('today_sent', 0)} сообщений</b>\n"
         f"🔄 Всего отправлено: <b>{user_data.get('total_sent', 0)} сообщений</b>\n"
         f"💬 Целевые группы: <b>{g_text}</b>\n"
-        f"⏱️  Текущий интервал: <b>{user_data.get('interval', 15)} минут</b>\n"
+        f"⏱️ Текущий интервал: <b>{user_data.get('interval', 15)} минут</b>\n"
         f"⏳ Статус рассылки: <b>{status_text}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━" if lang == "ru" else
         "📊 <b>Your Personal Statistics</b>\n"
@@ -2785,7 +3165,7 @@ async def show_timer_settings(message: types.Message, user_id: int):
     
     timer_text = "Cheksiz ∞" if lang == "uz" else ("Без лимита ∞" if lang == "ru" else "Unlimited ∞")
     if current_timer is not None:
-        timer_text = f"{current_timer} soat" if lang == "uz" else (f"{current_timer}  час(ов)" if lang == "ru" else f"{current_timer} hour(s)")
+        timer_text = f"{current_timer} soat" if lang == "uz" else (f"{current_timer} час(ов)" if lang == "ru" else f"{current_timer} hour(s)")
     
     text = (
         "⏱️ <b>Avto-o'chirish taymerini sozlash</b>\n"
@@ -2865,52 +3245,330 @@ async def callback_refresh_status(callback_query: types.CallbackQuery, state: FS
     except Exception:
         await callback_query.answer(get_text(user_id, "panel_reloaded"))
 
-# ================= SESSIONS RE-INITIALIZATION SERVICE =================
 
-async def init_existing_sessions():
-    if not os.path.exists(SESSIONS_DIR):
-        return
-    for file in os.listdir(SESSIONS_DIR):
-        if file.endswith(".session") and "_" in file:
-            user_id_str = file.replace("session_", "").replace(".session", "")
-            parts = user_id_str.split("_")
-            if len(parts) < 2:
-                continue
-            try:
-                user_id = int(parts[0])
-                phone_clean = parts[1]
-                
-                user_data = db_users.get(user_id)
-                if not user_data:
+# ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
+
+async def send_reklama_message(client, chat_id, user_data, user_id):
+    if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
+        try:
+            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
+        except Exception as e:
+            logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
+            await client.send_message(chat_id, user_data.get("reklama_matni", ""))
+    else:
+        text = user_data.get("reklama_matni", "")
+        lang = user_data.get("lang", "uz") or "uz"
+        
+        # PRO foydalanuvchilar reklamalaridan default watermark olib tashlanadi (TUZATILDI!)
+        if not user_data.get("is_pro", False):
+            watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
+                "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
+                "\n\nSent via @Auto_Xabar_Yuborish_Bot"
+            )
+            text += watermark
+            
+        photo_path = user_data.get("reklama_rasm") 
+        buttons_data = user_data.get("inline_buttons", [])
+        
+        telethon_buttons = None
+        if buttons_data:
+            telethon_buttons = []
+            for btn in buttons_data:
+                try:
+                    telethon_buttons.append(Button.url(btn["text"], btn["url"]))
+                except Exception:
                     continue
-                accounts_list = user_data.get("accounts", [])
-                target_phone = next((acc["phone"] for acc in accounts_list if acc["phone"].replace("+", "").replace(" ", "") == phone_clean), None)
-                
-                if not target_phone:
-                    target_phone = "+" + phone_clean
-                
-                client = await get_client(user_id, target_phone)
-                
-                if await client.is_user_authorized():
-                    session_key = f"{user_id}_{phone_clean}"
-                    active_clients[session_key] = client
-                    me = await client.get_me()
                     
-                    ensure_user(user_id)
-                    accounts_list = db_users[user_id].get("accounts", [])
-                    if not any(acc["phone"] == target_phone for acc in accounts_list):
-                        accounts_list.append({
-                            "phone": target_phone,
-                            "name": me.first_name,
-                            "username": f"@{me.username}" if me.username else "@-"
-                        })
-                        db_users[user_id]["accounts"] = accounts_list
-                    save_db()
-                    logging.info(f"Mavjud seans muvaffaqiyatli qayta tiklandi: {target_phone} (ID: {user_id})")
+        if photo_path and os.path.exists(photo_path):
+            try:
+                await client.send_message(chat_id, text, file=photo_path, buttons=telethon_buttons)
             except Exception as e:
-                logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
+                logging.warning(f"Rasm bilan yuborishda muammo: {e}. Faqat matn ko'rinishida yuborilmoqda.")
+                await client.send_message(chat_id, text, buttons=telethon_buttons)
+        else:
+            await client.send_message(chat_id, text, buttons=telethon_buttons)
 
-# ================= APP INITIALIZATION =================
+async def auto_sender_worker():
+    while True:
+        current_time = datetime.now().timestamp()
+        
+        for user_id, user_data in list(db_users.items()):
+            if user_data.get("is_sending") and user_data.get("active_phone"):
+                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
+                started_at = user_data.get("is_sending_started_at", 0)
+                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
+                
+                if auto_off_hours and started_at:
+                    elapsed_hours = (current_time - started_at) / 3600.0
+                    if elapsed_hours >= auto_off_hours:
+                        db_users[user_id]["is_sending"] = False
+                        db_users[user_id]["is_sending_started_at"] = 0
+                        save_db()
+                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
+                        try:
+                            await bot.send_message(
+                                user_id, 
+                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                                parse_mode="HTML"
+                            )
+                        except Exception:
+                            pass
+                        continue
+                # =====================================================================
+
+                next_run = user_data.get("next_run_timestamp", 0)
+                if current_time >= next_run:
+                    interval_minutes = user_data.get("interval", 15)
+                    db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
+                    save_db()
+                    
+                    asyncio.create_task(run_sending_cycle_for_user(user_id))
+                        
+        await asyncio.sleep(10)
+
+async def run_sending_cycle_for_user(user_id):
+    user_data = db_users.get(user_id)
+    if not user_data or not user_data.get("is_sending"):
+        return
+        
+    try:
+        active_phone = user_data.get("active_phone")
+        if not active_phone:
+            return
+            
+        client = await get_client(user_id, active_phone)
+        if await client.is_user_authorized():
+            guruhlar = []
+            choice = user_data.get("groups_choice", "custom")
+            
+            if choice == "custom":
+                guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
+            else:
+                async for dialog in client.iter_dialogs():
+                    if dialog.is_group:
+                        guruhlar.append(int(dialog.id))
+            
+            if not guruhlar:
+                logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
+                return
+                
+            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
+            
+            for g_id in guruhlar:
+                if not db_users.get(user_id, {}).get("is_sending"):
+                    break
+                    
+                try:
+                    await send_reklama_message(client, g_id, user_data, user_id)
+                    user_data["today_sent"] = user_data.get("today_sent", 0) + 1
+                    user_data["total_sent"] = user_data.get("total_sent", 0) + 1
+                    save_db()
+                    logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
+                    await asyncio.sleep(15)
+                except errors.FloodWaitError as e:
+                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
+                    await asyncio.sleep(e.seconds)
+                except Exception as e:
+                    continue
+                    
+    except Exception as e:
+        logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
+
+
+# ================= OTHER ACTIONS & LOGIN WIZARD =================
+
+@router.callback_query(F.data == "add_account", StateFilter("*"))
+async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    is_pro = user_data.get("is_pro", False)
+    limit = 5 if is_pro else 1
+    
+    if len(accounts_list) >= limit:
+        msg = get_text(user_id, "acc_limit_pro") if is_pro else get_text(user_id, "acc_limit_free")
+        await callback_query.message.answer(msg, parse_mode="HTML")
+        await callback_query.answer()
+        return
+
+    await callback_query.message.answer(get_text(user_id, "enter_phone"), parse_mode="HTML")
+    await state.set_state(LoginStates.waiting_phone)
+    await callback_query.answer()
+
+@router.message(StateFilter(LoginStates.waiting_phone))
+async def state_phone_received(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    # Sadriddin, barcha xalqaro raqamlarni xavfsiz qabul qilish tizimi
+    phone = message.text.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    
+    # MUHIM TUZATISH: Agar foydalanuvchi + belgisiz kiritsa, avtomatik ravishda qo'shiladi!
+    if not phone.startswith("+"):
+        phone = "+" + phone
+        
+    # Xalqaro istalgan raqamlarni taniy oladigan broad validation qo'shildi! (TUZATILDI!)
+    phone_digits = "".join(filter(str.isdigit, phone))
+    if len(phone_digits) < 7 or len(phone_digits) > 18:
+        await message.answer(get_text(user_id, "invalid_phone"), parse_mode="HTML")
+        return
+    
+    # FSM xotirasiga telefon raqami to'g'ri yangilab saqlab qo'yiladi! (TUZATILDI!)
+    await state.update_data(phone=phone)
+    await message.answer(get_text(user_id, "connecting_tg"), parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, phone)
+        send_code_result = await client.send_code_request(phone)
+        await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
+        await state.set_state(LoginStates.waiting_code)
+        await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+        await state.clear()
+
+@router.message(StateFilter(LoginStates.waiting_code))
+async def state_code_received(message: types.Message, state: FSMContext):
+    code = message.text.strip().replace(".", "").replace(" ", "")
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shamiz
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+    except errors.PhoneCodeExpiredError:
+        await message.answer(get_text(user_id, "sms_expired"), parse_mode="HTML")
+        await state.clear()
+    except errors.PhoneCodeInvalidError:
+        await message.answer(get_text(user_id, "sms_invalid"), parse_mode="HTML")
+    except errors.SessionPasswordNeededError:
+        await state.set_state(LoginStates.waiting_2fa)
+        await message.answer(get_text(user_id, "two_fa_required"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+@router.message(StateFilter(LoginStates.waiting_2fa))
+async def state_2fa_received(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    data = await state.get_data()
+    phone = data.get("phone")
+    
+    try:
+        client = await get_client(user_id, phone)
+        await client.sign_in(phone=phone, password=password)
+        me = await client.get_me()
+        
+        # Akkauntlar ro'yxatiga qo'shish
+        accounts_list = db_users[user_id].get("accounts", [])
+        if not any(acc["phone"] == phone for acc in accounts_list):
+            accounts_list.append({
+                "phone": phone,
+                "name": me.first_name,
+                "username": f"@{me.username}" if me.username else "@-"
+            })
+            db_users[user_id]["accounts"] = accounts_list
+            
+        db_users[user_id]["active_phone"] = phone
+        db_users[user_id]["active_name"] = me.first_name
+        db_users[user_id]["active_username"] = f"@{me.username}" if me.username else "@-"
+        save_db()
+        
+        await backup_session_to_cloud(user_id, phone)
+        await message.answer(get_text(user_id, "acc_bound"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+    except errors.PasswordHashInvalidError:
+        await message.answer(get_text(user_id, "two_fa_invalid"), parse_mode="HTML")
+    except Exception as e:
+        await message.answer(get_text(user_id, "conn_error").format(error=str(e)))
+
+# TUZATILDI: callback_disconnect asinxron drayveri to'liq xalqaro formatda localization qilindi!
+@router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
+async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    phone = db_users[user_id].get("active_phone")
+    if not phone:
+        await callback_query.answer(get_text(user_id, "no_active_conn"), show_alert=True)
+        return
+        
+    db_users[user_id]["active_phone"] = None
+    db_users[user_id]["is_sending"] = False
+    db_users[user_id]["is_sending_started_at"] = 0
+    
+    # Ro'yxatdan o'chirish
+    accounts_list = db_users[user_id].get("accounts", [])
+    cleaned_accounts = [acc for acc in accounts_list if acc["phone"] != phone]
+    db_users[user_id]["accounts"] = cleaned_accounts
+    
+    if cleaned_accounts:
+        db_users[user_id]["active_phone"] = cleaned_accounts[0]["phone"]
+        db_users[user_id]["active_name"] = cleaned_accounts[0]["name"]
+        db_users[user_id]["active_username"] = cleaned_accounts[0]["username"]
+        
+    save_db()
+    
+    phone_clean = phone.replace("+", "").replace(" ", "")
+    session_key = f"{user_id}_{phone_clean}"
+    if session_key in active_clients:
+        try:
+            await active_clients[session_key].disconnect()
+        except Exception:
+            pass
+        active_clients.pop(session_key, None)
+        
+    session_file = os.path.join(SESSIONS_DIR, f"session_{session_key}.session")
+    if os.path.exists(session_file):
+        try:
+            os.remove(session_file)
+        except Exception:
+            pass
+            
+    if db:
+        try:
+            doc_ref = db.collection('artifacts').document(APP_ID).collection('users').document(str(user_id)).collection('telethon_sessions').document(phone_clean)
+            doc_ref.delete()
+        except Exception:
+            pass
+
+    await callback_query.answer(get_text(user_id, "disconnected_success"), show_alert=True)
+    await menu_kabinet_msg(callback_query.message, user_id)
+
+
+# ================= MAIN MAIN MOTORS =================
+
 async def main():
     global bot
     print("==================================================")
@@ -2925,7 +3583,7 @@ async def main():
     
     bot = Bot(token=BOT_TOKEN)
     
-    # Global majburiy obuna nazoratchisini dispatcherga ulash (Sadriddin: O'chirilgan)
+    # Global majburiy obuna nazoratchisini dispatcherga ulash
     # dp.message.outer_middleware(MandatorySubMiddleware())
     # dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
