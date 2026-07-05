@@ -15,6 +15,7 @@ import sys
 import shutil
 import json
 import base64
+import re
 from datetime import datetime
 
 # Loggerlarni eng tepada sozlaymiz (barcha xabarlar Renderda adsiz ko'rinishi uchun)
@@ -168,34 +169,35 @@ def load_db():
                 
                 # MERGE LOGIC: Mahalliy ma'lumotlarni o'chib ketishdan asraymiz (TUZATILDI!)
                 for k, v in local_data.items():
-                    if k not in parsed_data:
-                        parsed_data[k] = v
+                    k_int = int(k)
+                    if k_int not in parsed_data:
+                        parsed_data[k_int] = v
                     else:
                         # Akkauntlarni asinxron birlashtirish
                         local_accs = v.get("accounts", [])
-                        fire_accs = parsed_data[k].get("accounts", [])
+                        fire_accs = parsed_data[k_int].get("accounts", [])
                         merged_accs_dict = {}
                         for acc in local_accs + fire_accs:
                             merged_accs_dict[acc["phone"]] = acc
-                        parsed_data[k]["accounts"] = list(merged_accs_dict.values())
+                        parsed_data[k_int]["accounts"] = list(merged_accs_dict.values())
                         
                         # Profil ulanishini saqlaymiz
-                        if v.get("active_phone") and not parsed_data[k].get("active_phone"):
-                            parsed_data[k]["active_phone"] = v.get("active_phone")
-                            parsed_data[k]["active_name"] = v.get("active_name")
-                            parsed_data[k]["active_username"] = v.get("active_username")
+                        if v.get("active_phone") and not parsed_data[k_int].get("active_phone"):
+                            parsed_data[k_int]["active_phone"] = v.get("active_phone")
+                            parsed_data[k_int]["active_name"] = v.get("active_name")
+                            parsed_data[k_int]["active_username"] = v.get("active_username")
                             
                         # Tanlangan guruhlarni saqlaymiz
-                        if v.get("selected_groups") and not parsed_data[k].get("selected_groups"):
-                            parsed_data[k]["selected_groups"] = v.get("selected_groups")
+                        if v.get("selected_groups") and not parsed_data[k_int].get("selected_groups"):
+                            parsed_data[k_int]["selected_groups"] = v.get("selected_groups")
                             
                         # Kesh guruhlarni saqlaymiz
-                        if v.get("cached_groups") and not parsed_data[k].get("cached_groups"):
-                            parsed_data[k]["cached_groups"] = v.get("cached_groups")
+                        if v.get("cached_groups") and not parsed_data[k_int].get("cached_groups"):
+                            parsed_data[k_int]["cached_groups"] = v.get("cached_groups")
                             
                         # Reklama matnini saqlaymiz
-                        if v.get("reklama_matni") and (not parsed_data[k].get("reklama_matni") or parsed_data[k].get("reklama_matni") == "🔥 AutoHabar Pro yordamida ishingizni yengillating!"):
-                            parsed_data[k]["reklama_matni"] = v.get("reklama_matni")
+                        if v.get("reklama_matni") and (not parsed_data[k_int].get("reklama_matni") or parsed_data[k_int].get("reklama_matni") == "🔥 AutoHabar Pro yordamida ishingizni yengillating!"):
+                            parsed_data[k_int]["reklama_matni"] = v.get("reklama_matni")
                 
                 # SADRIDDIN: Eski keraksiz kanallarni bulutdan avtomatik 100% tozalash
                 for u_id in parsed_data:
@@ -220,8 +222,10 @@ def load_db():
 
 def save_db():
     try:
+        # Save always as strictly integer-keyed local database
+        normalized_db = {int(k): v for k, v in db_users.items()}
         with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(db_users, f, ensure_ascii=False, indent=4)
+            json.dump(normalized_db, f, ensure_ascii=False, indent=4)
     except Exception as e:
         logging.error(f"[Baza] Mahalliy bazaga yozishda xato: {e}")
 
@@ -239,6 +243,9 @@ db_users = load_db()
 active_clients = {}
 
 def ensure_user(user_id: int):
+    # Strictly convert ID to int to avoid duplication/empty values in memory (TUZATILDI!)
+    user_id = int(user_id)
+    
     # Safely avoid adding bot ID into DB
     try:
         bot_id = int(BOT_TOKEN.split(":")[0])
@@ -310,7 +317,7 @@ def ensure_user(user_id: int):
         if "auto_reply_active" not in db_users[user_id]:
             db_users[user_id]["auto_reply_active"] = False
         if "lang" not in db_users[user_id]:
-            db_users[user_id]["lang"] = None
+            db_users[user_id]["lang"] = "uz"
             
         # Eski kanallarni mahalliy xotiradan ham tozalash
         db_users[user_id]["channels"] = [
@@ -320,6 +327,7 @@ def ensure_user(user_id: int):
     save_db()
 
 async def backup_session_to_cloud(user_id, phone):
+    user_id = int(user_id)
     if not db:
         return
     phone_clean = phone.replace("+", "").replace(" ", "")
@@ -348,7 +356,9 @@ async def restore_sessions_from_cloud():
         for user_doc in users_docs:
             user_id = user_doc.id
             sessions_ref = users_ref.document(user_id).collection('telethon_sessions')
-            for session_doc in sessions_ref.stream():
+            sessions_docs = sessions_ref.stream()
+            
+            for session_doc in sessions_docs:
                 phone_clean = session_doc.id
                 binary_data_b64 = session_doc.to_dict().get("binary_data")
                 if binary_data_b64:
@@ -541,26 +551,19 @@ LOCALIZATION = {
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истек!</b>\n\nПожалуйста, заново введите номер телефона.",
-        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, введите код еще раз.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аутентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
         "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>",
-        "custom_interval_prompt": "✍️ <b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>",
-        "min_interval_error": "❌ Минимальный интервал - 1 минута!",
-        "interval_set_success": "✅ <b>Интервал настроен на {val} минут!</b>",
-        "invalid_integer": "❌ Пожалуйста, вводите только целые числа (например: 25):",
-        "groups_all_selected": "✓ Выбраны все группы!",
-        "groups_custom_selected": "✓ Режим ручного выбора активирован!",
-        "groups_cleared": "🚨 Списки выбранных групп очищены!",
-        "groups_refreshing": "Запущено обновление списка групп...",
-        "need_profile_first": "⚠️ Сначала вам нужно подключить аккаунт!",
-        "group_cache_empty": "⚠️ Кэш пуст, пожалуйста, нажмите кнопку '+ Добавить' (Обновить)!",
-        "profile_not_found": "⚠️ Профиль не найден!",
-        "profile_activated": "✓ {phone} успешно активирован!",
-        "profile_deleted": "⚠️ Профиль успешно удален!",
-        "sub_channels_alert": "⚠️ Внимание! Вы должны быть подписаны на все каналы!",
-        "sub_confirmed": "🎉 Спасибо! Подписка успешно подтверждена. Бот активирован!",
-        "panel_reloaded": "Панель управления в актуальном состоянии.",
-        "panel_refreshed": "🔄 Панель управления успешно обновлена!"
+        "custom_interval_prompt": "<b>Enter custom interval in minutes (e.g. 20):</b>",
+        "min_interval_error": "❌ Minimum interval is 1 minute!",
+        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
+        "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
+        "groups_all_selected": "✓ All groups selected!",
+        "groups_custom_selected": "✓ Custom selection mode activated!",
+        "groups_cleared": "🚨 Selected groups cleared!",
+        "groups_refreshing": "Group list reload started...",
+        "need_profile_first": "⚠️ You must connect an account first!",
+        "group_cache_empty": "⚠️ List is empty, please click the '+ Reload' button!"
     },
     "en": {
         "welcome": "📊 <b>Main Menu:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nHello, welcome! 👋\n\n› Please add an account and configure groups!",
@@ -582,8 +585,8 @@ LOCALIZATION = {
         "btn_change_lang": "🌐 Change Language",
         "btn_add_acc": "➕ Add Account",
         "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>Text</b>\n💬 Groups: <b>{guruhlar} groups</b>\n⏱️ Interval: <b>{interval} minutes</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
-        "deposit_title": "💰 <b>Balance Recharge System</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nCurrent balance: <b>{balans} UZS</b>\n\nTo securely top up your account, contact administrator:\n👉 <b>Administrator: @AbduIIayev_7</b>",
-        "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.\n👑 On the PRO plan, you can connect up to 5 profiles!",
+        "deposit_title": "💰 <b>Balance Recharge System</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nCurrent balance: <b>{balans} UZS</b>\n\nTo top up, write to admin: @AbduIIayev_7",
+        "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.",
         "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Image:</b> <b>{rasm}</b>\n🔘 <b>Buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward:</b> <b>{status}</b>",
         "groups_setup": "🎯 <b>Setup Groups</b>\n\nWhich groups should messages be sent to?\nCurrent choice: <b>{tanlov}</b>",
         "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n• Forward channel posts to groups to easily grow views!",
@@ -603,17 +606,7 @@ LOCALIZATION = {
         "sms_expired": "❌ <b>Verification code expired!</b>\n\nPlease enter your phone number again.",
         "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
         "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
-        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>",
-        "custom_interval_prompt": "<b>Enter custom interval in minutes (e.g. 20):</b>",
-        "min_interval_error": "❌ Minimum interval is 1 minute!",
-        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
-        "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
-        "groups_all_selected": "✓ All groups selected!",
-        "groups_custom_selected": "✓ Custom selection mode activated!",
-        "groups_cleared": "🚨 Selected groups cleared!",
-        "groups_refreshing": "Group list reload started...",
-        "need_profile_first": "⚠️ You must connect an account first!",
-        "group_cache_empty": "⚠️ List is empty, please click the '+ Reload' button!"
+        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>"
     }
 }
 
@@ -629,27 +622,40 @@ def get_lang_value(lang: str, key: str) -> str:
     return val
 
 def get_localization_values(key: str) -> list:
-    """Barcha tillardagi mos tugma qiymatlarini qaytaradi. KeyError'ni 100% yo'qotadi!"""
+    """Barcha tillardagi mos tugma qiymatlarini qaytaradi. Emojilardagi \ufe0f (variation selector) xatolarini 100% bartaraf etadi!"""
     values = []
     for lang in ["uz", "ru", "en"]:
         lang_dict = LOCALIZATION.get(lang, {})
         val = lang_dict.get(key)
         if val:
             values.append(val)
-    # Agar hech qayerdan topilmasa uzbekchasini majburiy qaytaramiz
-    if not values:
-        val = LOCALIZATION["uz"].get(key)
-        if val:
-            values.append(val)
+            # \ufe0f ni olib tashlangan holati
+            cleaned = val.replace("\ufe0f", "")
+            values.append(cleaned)
+            # \ufe0f ni qo'shilgan holati
+            # Har qanday emojidan keyin \ufe0f qo'shilgan versiyasini qo'shish
+            # Buning uchun oddiygina replace yoki barcha emojilarga \ufe0f qo'shish
+            with_selector = ""
+            for char in val:
+                # Emojilar diapazoni yoki maxsus emojilar
+                if ord(char) > 255:
+                    with_selector += char + "\ufe0f"
+                else:
+                    with_selector += char
+            # Ikki marta bo'lib qolmasligi uchun tozalash
+            with_selector = with_selector.replace("\ufe0f\ufe0f", "\ufe0f")
+            values.append(with_selector)
     return list(set(values))
 
 # Tillarni qulay olish uchun yordamchi funksiya
-def get_text(user_id: int, key: str) -> str:
+def get_text(user_id, key: str) -> str:
+    user_id = int(user_id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     return get_lang_value(lang, key)
 
-def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
+def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
+    user_id = int(user_id)
     ensure_user(user_id)
     kb = [
         [KeyboardButton(text=get_text(user_id, "btn_auto_send")), KeyboardButton(text=get_text(user_id, "btn_msg_text"))],
@@ -825,6 +831,7 @@ class MandatorySubMiddleware(BaseMiddleware):
 
 # ================= CLIENT RECOVERY ENGINE =================
 async def get_client(user_id, phone):
+    user_id = int(user_id)
     phone_clean = phone.replace("+", "").replace(" ", "")
     session_key = f"{user_id}_{phone_clean}"
     client = active_clients.get(session_key)
@@ -851,9 +858,9 @@ async def get_client(user_id, phone):
 async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_id: int):
     # Dynamic user identification to avoid bot-ID replacement bugs (TUZATILDI!)
     if isinstance(event, types.CallbackQuery):
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
     else:
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
 
     ensure_user(real_user_id)
     user_data = db_users.get(real_user_id)
@@ -916,11 +923,12 @@ async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_
 # ================= ASYNC CABINET DISPLAY SYSTEM =================
 
 async def show_cabinet_panel(event: types.Message | types.CallbackQuery, user_id: int):
+    user_id = int(user_id)
     # Dynamic user identification (TUZATILDI!)
     if isinstance(event, types.CallbackQuery):
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
     else:
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
 
     ensure_user(real_user_id)
     user_data = db_users.get(real_user_id)
@@ -985,11 +993,12 @@ async def show_cabinet_panel(event: types.Message | types.CallbackQuery, user_id
 # ================= ASYNC SYSTEM SETTINGS DISPLAY SYSTEM =================
 
 async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_id: int):
+    user_id = int(user_id)
     # Dynamic user identification (TUZATILDI!)
     if isinstance(event, types.CallbackQuery):
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
     else:
-        real_user_id = event.from_user.id
+        real_user_id = int(event.from_user.id)
 
     ensure_user(real_user_id)
     user_data = db_users.get(real_user_id)
@@ -1048,100 +1057,95 @@ async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_
         await event.answer(text, reply_markup=inline_kb, parse_mode="HTML")
 
 
+# ================= ASYNC GROUP DISPLAY HELPERS =================
+
+async def show_guruhlar_menu(message: types.Message, user_id: int):
+    """Guruhlarni sozlash menyusini doimo to'g'ri foydalanuvchi IDsi bilan xavfsiz ko'rsatuvchi drayver"""
+    user_id = int(user_id)
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    lang = user_data.get("lang", "uz") or "uz"
+    
+    choice = user_data.get("groups_choice", "custom")
+    tanlov_nomi = ("Hamma guruhlarga" if choice == "all" else "O'zim tanlayman") if lang == "uz" else (
+        ("Во все группы" if choice == "all" else "Выбираю сам") if lang == "ru" else
+        ("All groups" if choice == "all" else "Custom selection")
+    )
+    
+    cabinet_template = LOCALIZATION[lang]["groups_setup"]
+    text = cabinet_template.format(tanlov=tanlov_nomi)
+    
+    btn_all = "+ Hamma guruhlarga" if lang == "uz" else ("+ Во все группы" if lang == "ru" else "+ All groups")
+    btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю sam" if lang == "ru" else "✓ Custom selection")
+    btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
+    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
+    btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
+    
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn_all, callback_data="set_groups_all")],
+        [InlineKeyboardButton(text=btn_custom, callback_data="set_groups_custom")],
+        [
+            InlineKeyboardButton(text=btn_lists, callback_data="groups_list_page_0"),
+            InlineKeyboardButton(text=btn_add, callback_data="refresh_groups_force"),  
+            InlineKeyboardButton(text=btn_clear, callback_data="clear_selected_groups") 
+        ],
+        [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
+    ])
+    try:
+        await message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+
+
+# ================= ASYNC PROFILE DISPLAY HELPERS =================
+
+async def show_profillar_settings(message: types.Message, user_id: int):
+    user_id = int(user_id)
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    accounts_list = user_data.get("accounts", [])
+    active_phone = user_data.get("active_phone")
+    lang = user_data.get("lang", "uz") or "uz"
+    
+    lbl_none = "Mavjud emas ❌" if lang == "uz" else ("Не подключен ❌" if lang == "ru" else "None ❌")
+    p_active = active_phone if active_phone else lbl_none
+    
+    cabinet_template = LOCALIZATION[lang]["profile_title"]
+    text = cabinet_template.format(active=p_active)
+    
+    buttons = []
+    for acc in accounts_list:
+        phone = acc["phone"]
+        status_icon = "🟢" if phone == active_phone else "⚪"
+        buttons.append([
+            InlineKeyboardButton(text=f"{status_icon} {phone} ({acc['name'][:10]})", callback_data="manage_acc_" + phone)
+        ])
+        
+    btn_add = "➕ Yangi profil qo'shish" if lang == "uz" else ("➕ Добавить новый аккаунт" if lang == "ru" else "➕ Add new profile")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
+    
+    buttons.append([InlineKeyboardButton(text=btn_add, callback_data="add_account")])
+    buttons.append([InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")])
+    
+    try:
+        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+
 # ================= BOT HANDLERS =================
 
-@router.message(Command("start"), StateFilter("*"))
-async def cmd_start(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    
-    is_new_user = user_id not in db_users
-    ensure_user(user_id)
-    
-    # Referal taklif havolasini tekshirish
-    args = message.text.split()
-    if is_new_user and len(args) > 1 and args[1].startswith("ref_"):
-        try:
-            referrer_id = int(args[1].split("_")[1])
-            if referrer_id in db_users and referrer_id != user_id:
-                db_users[user_id]["referred_by"] = referrer_id
-                db_users[referrer_id]["referrals_count"] = db_users[referrer_id].get("referrals_count", 0) + 1
-                save_db()
-                
-                # Refererga xabar yuborish
-                try:
-                    await bot.send_message(
-                        referrer_id,
-                        f"👤 Yangi do'stingiz sizning referal havolangiz orqali botga qo'shildi!\n"
-                        f"Jami taklif qilgan faol a'zolaringiz: <b>{db_users[referrer_id]['referrals_count']} / 6 ta</b>",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass
-                
-                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO veriladi!
-                if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
-                    db_users[referrer_id]["is_pro"] = True
-                    save_db()
-                    try:
-                        await bot.send_message(
-                            referrer_id,
-                            "👑 <b>TABRIKLAYMIZ!</b>\n\n"
-                            "Siz muvaffaqiyatli ravishda 6 ta faol do'stingizni taklif qildingiz va "
-                            "<b>AutoHabar PRO</b> tarifini butunlay bepul qo'lga kiritdingiz! 🎉",
-                            parse_mode="HTML"
-                        )
-                    except Exception:
-                        pass
-        except Exception as e:
-            logging.error(f"[Referral] Tizim xatosi: {e}")
-            
-    # Agar foydalanuvchi tilni tanlamagan bo'lsa, til tanlash oynasini birinchi yuboramiz
-    if db_users[user_id].get("lang") is None:
-        await message.answer(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
-        return
-
-    await send_welcome_and_keyboard(message, user_id)
-
-async def send_welcome_and_keyboard(message: types.Message, user_id: int):
-    text = get_text(user_id, "welcome")
-    user_data = db_users.get(user_id)
-    
-    if user_data and not user_data.get("active_phone"):
-        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=get_text(user_id, "btn_add_acc"), callback_data="add_account")]
-        ])
-        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
-    else:
-        await message.answer(text, parse_mode="HTML")
-        
-    await message.answer(
-        "🎛️ " + get_text(user_id, "btn_settings") + "...",
-        reply_markup=get_main_keyboard(user_id)
-    )
-
-# Til tanlangandagi callback drayveri
 @router.callback_query(F.data.startswith("lang_"), StateFilter("*"))
-async def callback_select_lang(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    
-    selected_lang = callback_query.data.split("_")[1]
-    db_users[user_id]["lang"] = selected_lang
-    save_db()
-    
-    lang_name = "O'zbekcha 🇺🇿" if selected_lang == "uz" else "Русский 🇷🇺" if selected_lang == "ru" else "English 🇺🇸"
-    await callback_query.answer(f"✓ {lang_name}", show_alert=True)
-    await callback_query.message.delete()
-    
-    await send_welcome_and_keyboard(callback_query.message, user_id)
+async def callback_select_lang_handler(callback_query: types.CallbackQuery):
+    await callback_select_lang(callback_query)
 
-# ================= 📩 Savol va Yordam (SUPPORT SYSTEM) =================
+# ================= Savol va Yordam (SUPPORT SYSTEM) =================
 
 @router.message(F.text.in_(get_localization_values("btn_support")), StateFilter("*"))
 async def menu_support_handler(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     
     await message.answer(get_text(user_id, "support_prompt"), parse_mode="HTML")
@@ -1153,7 +1157,7 @@ async def message_receive_support_question(message: types.Message, state: FSMCon
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     
     question_text = message.text
@@ -1212,7 +1216,7 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
         return
         
     data = await state.get_data()
-    target_id = data.get("target_user_id")
+    target_id = int(data.get("target_user_id"))
     reply_text = message.text
     
     if not reply_text:
@@ -1239,34 +1243,34 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
 @router.message(F.text.in_(get_localization_values("btn_guide")), StateFilter("*"))
 async def menu_guide_handler(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     await message.answer(get_text(user_id, "guide_text"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
 
 @router.message(F.text.in_(get_localization_values("btn_cabinet")), StateFilter("*"))
-async def menu_kabinet(message: types.Message, state: FSMContext):
+async def menu_kabinet_handler(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     await show_cabinet_panel(message, user_id)
 
 @router.message(F.text.in_(get_localization_values("btn_settings")), StateFilter("*"))
-async def menu_sozlamalar(message: types.Message, state: FSMContext):
+async def menu_sozlamalar_handler(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     await show_sozlamalar_menu(message, user_id)
 
 @router.callback_query(F.data == "change_language_settings", StateFilter("*"))
 async def callback_change_language_settings(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     await callback_query.message.edit_text(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
     await callback_query.answer()
 
 @router.callback_query(F.data == "toggle_auto_sub", StateFilter("*"))
 async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     db_users[user_id]["auto_sub_active"] = not db_users[user_id].get("auto_sub_active", True)
     save_db()
@@ -1277,7 +1281,7 @@ async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
 
 @router.callback_query(F.data == "toggle_auto_reply", StateFilter("*"))
 async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     db_users[user_id]["auto_reply_active"] = not db_users[user_id].get("auto_reply_active", False)
     save_db()
@@ -1428,7 +1432,7 @@ async def state_process_add_balans(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
     data = await state.get_data()
-    target_id = data.get("target_id")
+    target_id = int(data.get("target_id"))
     val_str = message.text.strip()
     
     try:
@@ -1479,7 +1483,7 @@ async def state_process_add_stars(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
     data = await state.get_data()
-    target_id = data.get("target_id")
+    target_id = int(data.get("target_id"))
     val_str = message.text.strip()
     
     try:
@@ -1654,7 +1658,7 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 @router.message(F.text.in_(get_localization_values("btn_auto_send")), StateFilter("*"))
 async def menu_autohabar(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     await show_autohabar_panel(message, user_id)
 
@@ -1663,11 +1667,12 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
 @router.message(F.text.in_(get_localization_values("btn_msg_text")), StateFilter("*"))
 async def menu_habar_matni_msg(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     await show_message_settings(message, user_id)
 
 async def show_message_settings(message: types.Message, user_id: int):
+    user_id = int(user_id)
     ensure_user(user_id)
     user_data = db_users.get(user_id)
     lang = user_data.get("lang", "uz") or "uz"
@@ -1715,7 +1720,7 @@ async def show_message_settings(message: types.Message, user_id: int):
 @router.callback_query(F.data == "edit_text", StateFilter("*"))
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
@@ -1731,7 +1736,7 @@ async def message_receive_text(message: types.Message, state: FSMContext):
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1749,7 +1754,7 @@ async def message_receive_text(message: types.Message, state: FSMContext):
 @router.callback_query(F.data == "edit_photo", StateFilter("*"))
 async def callback_edit_photo(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
@@ -1765,7 +1770,7 @@ async def message_receive_photo(message: types.Message, state: FSMContext):
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1794,7 +1799,7 @@ async def message_receive_photo_invalid(message: types.Message, state: FSMContex
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     err = "⚠️ Iltimos, reklama uchun rasm shaklida fayl yuboring!" if lang == "uz" else ("⚠️ Пожалуйста, отправьте файл в формате изображения!" if lang == "ru" else "⚠️ Please send a file in image format!")
@@ -1802,7 +1807,7 @@ async def message_receive_photo_invalid(message: types.Message, state: FSMContex
 
 @router.callback_query(F.data == "clear_media_buttons", StateFilter("*"))
 async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1827,7 +1832,7 @@ async def callback_clear_media_buttons(callback_query: types.CallbackQuery):
 
 @router.callback_query(F.data == "edit_buttons_pro", StateFilter("*"))
 async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1863,7 +1868,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1898,7 +1903,7 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
 
 @router.callback_query(F.data == "edit_forward", StateFilter("*"))
 async def callback_edit_forward(callback_query: types.CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1933,7 +1938,7 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
     if await check_and_redirect_if_menu(message, state):
         return
 
-    user_id = message.from_user.id
+    user_id = int(message.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
@@ -1978,7 +1983,7 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
 
 @router.callback_query(F.data == "toggle_forward_mode", StateFilter("*"))
 async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
