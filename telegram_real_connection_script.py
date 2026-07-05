@@ -46,7 +46,7 @@ except ImportError as e:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
+BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
@@ -1124,7 +1124,7 @@ async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
     
     status = "yoqildi 🟢" if db_users[user_id]["auto_reply_active"] else "o'chirildi 🔴"
     await callback_query.answer(f"✓ Auto Reply {status}!", show_alert=True)
-    await show_sozlamalar_menu(callback_query, user_id)
+    await show_sozmar_menu(callback_query, user_id)
 
 @router.callback_query(F.data == "close_menu", StateFilter("*"))
 async def callback_close_menu(callback_query: types.CallbackQuery):
@@ -1433,7 +1433,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         channels.append(chan_name)
         db_users[ADMIN_ID]["channels"] = channels
         save_db()
-        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
+        await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaffaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
     else:
         await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
     await state.clear()
@@ -1535,7 +1535,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     btn_edit_buttons = "🔘 Tugmali xabar (Inline PRO)" if lang == "uz" else ("🔘 Кнопочное сообщение (Inline PRO)" if lang == "ru" else "🔘 Buttoned message (Inline PRO)")
     btn_toggle = "🔄 Rejimni almashtirish (Matn/Forward)" if lang == "uz" else ("🔄 Сменить режим (Текст/Forward)" if lang == "ru" else "🔄 Toggle mode (Text/Forward)")
     btn_clear = "❌ Rasm va tugmalarni tozalash" if lang == "uz" else ("❌ Очистить медиа и кнопки" if lang == "ru" else "❌ Clear media & buttons")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Наzad" if lang == "uz" else "← Back")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "uz" else "← Back")
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_edit_txt, callback_data="edit_text")],
@@ -2899,7 +2899,8 @@ async def state_phone_received(message: types.Message, state: FSMContext):
     
     try:
         client = await get_client(user_id, phone)
-        send_code_result = await client.send_code_request(phone)
+        # force_sms=True qo'shish orqali Flash-call va qo'ng'iroqlardan keladigan cheklovlarni chetlab o'tamiz va to'g'ridan-to'g'ri SMS so'raymiz
+        send_code_result = await client.send_code_request(phone, force_sms=True)
         await state.update_data(phone_code_hash=send_code_result.phone_code_hash)
         await state.set_state(LoginStates.waiting_code)
         await message.answer(get_text(user_id, "sms_sent"), parse_mode="HTML")
