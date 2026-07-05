@@ -495,7 +495,7 @@ LOCALIZATION = {
         "already_pro": "👑 Sizda allaqachon PRO tarif faollashtirilgan!",
         "pro_activated": "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑",
         "insufficient_funds": "❌ Hisobingizda mablag' yetarli emas!\nJoriy balans: {balans} so'm\nPRO narxi: 10,000 so'm.\n\nBotga 6 ta yangi odam taklif qibly, bepul PRO oling!",
-        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik vaqtincha mavjud emas!",
+        "no_active_conn": "⚠️ Faol ulanish vaqtinchalik vaqtincha  mavjud emas!",
         "disconnected_success": "⚠️ Profilni uzish muvaffaqiyatli bajarildi!",
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
@@ -650,8 +650,13 @@ def get_localization_values(key: str) -> list:
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id, key: str) -> str:
-    user_id = int(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
+    try:
+        user_id = int(user_id)
+        if user_id not in db_users:
+            ensure_user(user_id)
+        lang = db_users.get(user_id, {}).get("lang", "uz") or "uz"
+    except Exception:
+        lang = "uz"
     return get_lang_value(lang, key)
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
@@ -909,13 +914,19 @@ async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_
         if isinstance(event, types.CallbackQuery):
             try:
                 await event.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
-            except TelegramBadRequest as e:
-                if "message is not modified" in str(e).lower():
-                    await event.answer()
+            except TelegramBadRequest as edit_error:
+                if "message is not modified" in str(edit_error).lower():
+                    pass
                 else:
                     await event.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
             except Exception:
                 await event.message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
+            
+            # Har qanday holatda ham callback queryni xavfsiz javoblaymiz (Muzlashni yo'qotadi!)
+            try:
+                await event.answer()
+            except Exception:
+                pass
         else:
             await event.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
     except Exception as e:
@@ -981,11 +992,13 @@ async def show_cabinet_panel(event: types.Message | types.CallbackQuery, user_id
     if isinstance(event, types.CallbackQuery):
         try:
             await event.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+            await event.answer()
         except TelegramBadRequest as e:
             if "message is not modified" in str(e).lower():
                 await event.answer()
             else:
                 await event.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+                await event.answer()
         except Exception:
             await event.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
     else:
@@ -1048,11 +1061,13 @@ async def show_sozlamalar_menu(event: types.Message | types.CallbackQuery, user_
     if isinstance(event, types.CallbackQuery):
         try:
             await event.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
+            await event.answer()
         except TelegramBadRequest as e:
             if "message is not modified" in str(e).lower():
                 await event.answer()
             else:
                 await event.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+                await event.answer()
         except Exception:
             await event.message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
     else:
@@ -1082,7 +1097,7 @@ async def show_guruhlar_menu(message: types.Message, user_id: int):
     btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
     btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
     btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Наzad" if lang == "ru" else "← Back")
+    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_all, callback_data="set_groups_all")],
@@ -1138,9 +1153,74 @@ async def show_profillar_settings(message: types.Message, user_id: int):
 
 # ================= BOT HANDLERS =================
 
-@router.callback_query(F.data.startswith("lang_"), StateFilter("*"))
-async def callback_select_lang_handler(callback_query: types.CallbackQuery):
-    await callback_select_lang(callback_query)
+@router.message(Command("start"), StateFilter("*"))
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    is_new_user = user_id not in db_users
+    ensure_user(user_id)
+    
+    # Referal taklif havolasini tekshirish
+    args = message.text.split()
+    if is_new_user and len(args) > 1 and args[1].startswith("ref_"):
+        try:
+            referrer_id = int(args[1].split("_")[1])
+            if referrer_id in db_users and referrer_id != user_id:
+                db_users[user_id]["referred_by"] = referrer_id
+                db_users[referrer_id]["referrals_count"] = db_users[referrer_id].get("referrals_count", 0) + 1
+                save_db()
+                
+                # Refererga xabar yuborish
+                try:
+                    await bot.send_message(
+                        referrer_id,
+                        f"👤 Yangi do'stingiz sizning referal havolangiz orqali botga qo'shildi!\n"
+                        f"Jami taklif qilgan faol a'zolaringiz: <b>{db_users[referrer_id]['referrals_count']} / 6 ta</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+                
+                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO beriladi!
+                if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
+                    db_users[referrer_id]["is_pro"] = True
+                    save_db()
+                    try:
+                        await bot.send_message(
+                            referrer_id,
+                            "👑 <b>TABRIKLAYMIZ!</b>\n\n"
+                            "Siz muvaffaqiyatli ravishda 6 ta faol do'stingizni taklif qildingiz va "
+                            "<b>AutoHabar PRO</b> tarifini butunlay bepul qo'lga kiritdingiz! 🎉",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.error(f"[Referral] Tizim xatosi: {e}")
+            
+    # Agar foydalanuvchi tilni tanlamagan bo'lsa, til tanlash oynasini birinchi yuboramiz
+    if db_users[user_id].get("lang") is None:
+        await message.answer(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
+        return
+
+    await send_welcome_and_keyboard(message, user_id)
+
+async def send_welcome_and_keyboard(message: types.Message, user_id: int):
+    text = get_text(user_id, "welcome")
+    user_data = db_users.get(user_id)
+    
+    if user_data and not user_data.get("active_phone"):
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, "btn_add_acc"), callback_data="add_account")]
+        ])
+        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+    else:
+        await message.answer(text, parse_mode="HTML")
+        
+    await message.answer(
+        "🎛️ " + get_text(user_id, "btn_settings") + "...",
+        reply_markup=get_main_keyboard(user_id)
+    )
 
 # ================= Savol va Yordam (SUPPORT SYSTEM) =================
 
