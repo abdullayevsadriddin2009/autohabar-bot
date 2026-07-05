@@ -44,8 +44,8 @@ except ImportError as e:
     print(f"[Firebase] XATO: Kutubxona import qilinmadi! Sababi: {e}")
 
 # ================= CONFIGURATION =================
-API_ID = 37104311
-API_HASH = "f49729d10c144035c40f579b596d15b1"
+API_ID = 34177875
+API_HASH = "e7f728d02faf830e3c639c306688ad6e"
 BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
