@@ -533,7 +533,7 @@ LOCALIZATION = {
         "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Подключите аккаунт и настройте группы для старта!",
         "btn_auto_send": "⚪ Авторассылка",
         "btn_msg_text": "📝 Текст сообщения",
-        "btn_interval": "⏱️ Интвервал",
+        "btn_interval": "⏱️ Интервал",
         "btn_groups": "💬 Настройка групп",
         "btn_profiles": "👤 Профили",
         "btn_guide": "📖 Руководство",
@@ -543,7 +543,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайщее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Auto Ответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -557,7 +557,7 @@ LOCALIZATION = {
         "already_pro": "👑 У вас уже активирован тариф PRO!",
         "pro_activated": "🎉 Поздравляем! Триф PRO успешно активирован! 👑",
         "insufficient_funds": "❌ Недостаточно средств на балансе!\nТекущий баланс: {balans} сум\nСтоимость PRO: 10,000 сум.\n\nПригласите 6 друзей и получите PRO бесплатно!",
-        "no_active_conn": "⚠️ Нет активного подключения!",
+        "no_active_conn": "👑 Нет активного подключения!",
         "disconnected_success": "⚠️ Профиль успешно отключен!",
         "acc_limit_free": "⚠️ <b>Ограничение бесплатного тарифа!</b>\n\nВы можете подключить только <b>1</b> профиль.\nДля подключения большего количества профилей (до 5) приобретите <b>👑 тариф Pro</b> или приглашайте друзей!",
         "acc_limit_pro": "⚠️ <b>Максимальный предел аккаунтов!</b>\n\nНа тарифе PRO разрешено подключать не более <b>5</b> профилей.",
@@ -568,7 +568,7 @@ LOCALIZATION = {
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истёк!</b>\n\nПожалуйста, заново введите номер телефона.",
-        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверите и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аудитентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
         "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>"
     },
@@ -741,7 +741,7 @@ async def check_and_redirect_if_menu(message: types.Message, state: FSMContext) 
         return True
     elif text in all_btn_cab:
         await state.clear()
-        await menu_kabinet(message, state)
+        await menu_cabinet_handler(message, state)
         return True
     elif text in all_btn_set:
         await state.clear()
@@ -848,14 +848,6 @@ async def get_client(user_id, phone):
     session_path = os.path.join(SESSIONS_DIR, f"session_{session_key}")
     
     if not client:
-        # If there's an existing client, try to disconnect it first to free SQLite lock (TUZATILDI!)
-        existing = active_clients.get(session_key)
-        if existing:
-            try:
-                await existing.disconnect()
-            except Exception:
-                pass
-                
         # Standard generic device initialization (Anti-Spam trusted drayver)
         client = TelegramClient(
             session_path, 
@@ -1165,6 +1157,29 @@ async def show_profillar_settings(message: types.Message, user_id: int):
         await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
 
+# ================= CLEAN GREETING KEYBOARD UTILITY =================
+
+async def send_welcome_and_keyboard_clean(chat_id: int, user_id: int):
+    user_id = int(user_id)
+    ensure_user(user_id)
+    text = get_text(user_id, "welcome")
+    user_data = db_users.get(user_id)
+
+    if user_data and not user_data.get("active_phone"):
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, "btn_add_acc"), callback_data="add_account")]
+        ])
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=inline_kb, parse_mode="HTML")
+    else:
+        await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text="🎛️ " + get_text(user_id, "btn_settings") + "...",
+        reply_markup=get_main_keyboard(user_id)
+    )
+
+
 # ================= BOT HANDLERS =================
 
 @router.message(Command("start"), StateFilter("*"))
@@ -1217,24 +1232,33 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await message.answer(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
         return
 
-    await send_welcome_and_keyboard(message, user_id)
+    await send_welcome_and_keyboard_clean(message.chat.id, user_id)
 
-async def send_welcome_and_keyboard(message: types.Message, user_id: int):
-    text = get_text(user_id, "welcome")
-    user_data = db_users.get(user_id)
+
+# UNIFIED SINGLE LANGUAGE CHANGER CALLBACK HANDLER (TUZATILDI!)
+@router.callback_query(F.data.startswith("lang_"), StateFilter("*"))
+async def callback_select_lang(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = int(callback_query.from_user.id)
+    ensure_user(user_id)
     
-    if user_data and not user_data.get("active_phone"):
-        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=get_text(user_id, "btn_add_acc"), callback_data="add_account")]
-        ])
-        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
-    else:
-        await message.answer(text, parse_mode="HTML")
-        
-    await message.answer(
-        "🎛️ " + get_text(user_id, "btn_settings") + "...",
-        reply_markup=get_main_keyboard(user_id)
-    )
+    selected_lang = callback_query.data.split("_")[1]
+    db_users[user_id]["lang"] = selected_lang
+    save_db()
+    
+    lang_name = "O'zbekcha 🇺🇿" if selected_lang == "uz" else "Русский 🇷🇺" if selected_lang == "ru" else "English 🇺🇸"
+    try:
+        await callback_query.answer(f"✓ {lang_name}", show_alert=True)
+    except Exception:
+        pass
+
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    
+    await send_welcome_and_keyboard_clean(callback_query.message.chat.id, user_id)
+
 
 # ================= Savol va Yordam (SUPPORT SYSTEM) =================
 
@@ -1287,7 +1311,7 @@ async def message_receive_support_question(message: types.Message, state: FSMCon
     await message.answer(get_text(user_id, "support_sent"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await state.clear()
 
-# Admin javob berishni bosganda (TUZATILDI: StateFilter ulandi)
+# Admin javob berishni bosganda
 @router.callback_query(F.data.startswith("reply_to_user_"), StateFilter("*"))
 async def callback_admin_reply_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
@@ -1686,7 +1710,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         return
     chan_name = message.text.strip()
     if not chan_name.startswith("@") or len(chan_name) < 4:
-        await message.answer("❌ Noto'g'ri kanal nomi! Format: @autoxabarc_news shaklida bo'lishi shart.")
+        await message.answer("❌ Noto'g'ri kanal nomi! Format: @autoxabarc_news shaklida bo'shi shart.")
         return
         
     channels = db_users[ADMIN_ID].get("channels", [])
@@ -1696,7 +1720,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         save_db()
         await message.answer(f"✅ <b>{chan_name}</b> majburiy obuna ro'yxatiga muvaffaqiyatli qo'shildi!", reply_markup=get_main_keyboard(ADMIN_ID), parse_mode="HTML")
     else:
-        await message.answer("⚠️ Ushbu kanal allaqachon ro'yxatda bor.")
+        await message.answer("⚠️ Usbuhu kanal allaqachon ro'yxatda bor.")
     await state.clear()
 
 @router.callback_query(F.data == "adm_sub_clear_chan", StateFilter("*"))
@@ -1715,7 +1739,7 @@ async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, sta
     await state.set_state(AdminStates.waiting_broadcast_msg)
     text = (
         "✉️ <b>Ommaviy reklama tarqatish bo'limi</b>\n\n"
-        "Istalgan rasm yoki matnli xabarni yuboring. Ushbu xabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
+        "Istalgan rasm yoki matnli xabarni yuboring. Usbuhabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
     )
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_main_menu")]
