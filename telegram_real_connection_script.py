@@ -5,7 +5,7 @@ Ushbu skript Telegram Bot (aiogram v3) va Telegram MTProto Client (telethon)
 tizimlarini yagona asinxron motor va Google Cloud Firestore xizmati orqali birlashtiradi.
 Render, Railway va barcha bulutli platformalarda 24/7 ishlaydi.
 
-Sadriddin tahrirlagan to'liq, benuqson va guruhlarga tarqatish drayveri mukammal qilingan versiya!
+Sadriddin tahrirlagan to'liq, benuqson va qulashlardan to'liq himoyalangan versiya!
 """
 
 import asyncio
@@ -339,7 +339,7 @@ def ensure_user(user_id: int):
             db_users[user_id]["channels"] = cleaned_chans
             modified = True
 
-    # Faqat yangi ma'lumot qo'shilgandagina bazani yangilaymiz! Tarmoqni ortiqcha bloklamaydi (TUZATILDI!)
+    # Faqat yangi ma'lumot qo'shilgandagina bazani yangilaymiz!
     if modified:
         save_db()
 
@@ -533,7 +533,7 @@ LOCALIZATION = {
         "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Подключите аккаунт и настройте группы для старта!",
         "btn_auto_send": "⚪ Авторассылка",
         "btn_msg_text": "📝 Текст сообщения",
-        "btn_interval": "⏱️ Интервал",
+        "btn_interval": "⏱️ Интвервал",
         "btn_groups": "💬 Настройка групп",
         "btn_profiles": "👤 Профили",
         "btn_guide": "📖 Руководство",
@@ -543,7 +543,7 @@ LOCALIZATION = {
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
         "support_prompt": "✍️ <b>Раздел отправки вопросов</b>\n\nПожалуйста, подробно напишите ваш вопрос или обращение. Администратор ответит вам через бота в ближайшее время!",
         "support_sent": "✅ Ваш вопрос успешно доставлен администратору! Мы ответим вам в ближайщее время.",
-        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
+        "settings_title": "⚙️ <b>Дополнительные Системные Настройки</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Автоподписка: <b>{auto_sub}</b>\n↩️ Автоответ: <b>{auto_reply}</b>\n🌐 Язык: <b>{lang_name}</b>\n🛡️ Анти-Бан: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nНажмите кнопку для изменения настроек:",
         "guide_text": "📖 <b>AutoHabar Pro - Подробное Руководство</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Подключение аккаунта:</b>\n• В разделе профилей нажмите кнопку добавления аккаунта и введите номер телефона в международном формате.\n• При получении СМС-кода обязательно вводите его через <b>точку</b> (Формат: <code>5.8.2.9.1</code>).",
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
@@ -663,7 +663,6 @@ def get_text(user_id, key: str) -> str:
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
     user_id = int(user_id)
-    ensure_user(user_id)
     kb = [
         [KeyboardButton(text=get_text(user_id, "btn_auto_send")), KeyboardButton(text=get_text(user_id, "btn_msg_text"))],
         [KeyboardButton(text=get_text(user_id, "btn_interval")), KeyboardButton(text=get_text(user_id, "btn_groups"))],
@@ -779,6 +778,10 @@ class MandatorySubMiddleware(BaseMiddleware):
         if isinstance(event, types.CallbackQuery) and (event.data in ["check_sub_status", "back_to_deposit", "deposit_balance", "back_to_panel"] or event.data.startswith("lang_")):
             return await handler(event, data)
 
+        # Agar foydalanuvchi start yoki admin komandalarini yuborgan bo'lsa, ularni tekshiruvdan o'tkazamiz (TUZATILDI!)
+        if isinstance(event, types.Message) and event.text and (event.text.startswith("/start") or event.text.startswith("/admin")):
+            return await handler(event, data)
+
         # Agar til hali belgilanmagan bo'lsa, obunani tekshirishdan oldin til tanlash oynasini ko'rsatamiz
         ensure_user(user_id)
         if db_users[user_id].get("lang") is None:
@@ -845,6 +848,14 @@ async def get_client(user_id, phone):
     session_path = os.path.join(SESSIONS_DIR, f"session_{session_key}")
     
     if not client:
+        # If there's an existing client, try to disconnect it first to free SQLite lock (TUZATILDI!)
+        existing = active_clients.get(session_key)
+        if existing:
+            try:
+                await existing.disconnect()
+            except Exception:
+                pass
+                
         # Standard generic device initialization (Anti-Spam trusted drayver)
         client = TelegramClient(
             session_path, 
@@ -2645,7 +2656,7 @@ async def callback_statistika(callback_query: types.CallbackQuery, state: FSMCon
             (f"Selected ({selected_g_count})" if choice == "custom" else "All groups")
         )
         
-        status_active = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно" if lang == "ru" else "🟢 Active")
+        status_active = "🟢 Faol" if lang == "uz" else ("🟢 Активно" if lang == "ru" else "🟢 Active")
         status_inactive = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Inactive")
         status_text = status_active if user_data.get("is_sending") else status_inactive
 
@@ -2665,7 +2676,7 @@ async def callback_statistika(callback_query: types.CallbackQuery, state: FSMCon
             f"📱 Аккаунт: <b>{user_data.get('active_phone', 'Нет ❌')}</b>\n"
             f"🟢 Отправлено сегодня: <b>{user_data.get('today_sent', 0)} сообщений</b>\n"
             f"🔄 Всего отправлено: <b>{user_data.get('total_sent', 0)} сообщений</b>\n"
-            f"💬  Группы: <b>{g_text}</b>\n"
+            f"💬 Группы: <b>{g_text}</b>\n"
             f"⏱️ Текущий интервал: <b>{user_data.get('interval', 15)} минут</b>\n"
             f"⏳ Статус рассылки: <b>{status_text}</b>\n"
             "━━━━━━━━━━━━━━━━━━━━" if lang == "ru" else
@@ -2794,7 +2805,7 @@ async def callback_refresh_groups_force(callback_query: types.CallbackQuery, sta
         logging.error(f"[Callback] refresh_groups_force xatosi: {e}")
         await callback_query.message.answer(f"❌ Xatolik yuz berdi: {e}")
 
-# ================= ASYNC GROUP SELECTION LIST DISPLAY (PAGINATION FIXED!) =================
+# ================= ASYNC GROUP SELECTION LIST DISPLAY =================
 
 async def callback_groups_list(callback_query: types.CallbackQuery, page: int = None):
     try:
@@ -2965,7 +2976,7 @@ async def callback_save_groups(callback_query: types.CallbackQuery, state: FSMCo
         logging.error(f"[Callback] save_groups_selection xatosi: {e}")
 
 
-# ================= REAL TIME LOGIN WIZARD SYSTEM (FIXED & COMPLETE!) =================
+# ================= REAL TIME LOGIN WIZARD SYSTEM =================
 
 @router.callback_query(F.data == "add_account", StateFilter("*"))
 async def callback_add_account_wizard(callback_query: types.CallbackQuery, state: FSMContext):
@@ -3210,6 +3221,17 @@ async def init_existing_sessions():
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
 
+# ================= OTHER ACTIONS & INTERFACES (TUZATILDI - MISSING HANDLERS RECOVRED!) =================
+
+@router.callback_query(F.data == "back_to_panel", StateFilter("*"))
+async def callback_back_to_panel_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    """Hamma bo'limlardagi ortga qaytish menyusi ishlamaslik xatosini bartaraf etuvchi asinxron drayver! (TUZATILDI!)"""
+    await state.clear()
+    user_id = int(callback_query.from_user.id)
+    await show_autohabar_panel(callback_query, user_id)
+    await callback_query.answer()
+
+
 # ================= WEB SERVER =================
 
 async def handle_ping_web(request):
@@ -3242,9 +3264,9 @@ async def main():
     
     bot = Bot(token=BOT_TOKEN)
     
-    # Global majburiy obuna nazoratchisini dispatcherga ulash (Sadriddin: O'chirilgan)
-    # dp.message.outer_middleware(MandatorySubMiddleware())
-    # dp.callback_query.outer_middleware(MandatorySubMiddleware())
+    # Global majburiy obuna nazoratchisini dispatcherga ulash (TUZATILDI!)
+    dp.message.outer_middleware(MandatorySubMiddleware())
+    dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
     asyncio.create_task(init_existing_sessions())
     asyncio.create_task(auto_sender_worker())
