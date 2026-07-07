@@ -566,7 +566,7 @@ LOCALIZATION = {
         "cabinet_title": "👤 <b>Ваш Кабинет</b>\n\n👥 Имя: <b>{name}</b>\n🌐 Юзернейм: <b>{username}</b>\n💰 Баланс: <b>{balans} сум</b>\n\n📊 <b>Статистика:</b>\n✔️ Сегодня отправлено: <b>{today_sent}</b>\n🔄 Всего отправлено: <b>{total_sent}</b>\n👥 Подключено аккаунтов: <b>{acc_count} / 5 ta</b>\n👥 Приглашено друзей: <b>{referrals} / 6 ta</b>\n🔗 Ссылка: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Сменить язык",
         "btn_add_acc": "➕ Добавить аккаунт",
-        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Очередь: <b>Текст</b>\n💬 Группы: <b>{guruhlar} групп</b>\n⏱️ Интервал: <b>{interval} минут</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Mention: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "control_panel": "🤠 <b>Панель управления</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Статус: <b>{holat}</b>\n✍️ Очередь: <b>{turi}</b>\n💬 Группы: <b>{guruhlar}</b>\n⏱️ Интервал: <b>{interval}</b>\n⏳ Автовыключение: <b>{avto_ochish}</b>\n📢 Mention: <b>Выкл</b>\n━━━━━━━━━━━━━━━━━━━━",
         "deposit_title": "💰 <b>Система пополнения баланса</b>\n━━━━━━━━━━━━━━━━━━━━\nВаш Telegram ID: <code>{user_id}</code>\nТекущий баланс: <b>{balans} сум</b>\n\nЧтобы пополнить баланс, напишите администратору:\n👉 <b>Администратор: @AbduIIayev_7</b>",
         "profile_title": "👥 <b>Управление подключенными аккаунтами</b>\n━━━━━━━━━━━━━━━━━━━━\nТекущее активное подключение: <b>{active}</b>\n\nНа бесплатном тарифе можно подключить только 1 профиль.\n👑 На тарифе PRO вы можете подключить и управлять до 5 профилей!",
         "msg_setup": "💬 <b>Настройка сообщения</b>\n\n📝 <b>Текущий текст:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Изображение:</b> <b>{rasm}</b>\n🔘 <b>Кнопки:</b> <b>{tugmalar}</b>\n📤 <b>Forward:</b> <b>{status}</b>",
@@ -575,7 +575,7 @@ LOCALIZATION = {
         "already_pro": "👑 У вас уже активирован тариф PRO!",
         "pro_activated": "🎉 Поздравляем! Триф PRO успешно активирован! 👑",
         "insufficient_funds": "❌ Недостаточно средств на балансе!\nТекущий баланс: {balans} сум\nСтоимость PRO: 10,000 сум.\n\nПригласите 6 друзей и получите PRO бесплатно!",
-        "no_active_conn": "👑 Нет активного подключения!",
+        "no_active_conn": "⚠️ Нет активного подключения!",
         "disconnected_success": "⚠️ Профиль успешно отключен!",
         "acc_limit_free": "⚠️ <b>Ограничение бесплатного тарифа!</b>\n\nВы можете подключить только <b>1</b> профиль.\nДля подключения большего количества профилей (до 5) приобретите <b>👑 тариф Pro</b> или приглашайте друзей!",
         "acc_limit_pro": "⚠️ <b>Максимальный предел аккаунтов!</b>\n\nНа тарифе PRO разрешено подключать не более <b>5</b> профилей.",
@@ -586,7 +586,7 @@ LOCALIZATION = {
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истёк!</b>\n\nПожалуйста, заново введите номер телефона.",
-        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверите и введите код еще раз.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аудитентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
         "two_fa_invalid": "white ❌ <b>Two-factor password incorrect!</b>"
     },
@@ -609,7 +609,7 @@ LOCALIZATION = {
         "cabinet_title": "👤 <b>Your Cabinet</b>\n\n👥 Name: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balance: <b>{balans} UZS</b>\n\n📊 <b>Statistics:</b>\n✔️ Today sent: <b>{today_sent}</b>\n🔄 Total sent: <b>{total_sent}</b>\n👥 Accounts connected: <b>{acc_count} / 5 ta</b>\n👥 Referrals invited: <b>{referrals} / 6 ta</b>\n🔗 Link: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Change Language",
         "btn_add_acc": "➕ Add Account",
-        "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>Text</b>\n💬 Groups: <b>{guruhlar} groups</b>\n⏱️ Interval: <b>{interval} minutes</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "control_panel": "🤠 <b>Control Panel</b>\n━━━━━━━━━━━━━━━━━━━━\n{profil}\n⚡ Status: <b>{holat}</b>\n✍️ Message Type: <b>{turi}</b>\n💬 Groups: <b>{guruhlar}</b>\n⏱️ Interval: <b>{interval}</b>\n⏳ Auto-Off: <b>{avto_ochish}</b>\n📢 Mention: <b>Off</b>\n━━━━━━━━━━━━━━━━━━━━",
         "deposit_title": "💰 <b>Balance Recharge System</b>\n━━━━━━━━━━━━━━━━━━━━\nYour Telegram ID: <code>{user_id}</code>\nCurrent balance: <b>{balans} UZS</b>\n\nTo top up, write to admin: @AbduIIayev_7",
         "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.",
         "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Image:</b> <b>{rasm}</b>\n🔘 <b>Buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward:</b> <b>{status}</b>",
@@ -3245,10 +3245,93 @@ async def state_custom_interval_received(message: types.Message, state: FSMConte
     try:
         val = int(val_str)
         if val < 1:
-            await message.answer(get_text(user_id, "min_interval_error"))
+            err_msg = "❌ Minimal interval vaqti - 1 daqiqa!" if lang == "uz" else ("❌ Минимальный интервал - 1 минута!" if lang == "ru" else "❌ Minimum interval is 1 minute!")
+            await message.answer(err_msg)
             return
 
         db_users[user_id]["interval"] = val
         save_db()
 
-        success_msg = get_text(user_id, "interval_set_success").format(val=val)
+        success_msg = f"✅ <b>Xabar yuborish oralig'i (Interval) {val} daqiqaga muvaffaqiyatli sozlandi!</b>" if lang == "uz" else (
+            f"✅ <b>Интервал отправки успешно настроен на {val} минут!</b>" if lang == "ru" else
+            f"✅ <b>Interval successfully set to {val} minutes!</b>"
+        )
+        await message.answer(success_msg, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
+        await state.clear()
+        
+        # Show the interval menu again
+        user_data = db_users.get(user_id)
+        await message.answer(f"⏱️ <b>Hozirgi interval:</b> {user_data.get('interval', 15)} daqiqa" if lang == "uz" else (f"⏱️ <b>Текущий интервал:</b> {user_data.get('interval', 15)} минут" if lang == "ru" else f"⏱️ <b>Current interval:</b> {user_data.get('interval', 15)} minutes"), reply_markup=get_interval_keyboard(user_data.get("interval", 15)), parse_mode="HTML")
+    except ValueError:
+        err_int = "❌ Iltimos, faqat butun son kiriting (masalan: 25):" if lang == "uz" else ("❌ Пожалуйста, вводите только целые числа (например: 25):" if lang == "ru" else "❌ Please enter valid integers only (e.g. 25):")
+        await message.answer(err_int)
+
+
+# ================= SOXTA WEB SERVER (PORT BINDING UCHUN) =================
+
+async def handle_ping_web(request):
+    return web.Response(text="Bot is running smoothly!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', handle_ping_web)
+    app.router.add_get('/ping', handle_ping_web)
+    
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, '0.0.0.0', port).start()
+
+
+# ================= APP INITIALIZATION =================
+
+async def main():
+    global bot
+    print("==================================================")
+    print("🤖 AutoHabar Pro Telegram Bot ishga tushmoqda...")
+    print("==================================================")
+    print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
+    print(f"[Tizim] Admin ID: {ADMIN_ID}")
+    
+    if db:
+        print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
+        await restore_sessions_from_cloud()
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    # Global majburiy obuna nazoratchisini dispatcherga ulash (TUZATILDI!)
+    dp.message.outer_middleware(MandatorySubMiddleware())
+    dp.callback_query.outer_middleware(MandatorySubMiddleware())
+    
+    asyncio.create_task(init_existing_sessions())
+    asyncio.create_task(auto_sender_worker())
+    logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
+    
+    asyncio.create_task(start_web_server())
+    
+    print("\n✅ BOT MUVAFFAQIYATLI ISHGA TUSHDI!")
+    print("💬 Endi Telegram ilovangizni oching va botingizga kiring.")
+    print("👉 Botingizga /start buyrug'ini yuboring.")
+    print("\n==================================================")
+    
+    # Tarmoq uzilishlari uchun auto-retry polling
+    max_retries = 10
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"Telegram tarmoqlariga ulanishga urinish {attempt}/{max_retries}...")
+            await dp.start_polling(bot)
+            break
+        except Exception as e:
+            logging.error(f"Tarmoq xatosi (Ulanish uzildi): {e}")
+            if attempt == max_retries:
+                raise e
+            wait_time = attempt * 5
+            logging.info(f"{wait_time} soniyadan so'ng qayta urinib ko'riladi...")
+            await asyncio.sleep(wait_time)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[👋] Avtomatlashtirish jarayoni foydalanuvchi tomonidan to'xtatildi.")
+        sys.exit()
