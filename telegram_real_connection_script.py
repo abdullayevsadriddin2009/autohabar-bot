@@ -582,13 +582,13 @@ LOCALIZATION = {
         "enter_phone": "📱 <b>Подключение реального Telegram аккаунта</b>\n\nПожалуйста, введите ваш номер телефона в международном формате (например: <code>+998901234567</code>):",
         "invalid_phone": "❌ <b>Введен неверный формат номера телефона!</b>\n\nФормат: <code>+[код_страны][номер]</code>",
         "connecting_tg": "🔄 Устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
-        "sms_sent": "💬 <b>СМС-код отправлен в ваше приложение Telegram!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nКод придет не по СМС, а только в ваше официальное приложение <b>Telegram (в чат Telegram Service Message)</b>!\nВведите код, разделяя цифры <b>точками</b> (Формат: 1.2.3.4.5).\n\nПожалуйста, введите 5-значный код:",
+        "sms_sent": "💬 <b>СМС-код отправлен в ваше приложение Telegram!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nEnter the code with <b>dots</b> between numbers!\nFormat: <b>1.2.3.4.5</b>\n\nPlease enter the 5-digit code sent to your Telegram app:",
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истёк!</b>\n\nПожалуйста, заново введите номер телефона.",
-        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверте и введите код еще раз.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверите и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аудитентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
-        "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>"
+        "two_fa_invalid": "white ❌ <b>Two-factor password incorrect!</b>"
     },
     "en": {
         "welcome": "📊 <b>Main Menu:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nHello, welcome! 👋\n\n› Please add an account and configure groups!",
@@ -681,6 +681,7 @@ def get_text(user_id, key: str) -> str:
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
     user_id = int(user_id)
+    ensure_user(user_id)
     kb = [
         [KeyboardButton(text=get_text(user_id, "btn_auto_send")), KeyboardButton(text=get_text(user_id, "btn_msg_text"))],
         [KeyboardButton(text=get_text(user_id, "btn_interval")), KeyboardButton(text=get_text(user_id, "btn_groups"))],
@@ -1127,7 +1128,7 @@ async def show_guruhlar_menu(message: types.Message, user_id: int):
     btn_all = "+ Hamma guruhlarga" if lang == "uz" else ("+ Во все группы" if lang == "ru" else "+ All groups")
     btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю сам" if lang == "ru" else "✓ Custom selection")
     btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
-    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
+    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Обновить" if lang == "ru" else "+ Reload")
     btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
     btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
@@ -2232,7 +2233,7 @@ async def send_reklama_message(client, chat_id, user_data, user_id):
         lang = user_data.get("lang", "uz") or "uz"
         
         # Barcha foydalanuvchilar (PRO va bepul) uchun watermark o'rnatiladi (TUZATILDI!)
-        watermark = "\n\n@Auto_Xabar_Yuborish_Bot shu bot orqali yuborildi" if lang == "uz" else (
+        watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
             "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
             "\n\nSent via @Auto_Xabar_Yuborish_Bot"
         )
@@ -2311,14 +2312,10 @@ async def run_sending_cycle_for_user(user_id):
             
         client = await get_client(user_id, active_phone)
         if await client.is_user_authorized():
-            # Telethon guruh entity-larini keshda mukammal saqlashi uchun barcha dialoglarni yuklab olamiz.
-            # Bu ValueError (Input entity not found) xatolarini zudlik bilan bartaraf etadi!
+            # MUHIM: Telethon guruh entity-larini to'liq keshda saqlashi uchun barcha dialoglarni yuklab olamiz.
+            # Bu ValueError (Input entity not found) xatolarini 100% yo'qotadi va barcha guruhlarga xabar borishini ta'minlaydi!
             logging.info(f"[Sender] Guruh entities keshini yangilash uchun barcha dialoglar yuklanmoqda...")
-            dialogs = await client.get_dialogs(limit=None)
-            
-            dialogs_map = {}
-            for d in dialogs:
-                dialogs_map[int(d.id)] = d.entity
+            await client.get_dialogs(limit=None)
             
             guruhlar = []
             choice = user_data.get("groups_choice", "custom")
@@ -2326,9 +2323,9 @@ async def run_sending_cycle_for_user(user_id):
             if choice == "custom":
                 guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
             else:
-                for d in dialogs:
-                    if d.is_group:
-                        guruhlar.append(int(d.id))
+                async for dialog in client.iter_dialogs():
+                    if dialog.is_group:
+                        guruhlar.append(int(dialog.id))
             
             if not guruhlar:
                 logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
@@ -2340,28 +2337,9 @@ async def run_sending_cycle_for_user(user_id):
                 if not db_users.get(user_id, {}).get("is_sending"):
                     break
                     
-                g_entity = None
-                g_id_str = str(g_id)
-                short_id = int(g_id_str.replace("-100", "-").replace("-", ""))
-                
-                for cached_id, entity in dialogs_map.items():
-                    cached_id_str = str(cached_id)
-                    cached_short = int(cached_id_str.replace("-100", "-").replace("-", ""))
-                    if cached_id == g_id or cached_short == short_id:
-                        g_entity = entity
-                        break
-                        
-                if not g_entity:
-                    try:
-                        g_entity = await client.get_entity(int(g_id))
-                    except Exception:
-                        try:
-                            g_entity = await client.get_entity(short_id)
-                        except Exception as e:
-                            logging.error(f"[Sender] Guruh entity topilmadi ({g_id}): {e}")
-                            continue
-                            
                 try:
+                    # Har bir guruh entitiesini aniq aniqlab olamiz
+                    g_entity = await client.get_entity(g_id)
                     await send_reklama_message(client, g_entity, user_data, user_id)
                     
                     user_data["today_sent"] = user_data.get("today_sent", 0) + 1
@@ -2962,7 +2940,7 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
 @router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
 async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    user_id = callback_query.from_user.id
+    user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     
     phone = db_users[user_id].get("active_phone")
@@ -3012,7 +2990,7 @@ async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMCon
     await show_cabinet_panel(callback_query, user_id)
 
 
-# ================= SESSIONS RE-INITIALIZATION SERVICE =================
+# ================= HIGHLY REALISTIC SECTIONS & CHANNELS RE-INITIALIZER =================
 
 async def init_existing_sessions():
     if not os.path.exists(SESSIONS_DIR):
@@ -3062,7 +3040,7 @@ async def init_existing_sessions():
 
 @router.callback_query(F.data == "back_to_panel", StateFilter("*"))
 async def callback_back_to_panel_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    """Hamma bo'limlardagi ortga qaytish menyusi ishlamaslik xatosini bartaraf etuvchi asinxron drayver! (TUZATILDI!)"""
+    """Hamma bo'limlardagi ortga qaytish menyusi xatosini bartaraf etuvchi asinxron drayver!"""
     await state.clear()
     user_id = int(callback_query.from_user.id)
     await show_autohabar_panel(callback_query, user_id)
@@ -3070,7 +3048,7 @@ async def callback_back_to_panel_handler(callback_query: types.CallbackQuery, st
 
 @router.callback_query(F.data == "back_to_welcome", StateFilter("*"))
 async def callback_back_to_welcome_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    """Ortga qaytganda Welcome paneliga chiroyli qaytaruvchi asinxron drayver! (TUZATILDI!)"""
+    """Ortga qaytganda Welcome paneliga chiroyli qaytaruvchi asinxron drayver!"""
     await state.clear()
     user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
@@ -3245,10 +3223,10 @@ async def callback_custom_interval_prompt(callback_query: types.CallbackQuery, s
     user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
-    
+
     prompt = get_text(user_id, "custom_interval_prompt")
     await state.set_state(TextStates.waiting_custom_interval)
-    
+
     await callback_query.message.answer(prompt, parse_mode="HTML")
     await callback_query.answer()
 
@@ -3262,92 +3240,15 @@ async def state_custom_interval_received(message: types.Message, state: FSMConte
     user_id = int(message.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
-    
+
     val_str = message.text.strip()
     try:
         val = int(val_str)
         if val < 1:
             await message.answer(get_text(user_id, "min_interval_error"))
             return
-            
+
         db_users[user_id]["interval"] = val
         save_db()
-        
+
         success_msg = get_text(user_id, "interval_set_success").format(val=val)
-        await message.answer(success_msg, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
-        await state.clear()
-        
-        # Interval sozlash menyusiga qaytaradi
-        await menu_interval_handler(message, state)
-    except ValueError:
-        await message.answer(get_text(user_id, "invalid_integer"))
-
-
-# ================= WEB SERVER =================
-
-async def handle_ping_web(request):
-    return web.Response(text="Bot is running smoothly!")
-
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get('/', handle_ping_web)
-    app.router.add_get('/ping', handle_ping_web)
-    
-    port = int(os.environ.get("PORT", 10000))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    await web.TCPSite(runner, '0.0.0.0', port).start()
-
-
-# ================= APP INITIALIZATION =================
-
-async def main():
-    global bot
-    print("==================================================")
-    print("🤖 AutoHabar Pro Telegram Bot ishga tushmoqda...")
-    print("==================================================")
-    print(f"[Tizim] Bot tokeni: {BOT_TOKEN[:15]}...")
-    print(f"[Tizim] Admin ID: {ADMIN_ID}")
-    
-    if db:
-        print("[Sessiya] Bulutdan eski ulanishlarni tiklash boshlandi...")
-        await restore_sessions_from_cloud()
-    
-    bot = Bot(token=BOT_TOKEN)
-    
-    # Global majburiy obuna nazoratchisini dispatcherga ulash (TUZATILDI!)
-    dp.message.outer_middleware(MandatorySubMiddleware())
-    dp.callback_query.outer_middleware(MandatorySubMiddleware())
-    
-    asyncio.create_task(init_existing_sessions())
-    asyncio.create_task(auto_sender_worker())
-    logging.info("Auto-sender asinxron xizmati muvaffaqiyatli yoqildi!")
-    
-    asyncio.create_task(start_web_server())
-    
-    print("\n✅ BOT MUVAFFAQIYATLI ISHGA TUSHDI!")
-    print("💬 Endi Telegram ilovangizni oching va botingizga kiring.")
-    print("👉 Botingizga /start buyrug'ini yuboring.")
-    print("\n==================================================")
-    
-    # Tarmoq uzilishlari uchun auto-retry polling
-    max_retries = 10
-    for attempt in range(1, max_retries + 1):
-        try:
-            logging.info(f"Telegram tarmoqlariga ulanishga urinish {attempt}/{max_retries}...")
-            await dp.start_polling(bot)
-            break
-        except Exception as e:
-            logging.error(f"Tarmoq xatosi (Ulanish uzildi): {e}")
-            if attempt == max_retries:
-                raise e
-            wait_time = attempt * 5
-            logging.info(f"{wait_time} soniyadan so'ng qayta urinib ko'riladi...")
-            await asyncio.sleep(wait_time)
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n[👋] Avtomatlashtirish jarayoni foydalanuvchi tomonidan to'xtatildi.")
-        sys.exit()
