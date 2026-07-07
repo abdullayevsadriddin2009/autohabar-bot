@@ -555,7 +555,7 @@ LOCALIZATION = {
         "btn_groups": "💬 Настройка групп",
         "btn_profiles": "👤 Профили",
         "btn_guide": "📖 Руководство",
-        "btn_cabinet": "👤 Кабинет",
+        "btn_cabinet": "👤 Cabinet",
         "btn_settings": "⚙️ Настройки",
         "btn_support": "❓ Вопрос и Помощь",
         "select_lang_text": "🌐 Пожалуйста, выберите удобный для вас язык:",
@@ -581,7 +581,7 @@ LOCALIZATION = {
         "acc_limit_pro": "⚠️ <b>Максимальный предел аккаунтов!</b>\n\nНа тарифе PRO разрешено подключать не более <b>5</b> профилей.",
         "enter_phone": "📱 <b>Подключение реального Telegram аккаунта</b>\n\nПожалуйста, введите ваш номер телефона в международном формате (например: <code>+998901234567</code>):",
         "invalid_phone": "❌ <b>Введен неверный формат номера телефона!</b>\n\nФормат: <code>+[код_страны][номер]</code>",
-        "connecting_tg": "🔄 Устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
+        "connecting_tg": "🔄  устанавливается чистое подключение к серверам Telegram. Пожалуйста, подождите...",
         "sms_sent": "💬 <b>СМС-код отправлен в ваше приложение Telegram!</b>\n\n⚠️ <b>ВАЖНОЕ ПРИМЕЧАНИЕ:</b>\nEnter the code with <b>dots</b> between numbers!\nFormat: <b>1.2.3.4.5</b>\n\nPlease enter the 5-digit code sent to your Telegram app:",
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
@@ -1858,7 +1858,7 @@ async def show_message_settings(message: types.Message, user_id: int):
         [InlineKeyboardButton(text=btn_edit_buttons, callback_data="edit_buttons_pro")], 
         [InlineKeyboardButton(text=btn_toggle, callback_data="toggle_forward_mode")],
         [InlineKeyboardButton(text=btn_clear, callback_data="clear_media_buttons")],
-        [InlineKeyboardButton(text=btn_back, callback_data="back_to_welcome")]  # TUZATILDI: Welcome paneliga chiroyli qaytadi!
+        [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
     ])
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
@@ -2134,14 +2134,6 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     user_id = int(callback_query.from_user.id)
     ensure_user(user_id)
     lang = db_users[user_id].get("lang", "uz") or "uz"
-    
-    pro_alert = "👑 Bu funksiyadan foydalanish uchun PRO bo'lishingiz shart!" if lang == "uz" else ("👑 Для использования этой функции у вас должен быть статус PRO!" if lang == "ru" else "👑 You need PRO status to use this feature!")
-    if not db_users[user_id].get("is_pro", False):
-        await callback_query.answer(pro_alert, show_alert=True)
-        return
-        
-    db_users[user_id]["is_forward_mode"] = not db_users[user_id].get("is_forward_mode", False)
-    save_db()
     
     # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     status_msg = ("Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝") if lang == "uz" else (
@@ -2940,7 +2932,7 @@ async def state_2fa_received(message: types.Message, state: FSMContext):
 @router.callback_query(F.data == "disconnect_profile", StateFilter("*"))
 async def callback_disconnect(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    user_id = int(callback_query.from_user.id)
+    user_id = callback_query.from_user.id
     ensure_user(user_id)
     
     phone = db_users[user_id].get("active_phone")
