@@ -449,7 +449,7 @@ def get_interval_keyboard(current_interval):
             InlineKeyboardButton(text="✍️ Qo'lda kiritish", callback_data="custom_interval")
         ],
         [
-            InlineKeyboardButton(text="← Orqaga", callback_data="back_to_panel")
+            InlineKeyboardButton(text="← Orqaga", callback_data="back_to_welcome")  # TUZATILDI: Welcome paneliga qaytadi!
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
@@ -484,7 +484,25 @@ LOCALIZATION = {
         "support_prompt": "✍️ <b>Savol yuborish bo'limi</b>\n\nIltimos, o'z savolingizni yoki murojaatingizni batafsil yozib yuboring. Tizim administratori tez fursatda sizga bot orqali javob yo'llaydi!",
         "support_sent": "✅ Savolingiz administratorga muvaffaqiyatli yetkazildi! Tez fursatda javob yo'llaymiz.",
         "settings_title": "⚙️ <b>Qo'shimcha Tizim Sozlamalari</b>\n━━━━━━━━━━━━━━━━━━━━\n🤖 Avto-obuna: <b>{auto_sub}</b>\n↩️ Auto Reply: <b>{auto_reply}</b>\n🌐 Til: <b>{lang_name}</b>\n🛡️ Anti-Ban: <b>{antiban}</b>\n━━━━━━━━━━━━━━━━━━━━\nSozlamalarni o'zgartirish uchun kerakli tugmani bosing:",
-        "guide_text": "📖 <b>AutoHabar Pro - Foydalanish Bo'yicha Batafsil Qo'llanma</b>\n━━━━━━━━━━━━━━━━━━━━\n1️⃣ <b>Akkaunt ulash (Profillar bo'limidan):</b>\n• Profil bo'limidan <b>➕ Yangi profil qo'shish</b> tugmasini bosing.\n• Telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>).\n• Telegram Service Message chatiga kelgan 5 xonali sms kodni nuqtalar bilan kiriting (Format: <code>5.8.2.9.1</code>).\n\n2️⃣ <b>Guruhlarni sozlash (Guruhlar bo'limidan):</b>\n• Xabar yuboriladigan guruhlarni belgilang yoki <b>+ Hamma guruhlarga</b> rejimini faollashtiring.\n\n3️⃣ <b>Interval va Taymer (Interval/Taymer bo'limidan):</b>\n• Guruhlar orasidagi kutish vaqtini (Interval) va bot avtomatik o'chadigan taymer muddatini belgilang.\n\n4️⃣ <b>Tugatish:</b>\n• Autohabar yuborish bo'limidan <b>▶️ Ishga tushirish</b> tugmasini bosing!",
+        "guide_text": "📖 <b>AutoHabar Pro - Foydalanish Bo'yicha Oson Qo'llanma</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                      "1️⃣ <b>Akkaunt ulash (Profillar):</b>\n"
+                      "• 👤 <b>Profillar</b> menyusiga kiring va <b>➕ Yangi profil qo'shish</b> tugmasini bosing.\n"
+                      "• Telefon raqamingizni xalqaro formatda yozing (masalan: <code>+998901234567</code>).\n"
+                      "• Telegram ilovangizga kelgan 5 xonali kodni raqamlar orasiga <b>nuqta qo'yib</b> kiriting (Format: <code>5.8.2.9.1</code>).\n"
+                      "• Agar 2-bosqichli parol bo'lsa, uni ham kiriting.\n\n"
+                      "2️⃣ <b>Xabar sozlash:</b>\n"
+                      "• 📝 <b>Habar matni</b> menyusiga o'tib, matnni tahrirlang yoki rasm yuklang.\n"
+                      "• PRO foydalanuvchilar o'z kanallaridan postlarni <b>Forward (Uzatish)</b> rejimida yuborib, views sonini ko'paytirishlari mumkin!\n\n"
+                      "3️⃣ <b>Guruhlarni sozlash:</b>\n"
+                      "• 💬 <b>Guruhlarni sozlash</b> menyusiga kiring.\n"
+                      "• Guruhlarni keshdan yangilash uchun <b>+ Qo'shish</b> tugmasini bosing, so'ngra xabarlar tarqatiladigan guruhlarni belgilab saqlang.\n\n"
+                      "4️⃣ <b>Interval va Taymer:</b>\n"
+                      "• ⏱️ <b>Interval</b> menyusida kutish vaqtini belgilang (tavsiya etiladi: 15 daqiqa).\n"
+                      "• ⏳ <b>Avto-o'chirish</b> taymerida bot qancha vaqtdan keyin avtomatik o'chishini belgilang.\n\n"
+                      "5️⃣ <b>Autohabarni ishga tushirish:</b>\n"
+                      "• ⚪ <b>Autohabar yuborish</b> bo'limiga kiring va <b>▶️ Ishga tushirish</b> tugmasini bosing!\n"
+                      "━━━━━━━━━━━━━━━━━━━━\n"
+                      "🎁 <i>Tizimni bepul PRO qilish uchun shaxsiy taklif havolangiz orqali 6 ta faol do'stni taklif qiling!</i>",
         "cabinet_title": "👤 <b>Sizning Kabinetingiz</b>\n\n👥 Ism: <b>{name}</b>\n🌐 Username: <b>{username}</b>\n💰 Balans: <b>{balans} so'm</b>\n\n📊 <b>Statistika:</b>\n✔️ Bugun yuborildi: <b>{today_sent}</b>\n🔄 Jami yuborilgan: <b>{total_sent}</b>\n👥 Ulangan akkauntlar: <b>{acc_count} / 5 ta</b>\n👥 Taklif qilingan a'zolar: <b>{referrals} / 6 ta</b>\n🔗 Havola: <code>{ref_link}</code>",
         "btn_change_lang": "🌐 Tilni o'zgartirish",
         "btn_add_acc": "➕ Akkaunt qo'shish",
@@ -502,7 +520,7 @@ LOCALIZATION = {
         "acc_limit_free": "⚠️ <b>Bepul tarif cheklovi!</b>\n\nFree tarifda faqat <b>1 ta</b> profil ulashingiz mumkin.\nKo'p profil qo'shish (maksimal 5 tagacha) va barcha imkoniyatlar uchun <b>👑 Pro tarif</b> sotib oling yoki do'stlarni taklif qiling!",
         "acc_limit_pro": "⚠️ <b>Maksimal profil cheklovi!</b>\n\nPRO tarifda maksimal <b>5 ta</b> profil ulashga ruxsat beriladi.",
         "enter_phone": "📱 <b>Real Telegram akkaunt ulash</b>\n\nIltimos, telefon raqamingizni xalqaro formatda kiriting (masalan: <code>+998901234567</code>):",
-        "invalid_phone": "❌ <b>Format xato kiritildi!</b>\n\nFormat: <code>+[davlat_kodi][raqam]</code>",
+        "invalid_phone": "❌ <b>Format xato kiritildi!</b>\n\nFormat: <code>+[davlat_kodi][raqam]</code>\n<i>(Masalan: +998901234567, +79001234567, +12025550123)</i>",
         "connecting_tg": "🔄 Telegram serverlariga mutloq toza ulanish o'rnatilmoqda. Iltimos kuting...",
         "sms_sent": "💬 <b>SMS tasdiqlash kodi Telegram ilovangizga yuborildi!</b>\n\n⚠️ <b>MUHIM ESLATMA:</b>\nKod telefoningizga SMS bo'lib emas, faqat sizning boshqa faol qurilmangizdagi rasmiy <b>Telegram chatiga (Telegram Service Message)</b> boradi!\nKodni raqamlar orasiga <b>nuqta qo'yib</b> kiriting (Format: 1.2.3.4.5).\n\nIltimos, ilovaga kelgan 5 xonali kodni yozing:",
         "conn_error": "❌ Ulanishda xatolik yuz berdi: {error}",
@@ -533,7 +551,7 @@ LOCALIZATION = {
         "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Подключите аккаунт и настройте группы для старта!",
         "btn_auto_send": "⚪ Авторассылка",
         "btn_msg_text": "📝 Текст сообщения",
-        "btn_interval": "⏱️ Интервал",
+        "btn_interval": "⏱️ Интвервал",
         "btn_groups": "💬 Настройка групп",
         "btn_profiles": "👤 Профили",
         "btn_guide": "📖 Руководство",
@@ -568,7 +586,7 @@ LOCALIZATION = {
         "conn_error": "❌ Ошибка подключения: {error}",
         "acc_bound": "<b>Поздравляем! Ваш аккаунт успешно подключен и безопасно сохранен в облаке.</b>\n\nТеперь вы можете перейти в раздел авторассылки и запустить бота!",
         "sms_expired": "❌ <b>Срок действия кода истёк!</b>\n\nПожалуйста, заново введите номер телефона.",
-        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверьте и введите код еще раз.",
+        "sms_invalid": "❌ <b>Введен неверный код!</b>\n\nПожалуйста, проверте и введите код еще раз.",
         "two_fa_required": "🛡️ <b>На вашем аккаунте обнаружена двухэтапная аудитентификация (2FA)!</b>\n\nПожалуйста, введите ваш личный пароль двухэтапной защиты:",
         "two_fa_invalid": "❌ <b>Двухэтапный пароль неверен!</b>"
     },
@@ -607,13 +625,13 @@ LOCALIZATION = {
         "enter_phone": "📱 <b>Connect Real Telegram Account</b>\n\nPlease enter your phone number in international format (e.g. <code>+998901234567</code>):",
         "invalid_phone": "❌ <b>Invalid phone format!</b>",
         "connecting_tg": "🔄 Establishing a clean connection to Telegram servers. Please wait...",
-        "sms_sent": "💬 <b>SMS verification code sent to Telegram app!</b>\n\n⚠️ <b>IMPORTANT NOTE:</b>\nThe code is sent directly to your official <b>Telegram app (inside Telegram Service Message chat)</b>, not via SMS!\nEnter the code with <b>dots</b> between numbers (Format: 1.2.3.4.5).\n\nPlease enter the 5-digit code sent to your Telegram app:",
+        "sms_sent": "💬 <b>SMS verification code sent to Telegram app!</b>\n\n⚠️ <b>IMPORTANT NOTE:</b>\nEnter the code with <b>dots</b> between numbers!\nFormat: <b>1.2.3.4.5</b>\n\nPlease enter the 5-digit code sent to your Telegram app:",
         "conn_error": "❌ Connection error occurred: {error}",
         "acc_bound": "<b>Congratulations! Your account has been successfully linked and backed up to the cloud.</b>\n\nYou can now go to the autohabar section to start auto-sending!",
         "sms_expired": "❌ <b>Verification code expired!</b>\n\nPlease enter your phone number again.",
         "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
         "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
-        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>"
+        "two_fa_invalid": "white ❌ <b>Two-factor password incorrect!</b>"
     }
 }
 
@@ -652,9 +670,13 @@ def get_localization_values(key: str) -> list:
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id, key: str) -> str:
-    user_id = int(user_id)
-    ensure_user(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
+    try:
+        user_id = int(user_id)
+        if user_id not in db_users:
+            ensure_user(user_id)
+        lang = db_users.get(user_id, {}).get("lang", "uz") or "uz"
+    except Exception:
+        lang = "uz"
     return get_lang_value(lang, key)
 
 def get_main_keyboard(user_id) -> ReplyKeyboardMarkup:
@@ -738,7 +760,7 @@ async def check_and_redirect_if_menu(message: types.Message, state: FSMContext) 
         return True
     elif text in all_btn_cab:
         await state.clear()
-        await menu_kabinet(message, state)
+        await menu_cabinet_handler(message, state)
         return True
     elif text in all_btn_set:
         await state.clear()
@@ -773,6 +795,10 @@ class MandatorySubMiddleware(BaseMiddleware):
 
         # Tekshirish, til va to'ldirish tugmalarini aylanib qolmasligi uchun o'tkazamiz
         if isinstance(event, types.CallbackQuery) and (event.data in ["check_sub_status", "back_to_deposit", "deposit_balance", "back_to_panel"] or event.data.startswith("lang_")):
+            return await handler(event, data)
+
+        # Agar foydalanuvchi start yoki admin komandalarini yuborgan bo'lsa, ularni tekshiruvdan o'tkazamiz (TUZATILDI!)
+        if isinstance(event, types.Message) and event.text and (event.text.startswith("/start") or event.text.startswith("/admin")):
             return await handler(event, data)
 
         # Agar til hali belgilanmagan bo'lsa, obunani tekshirishdan oldin til tanlash oynasini ko'rsatamiz
@@ -882,7 +908,15 @@ async def show_autohabar_panel(event: types.Message | types.CallbackQuery, user_
         
         guruhlar_count = f"{len(user_data.get('selected_groups', []))} ta" if lang == "uz" else (f"{len(user_data.get('selected_groups', []))} групп" if lang == "ru" else f"{len(user_data.get('selected_groups', []))} groups")
         interval_text = f"{user_data.get('interval', 15)} " + ("daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes"))
-        msg_type = "Matn" if lang == "uz" else ("Текст" if lang == "ru" else "Text")
+        
+        # TUZATILDI: Forward rejim yoqilganda xabar turi o'zgarmaslik xatosi (2-MUOMMO HAL ETILDI!)
+        is_forward = user_data.get("is_forward_mode", False)
+        if lang == "uz":
+            msg_type = "Forward (Uzatish) 📤" if is_forward else "Matn/Media 📝"
+        elif lang == "ru":
+            msg_type = "Пересылка (Forward) 📤" if is_forward else "Текст/Медиа 📝"
+        else:
+            msg_type = "Forward 📤" if is_forward else "Text/Media 📝"
         
         cabinet_template = get_lang_value(lang, "control_panel")
         responseText = cabinet_template.format(
@@ -1092,7 +1126,7 @@ async def show_guruhlar_menu(message: types.Message, user_id: int):
     text = cabinet_template.format(tanlov=tanlov_nomi)
     
     btn_all = "+ Hamma guruhlarga" if lang == "uz" else ("+ Во все группы" if lang == "ru" else "+ All groups")
-    btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю sam" if lang == "ru" else "✓ Custom selection")
+    btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю сам" if lang == "ru" else "✓ Custom selection")
     btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
     btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
     btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
@@ -1106,7 +1140,7 @@ async def show_guruhlar_menu(message: types.Message, user_id: int):
             InlineKeyboardButton(text=btn_add, callback_data="refresh_groups_force"),  
             InlineKeyboardButton(text=btn_clear, callback_data="clear_selected_groups") 
         ],
-        [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
+        [InlineKeyboardButton(text=btn_back, callback_data="back_to_welcome")]  # TUZATILDI: Welcome paneliga ortga qaytadi!
     ])
     try:
         await message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
@@ -1142,7 +1176,7 @@ async def show_profillar_settings(message: types.Message, user_id: int):
     btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
     buttons.append([InlineKeyboardButton(text=btn_add, callback_data="add_account")])
-    buttons.append([InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")])
+    buttons.append([InlineKeyboardButton(text=btn_back, callback_data="back_to_welcome")])  # TUZATILDI: Welcome paneliga ortga qaytadi!
     
     try:
         await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
@@ -1150,11 +1184,108 @@ async def show_profillar_settings(message: types.Message, user_id: int):
         await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
 
+# ================= CLEAN GREETING KEYBOARD UTILITY =================
+
+async def send_welcome_and_keyboard_clean(chat_id: int, user_id: int):
+    user_id = int(user_id)
+    ensure_user(user_id)
+    text = get_text(user_id, "welcome")
+    user_data = db_users.get(user_id)
+
+    if user_data and not user_data.get("active_phone"):
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, "btn_add_acc"), callback_data="add_account")]
+        ])
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=inline_kb, parse_mode="HTML")
+    else:
+        await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text="🎛️ " + get_text(user_id, "btn_settings") + "...",
+        reply_markup=get_main_keyboard(user_id)
+    )
+
+
 # ================= BOT HANDLERS =================
 
+@router.message(Command("start"), StateFilter("*"))
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    is_new_user = user_id not in db_users
+    ensure_user(user_id)
+    
+    # Referal taklif havolasini tekshirish
+    args = message.text.split()
+    if is_new_user and len(args) > 1 and args[1].startswith("ref_"):
+        try:
+            referrer_id = int(args[1].split("_")[1])
+            if referrer_id in db_users and referrer_id != user_id:
+                db_users[user_id]["referred_by"] = referrer_id
+                db_users[referrer_id]["referrals_count"] = db_users[referrer_id].get("referrals_count", 0) + 1
+                save_db()
+                
+                # Refererga xabar yuborish
+                try:
+                    await bot.send_message(
+                        referrer_id,
+                        f"👤 Yangi do'stingiz sizning referal havolangiz orqali botga qo'shildi!\n"
+                        f"Jami taklif qilgan faol a'zolaringiz: <b>{db_users[referrer_id]['referrals_count']} / 6 ta</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+                
+                # 6 ta yangi a'zo taklif qilsa, avtomatik ravishda bepul PRO beriladi!
+                if db_users[referrer_id]["referrals_count"] >= 6 and not db_users[referrer_id].get("is_pro", False):
+                    db_users[referrer_id]["is_pro"] = True
+                    save_db()
+                    try:
+                        await bot.send_message(
+                            referrer_id,
+                            "👑 <b>TABRIKLAYMIZ!</b>\n\n"
+                            "Siz muvaffaqiyatli ravishda 6 ta faol do'stingizni taklif qildingiz va "
+                            "<b>AutoHabar PRO</b> tarifini butunlay bepul qo'lga kiritdingiz! 🎉",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.error(f"[Referral] Tizim xatosi: {e}")
+            
+    # Agar foydalanuvchi tilni tanlamagan bo'lsa, til tanlash oynasini birinchi yuboramiz
+    if db_users[user_id].get("lang") is None:
+        await message.answer(LOCALIZATION["uz"]["select_lang_text"], reply_markup=get_language_markup())
+        return
+
+    await send_welcome_and_keyboard_clean(message.chat.id, user_id)
+
+
+# UNIFIED SINGLE LANGUAGE CHANGER CALLBACK HANDLER (TUZATILDI!)
 @router.callback_query(F.data.startswith("lang_"), StateFilter("*"))
-async def callback_select_lang_handler(callback_query: types.CallbackQuery):
-    await callback_select_lang(callback_query)
+async def callback_select_lang(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = int(callback_query.from_user.id)
+    ensure_user(user_id)
+    
+    selected_lang = callback_query.data.split("_")[1]
+    db_users[user_id]["lang"] = selected_lang
+    save_db()
+    
+    lang_name = "O'zbekcha 🇺🇿" if selected_lang == "uz" else "Русский 🇷🇺" if selected_lang == "ru" else "English 🇺🇸"
+    try:
+        await callback_query.answer(f"✓ {lang_name}", show_alert=True)
+    except Exception:
+        pass
+
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    
+    await send_welcome_and_keyboard_clean(callback_query.message.chat.id, user_id)
+
 
 # ================= Savol va Yordam (SUPPORT SYSTEM) =================
 
@@ -1207,7 +1338,7 @@ async def message_receive_support_question(message: types.Message, state: FSMCon
     await message.answer(get_text(user_id, "support_sent"), reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
     await state.clear()
 
-# Admin javob berishni bosganda (TUZATILDI: StateFilter ulandi)
+# Admin javob berishni bosganda
 @router.callback_query(F.data.startswith("reply_to_user_"), StateFilter("*"))
 async def callback_admin_reply_prompt(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.from_user.id != ADMIN_ID:
@@ -1249,9 +1380,9 @@ async def state_process_admin_reply(message: types.Message, state: FSMContext):
     
     try:
         await bot.send_message(chat_id=target_id, text=user_msg, reply_markup=get_main_keyboard(target_id), parse_mode="HTML")
-        await message.answer("✅ Javob yuborildi!")
-    except Exception:
-        await message.answer("❌ Yuborishda xatolik!")
+        await message.answer("✅ Javobingiz foydalanuvchiga muvaffaqiyatli yuborildi!")
+    except Exception as e:
+        await message.answer(f"❌ Javobni yuborishda xatolik yuz berdi: {e}")
     await state.clear()
 
 # ===================================================================================
@@ -1293,7 +1424,7 @@ async def callback_toggle_auto_sub(callback_query: types.CallbackQuery):
     
     status = "yoqildi 🟢" if db_users[user_id]["auto_sub_active"] else "o'chirildi 🔴"
     await callback_query.answer(f"✓ Avto-obuna {status}!", show_alert=True)
-    await show_sozlamalar_menu(callback_query, user_id)
+    await show_sozlamalar_menu(callback_query.message, user_id)
 
 @router.callback_query(F.data == "toggle_auto_reply", StateFilter("*"))
 async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
@@ -1304,7 +1435,7 @@ async def callback_toggle_auto_reply(callback_query: types.CallbackQuery):
     
     status = "yoqildi 🟢" if db_users[user_id]["auto_reply_active"] else "o'chirildi 🔴"
     await callback_query.answer(f"✓ Auto Reply {status}!", show_alert=True)
-    await show_sozlamalar_menu(callback_query, user_id)
+    await show_sozlamalar_menu(callback_query.message, user_id)
 
 @router.callback_query(F.data == "close_menu", StateFilter("*"))
 async def callback_close_menu(callback_query: types.CallbackQuery):
@@ -1313,6 +1444,7 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
     except Exception:
         pass
     await callback_query.answer()
+
 
 # ================= ADMIN PANEL HANDLERS =================
 
@@ -1425,7 +1557,7 @@ async def admin_user_search_process(message: types.Message, state: FSMContext):
         else:
             await message.answer("❌ ID raqamiga ega foydalanuvchi topilmadi! Qaytadan kiriting yoki ⬅️ Orqaga tugmasini bosing:")
     except ValueError:
-        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lishi kerak! Qaytadan kiriting:")
+        await message.answer("❌ ID raqam faqat butun sonlardan iborat bo'lik kerak! Qaytadan kiriting:")
 
 @router.callback_query(F.data.startswith("adm_chg_bal_"), StateFilter("*"))
 async def callback_adm_chg_bal_prompt(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1565,14 +1697,14 @@ async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
         return
     channels = db_users[ADMIN_ID].get("channels", [])
     text = (
-        "📢 <b>Majburiy obuna kanallarini sozlash</b>\n\n"
-        "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qilib ko'rsatiladi:\n\n"
+        "📢 <b>Majburiy obuna kanallari ro'yxati</b>\n\n"
+        "Foydalanuvchilar botdan foydalanish uchun quyidagi kanallarga a'zo bo'lishlari shart bo'ladi:\n\n"
     )
     if channels:
         for idx, chan in enumerate(channels, 1):
             text += f"{idx}. <b>{chan}</b>\n"
     else:
-        text += "❌ Hozirda hech qanday majburiy kanal o'rнатilmagan."
+        text += "❌ Hozirda hech qanday majburiy kanal o'rnatilmagan."
         
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -1605,7 +1737,7 @@ async def state_save_mandatory_channel(message: types.Message, state: FSMContext
         return
     chan_name = message.text.strip()
     if not chan_name.startswith("@") or len(chan_name) < 4:
-        await message.answer("❌ Noto'g'ri kanal nomi! Format: @autoxabarc_news shaklida bo'lishi shart.")
+        await message.answer("❌ Noto'g'ri kanal nomi! Format: @autoxabarc_news shaklida bo'shi shart.")
         return
         
     channels = db_users[ADMIN_ID].get("channels", [])
@@ -1634,7 +1766,7 @@ async def callback_adm_broadcast_prompt(callback_query: types.CallbackQuery, sta
     await state.set_state(AdminStates.waiting_broadcast_msg)
     text = (
         "✉️ <b>Ommaviy reklama tarqatish bo'limi</b>\n\n"
-        "Istalgan rasm yoki matnli xabarni yuboring. Ushbu xabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
+        "Istalgan rasm yoki matnli xabarni yuboring. Usbuhabar botga start bosgan barcha foydalanuvchilarga avtomatik asinxron tarzda tarqatiladi!"
     )
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="adm_main_menu")]
@@ -1693,6 +1825,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     user_data = db_users.get(user_id)
     lang = user_data.get("lang", "uz") or "uz"
     
+    # Tillarni to'liq lokalizatsiya qilish (TUZATILDI!)
     lbl_yes = "Bor 🖼️" if lang == "uz" else ("Есть 🖼️" if lang == "ru" else "Yes 🖼️")
     lbl_no = "Yo'q ❌" if lang == "uz" else ("Нет ❌" if lang == "ru" else "No ❌")
     
@@ -1725,7 +1858,7 @@ async def show_message_settings(message: types.Message, user_id: int):
         [InlineKeyboardButton(text=btn_edit_buttons, callback_data="edit_buttons_pro")], 
         [InlineKeyboardButton(text=btn_toggle, callback_data="toggle_forward_mode")],
         [InlineKeyboardButton(text=btn_clear, callback_data="clear_media_buttons")],
-        [InlineKeyboardButton(text=btn_back, callback_data="back_to_welcome")]  # Welcome paneliga qaytish (TUZATILDI!)
+        [InlineKeyboardButton(text=btn_back, callback_data="back_to_welcome")]  # TUZATILDI: Welcome paneliga ortga qaytadi!
     ])
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
