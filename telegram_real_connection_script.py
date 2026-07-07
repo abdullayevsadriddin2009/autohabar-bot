@@ -2864,7 +2864,7 @@ async def main():
     
     bot = Bot(token=BOT_TOKEN)
     
-    # Global majburiy obuna nazoratchisini dispatcherga ulash (TUZATILDI)
+    # Global majburiy obuna nazoratchisini dispatcherga ulash
     dp.message.outer_middleware(MandatorySubMiddleware())
     dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
