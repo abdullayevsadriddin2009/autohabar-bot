@@ -1315,7 +1315,7 @@ async def callback_adm_sub_menu(callback_query: types.CallbackQuery):
     channels = db_users[ADMIN_ID].get("channels", [])
     text = (
         "📢 <b>Majburiy obuna kanallarini sozlash</b>\n\n"
-        "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qilib ko'rsatiladi:\n\n"
+        "Foydalanuvchi botni start qilganda quyidagi majburiy kanallarga a'zo bo'lishi shart qibly ko'rsatiladi:\n\n"
     )
     if channels:
         for idx, chan in enumerate(channels, 1):
@@ -1420,17 +1420,13 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 # ================= ⚪ AUTOHABAR YUBORISH MENYUSI =================
 
-@router.message(F.text.in_([LOCALIZATION["uz"]["btn_auto_send"], LOCALIZATION["ru"]["btn_auto_send"], LOCALIZATION["en"]["btn_auto_send"]]), StateFilter("*"))
-async def menu_autohabar(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    ensure_user(user_id)
+# CRITICAL FIX: Biz endi xabarni inline callback orqali tahrirlayotganda ham kutilmagan asinxron FSMContext bilan muammo chiqmasligi uchun menu_autohabar ni xavfsiz qildik.
+async def generate_control_panel_text(user_id: int):
     user_data = db_users.get(user_id)
     lang = user_data.get("lang", "uz") or "uz"
-    
     phone = user_data.get("active_phone")
     
-    p_status = f"👤 Profil: [ {phone} ]" if phone else (f"👤 Profil: [ {get_text(user_id, 'no_active_conn')} ]")
+    p_status = f"👤 Profil: [ {phone} ]" if phone else f"👤 Profil: [ {get_text(user_id, 'no_active_conn')} ]"
     s_status_on = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно (Идет рассылка...)" if lang == "ru" else "🟢 Active (Sending...)")
     s_status_off = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Disabled")
     holatStatus = s_status_on if user_data.get("is_sending") else s_status_off
@@ -1453,6 +1449,11 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
         interval=interval_text,
         avto_ochish=auto_off_text
     )
+    return responseText, lang
+
+async def get_control_panel_markup(user_id: int):
+    user_data = db_users.get(user_id)
+    lang = user_data.get("lang", "uz") or "uz"
     
     start_stop_text = ("🛑 To'xtatish" if lang == "uz" else ("🛑 Остановить" if lang == "ru" else "🛑 Stop")) if user_data.get("is_sending") else ("▶️ Ishga tushirish" if lang == "uz" else ("▶️ Запустить" if lang == "ru" else "▶️ Start"))
     stat_btn_text = "📊 Statistika" if lang == "uz" else ("📊 Статистика" if lang == "ru" else "📊 Statistics")
@@ -1469,6 +1470,16 @@ async def menu_autohabar(message: types.Message, state: FSMContext):
             InlineKeyboardButton(text=refresh_btn_text, callback_data="refresh_status")
         ]
     ])
+    return inline_kb
+
+@router.message(F.text.in_([LOCALIZATION["uz"]["btn_auto_send"], LOCALIZATION["ru"]["btn_auto_send"], LOCALIZATION["en"]["btn_auto_send"]]), StateFilter("*"))
+async def menu_autohabar(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    
+    responseText, _ = await generate_control_panel_text(user_id)
+    inline_kb = await get_control_panel_markup(user_id)
     
     await message.answer(responseText, reply_markup=inline_kb, parse_mode="HTML")
 
@@ -1499,7 +1510,14 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery, state: FS
 
     save_db()
     await callback_query.answer(alert, show_alert=True)
-    await menu_autohabar(callback_query.message, state)
+    
+    # CRITICAL FIX: Yangi xabar yuborish o'rniga joriy panel matni va klaviaturasini toza tarzda edit qilib yangilaymiz!
+    responseText, _ = await generate_control_panel_text(user_id)
+    inline_kb = await get_control_panel_markup(user_id)
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+    except Exception:
+        pass
 
 # Statistika oynasi
 @router.callback_query(F.data == "statistika", StateFilter("*"))
@@ -1539,13 +1557,19 @@ async def callback_user_statistika(callback_query: types.CallbackQuery):
 async def callback_refresh_status(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
     
     await callback_query.answer(get_text(user_id, "panel_refreshed"))
-    await menu_autohabar(callback_query.message, state)
+    
+    # CRITICAL FIX: Yangi xabar yuborish o'rniga, joriy panelni edit_text qilamiz!
+    responseText, _ = await generate_control_panel_text(user_id)
+    inline_kb = await get_control_panel_markup(user_id)
+    try:
+        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+    except Exception:
+        pass
 
 
-# ================= ⏳ AVTO-O'CHIRISH TAYMERINI SOZLASH (YANGI - RASMDEK) =================
+# ================= ⏳ AVTO-O'CHIRISH TAYMERINI SOZLASH (RASMDEK) =================
 
 @router.callback_query(F.data == "timer_setup", StateFilter("*"))
 async def callback_timer_setup(callback_query: types.CallbackQuery):
@@ -2230,7 +2254,7 @@ async def callback_manage_acc(callback_query: types.CallbackQuery):
         "📱 <b>Profil sozlamalari: " + phone + "</b>\n"
         "🏷️ Ism: <b>" + target_acc['name'] + "</b>\n"
         "🌐 Username: <b>" + target_acc['username'] + "</b>\n\n"
-        "Ushbu profilni nima qilishni xohlaysiz?"
+        "Ushbu profilni nima qilishni xohlajesiz?"
     ) if lang == "uz" else (
         "📱 <b>Настройки профиля: " + phone + "</b>\n"
         "🏷️ Имя: <b>" + target_acc['name'] + "</b>\n"
@@ -2560,11 +2584,19 @@ async def callback_back_to_kabinet(callback_query: types.CallbackQuery, state: F
     await menu_kabinet_msg(callback_query.message, callback_query.from_user.id)
     await callback_query.answer()
 
+# CRITICAL FIX: "Ortga" qaytish inline callback yo'li orqali xabar tahrirlanadigan qilindi (image_918903 dagi ko'payib ketuvchi xabar muammosi hal etildi)
 @router.callback_query(F.data == "back_to_panel", StateFilter("*"))
 async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     ensure_user(user_id)
-    await menu_autohabar(callback_query.message, state)
+    
+    responseText, _ = await generate_control_panel_text(user_id)
+    inline_kb = await get_control_panel_markup(user_id)
+    
+    try:
+         await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
+    except Exception:
+         pass
     await callback_query.answer()
 
 
@@ -2637,7 +2669,7 @@ async def init_existing_sessions():
 async def send_reklama_message(client, chat_id, user_data, user_id):
     lang = user_data.get("lang", "uz") or "uz"
     
-    # MUHIM O'ZGARTIRISH: Talabingizga binoan watermark endi hammasida (PRO rejimdan qat'iy nazar) majburiy yuboriladi
+    # MUHIM O'ZGARTIRISH: Watermark endi hammasida (PRO rejimdan qat'iy nazar) majburiy yuboriladi
     watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
         "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
         "\n\nSent via @Auto_Xabar_Yuborish_Bot"
