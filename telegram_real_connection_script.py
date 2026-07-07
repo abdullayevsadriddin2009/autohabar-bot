@@ -45,7 +45,7 @@ except ImportError as e:
 # ================= CONFIGURATION =================
 API_ID = 37104311
 API_HASH = "f49729d10c144035c40f579b596d15b1"
-BOT_TOKEN = "8680819777:AAEzGf9RC96V3S0yYfi-Wg_Gg_ZBf_fH2_g"
+BOT_TOKEN = "8680819777:AAFmbPFc6hNUk841ZaKlrnHlx1VrYfwebZA"
 ADMIN_ID = 7073273800
 APP_ID = "autohabar-bot"  # Loyihangizning maxsus ID raqami
 
@@ -460,7 +460,7 @@ LOCALIZATION = {
         "welcome": "📊 <b>Главное меню:</b>\n<b>@Auto_Xabar_Yuborish_Bot</b>\n━━━━━━━━━━━━━━━━━━━━\nЗдравствуйте, добро пожаловать! 👋\n\n› Чтобы использовать нашего бота\n› Добавьте аккаунт\n› Настройте группы\n› Настройте сообщение\n› Запустите авторассылку\n\n❓ Если вы не знаете, как использовать бота, нажмите кнопку <b>📖 Руководство</b> ниже!",
         "btn_auto_send": "⚪ Авторассылка",
         "btn_msg_text": "📝 Текст сообщения",
-        "btn_interval": "⏱️ Интервал",
+        "btn_interval": "⏱️ Interval",
         "btn_groups": "💬 Настройка групп",
         "btn_profiles": "👤 Профили",
         "btn_guide": "📖 Руководство",
@@ -595,7 +595,7 @@ def get_language_markup() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-# ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE) =================
+# ================= GLOBAL MAJBURIY OBUNA NAZORATCHISI (MIDDLEWARE - FAOLLASHTIRILDI) =================
 
 class MandatorySubMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: TelegramObject, data: dict):
@@ -616,6 +616,10 @@ class MandatorySubMiddleware(BaseMiddleware):
 
         # Tekshirish, til va to'ldirish tugmalarini aylanib qolmasligi uchun o'tkazamiz
         if isinstance(event, types.CallbackQuery) and (event.data in ["check_sub_status", "back_to_deposit", "deposit_balance", "back_to_panel"] or event.data.startswith("lang_")):
+            return await handler(event, data)
+
+        # Agar foydalanuvchi start yoki admin komandalarini yuborgan bo'lsa, ularni o'tkazamiz (TUZATILDI!)
+        if isinstance(event, types.Message) and event.text and (event.text.startswith("/start") or event.text.startswith("/admin")):
             return await handler(event, data)
 
         # Agar til hali belgilanmagan bo'lsa, obunani tekshirishdan oldin til tanlash oynasini ko'rsatamiz
@@ -811,6 +815,23 @@ async def callback_select_lang(callback_query: types.CallbackQuery):
     await callback_query.answer(f"✓ {lang_name}", show_alert=True)
     await callback_query.message.delete()
     
+    await send_welcome_and_keyboard(callback_query.message, user_id)
+
+# ================= OBUNA TASDIQLASH CALLBACK HANDLERI (QO'SHILDI) =================
+
+@router.callback_query(F.data == "check_sub_status", StateFilter("*"))
+async def callback_check_sub_status(callback_query: types.CallbackQuery, state: FSMContext):
+    """Foydalanuvchi obuna bo'lgach, tekshirish tugmasini bosganda ishlaydigan asinxron drayver"""
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    
+    # Agar middleware'dan muvaffaqiyatli o'tib kelsa (ya'ni obuna bo'lgan bo'lsa):
+    await callback_query.answer(get_text(user_id, "sub_confirmed"), show_alert=True)
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
     await send_welcome_and_keyboard(callback_query.message, user_id)
 
 # ================= 📩 SAVOL VA YORDAM (SUPPORT SYSTEM) =================
@@ -2636,240 +2657,6 @@ async def run_sending_cycle_for_user(user_id):
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
 
 
-# ================= HIGHLY DETAILED PANEL CALLBACKS =================
-
-@router.callback_query(F.data == "toggle_sending", StateFilter("*"))
-async def callback_toggle_sending(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    lang = user_data.get("lang", "uz") or "uz"
-
-    if not user_data.get("active_phone"):
-        alert_no_phone = "Akkauntingiz ulanmagan! 📱" if lang == "uz" else ("Аккаунт не подключен! 📱" if lang == "ru" else "Account not connected! 📱")
-        await callback_query.answer(alert_no_phone, show_alert=True)
-        return
-
-    user_data["is_sending"] = not user_data.get("is_sending", False)
-    
-    if user_data["is_sending"]:
-        user_data["next_run_timestamp"] = 0
-        user_data["is_sending_started_at"] = datetime.now().timestamp()
-        status_text = "ishga tushirildi! 🚀" if lang == "uz" else ("запущена! 🚀" if lang == "ru" else "started! 🚀")
-    else:
-        user_data["is_sending_started_at"] = 0
-        status_text = "to'xtatildi! 🛑" if lang == "uz" else ("остановлена! 🛑" if lang == "ru" else "stopped! 🛑")
-        
-    save_db()
-    
-    alert_status = f"Autohabar tarqatish muvaffaqiyatli {status_text}" if lang == "uz" else (f"Рассылка успешно {status_text}" if lang == "ru" else f"Autosending successfully {status_text}")
-    await callback_query.answer(alert_status, show_alert=True)
-    await menu_autohabar(callback_query.message, state)
-
-@router.callback_query(F.data == "statistika", StateFilter("*"))
-async def callback_statistika(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    lang = user_data.get("lang", "uz") or "uz"
-
-    selected_g_count = len(user_data.get("selected_groups", []))
-    choice = user_data.get("groups_choice", "custom")
-    
-    g_text = (f"Tanlangan ({selected_g_count} ta)" if choice == "custom" else "Barcha guruhlar") if lang == "uz" else (
-        (f"Выбрано ({selected_g_count})" if choice == "custom" else "Все группы") if lang == "ru" else
-        (f"Selected ({selected_g_count})" if choice == "custom" else "All groups")
-    )
-    
-    status_active = "🟢 Faol" if lang == "uz" else ("🟢 Активно" if lang == "ru" else "🟢 Active")
-    status_inactive = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Inactive")
-    status_text = status_active if user_data.get("is_sending") else status_inactive
-
-    stat_text = (
-        "📊 <b>Sizning shaxsiy statistikangiz</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 Akkaunt: <b>{user_data.get('active_phone', 'Mavjud emas ❌')}</b>\n"
-        f"🟢 Bugun yuborildi: <b>{user_data.get('today_sent', 0)} ta xabar</b>\n"
-        f"🔄 Jami yuborildi: <b>{user_data.get('total_sent', 0)} ta xabar</b>\n"
-        f"💬 Maqsadli guruhlar: <b>{g_text}</b>\n"
-        f"⏱️ Joriy kutish intervali: <b>{user_data.get('interval', 15)} daqiqa</b>\n"
-        f"⏳ Avto-yuborish holati: <b>{status_text}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    ) if lang == "uz" else (
-        "📊 <b>Ваша личная статистика</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 Аккаунт: <b>{user_data.get('active_phone', 'Нет ❌')}</b>\n"
-        f"🟢 Отправлено сегодня: <b>{user_data.get('today_sent', 0)} сообщений</b>\n"
-        f"🔄 Всего отправлено: <b>{user_data.get('total_sent', 0)} сообщений</b>\n"
-        f"💬 Целевые группы: <b>{g_text}</b>\n"
-        f"⏱️ Текущий интервал: <b>{user_data.get('interval', 15)} минут</b>\n"
-        f"⏳ Статус рассылки: <b>{status_text}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━" if lang == "ru" else
-        "📊 <b>Your Personal Statistics</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 Account: <b>{user_data.get('active_phone', 'None ❌')}</b>\n"
-        f"🟢 Sent today: <b>{user_data.get('today_sent', 0)} messages</b>\n"
-        f"🔄 Total sent: <b>{user_data.get('total_sent', 0)} messages</b>\n"
-        f"💬 Target groups: <b>{g_text}</b>\n"
-        f"⏱️ Current interval: <b>{user_data.get('interval', 15)} minutes</b>\n"
-        f"⏳ Auto-sending status: <b>{status_text}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━"
-    )
-
-    btn_refresh = "🔄 Yangilash" if lang == "uz" else ("🔄 Обновить" if lang == "ru" else "🔄 Refresh")
-    btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
-
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=btn_refresh, callback_data="statistika")],
-        [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
-    ])
-    await callback_query.message.edit_text(stat_text, reply_markup=inline_kb, parse_mode="HTML")
-    await callback_query.answer()
-
-@router.callback_query(F.data == "timer_setup", StateFilter("*"))
-async def callback_timer_setup(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    await show_timer_settings(callback_query.message, user_id)
-    await callback_query.answer()
-
-@router.callback_query(F.data.startswith("set_timer_"), StateFilter("*"))
-async def callback_set_timer(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    lang = db_users[user_id].get("lang", "uz") or "uz"
-    
-    timer_val = callback_query.data.split("_")[2]
-    if timer_val == "inf":
-        db_users[user_id]["auto_off_hours"] = None
-        alert_text = "✓ Avto-o'chirish muddati Cheksiz qilib belgilandi!" if lang == "uz" else ("✓ Автовыключение установлено на Без ограничений!" if lang == "ru" else "✓ Auto-Off timer set to Unlimited!")
-    else:
-        hours = int(timer_val)
-        db_users[user_id]["auto_off_hours"] = hours
-        alert_text = f"✓ Avto-o'chirish muddati {hours} soat qilib belgilandi!" if lang == "uz" else (f"✓ Автовыключение настроено на {hours} ч!" if lang == "ru" else f"✓ Auto-Off set to {hours} hours!")
-        
-    save_db()
-    await callback_query.answer(alert_text, show_alert=True)
-    await show_timer_settings(callback_query.message, user_id)
-
-async def show_timer_settings(message: types.Message, user_id: int):
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    lang = user_data.get("lang", "uz") or "uz"
-    current_timer = user_data.get("auto_off_hours")  # None yoki int
-    
-    def get_btn_text(hours, label):
-        if current_timer == hours:
-            return f"✓ {label}"
-        return label
-        
-    kb = [
-        [
-            InlineKeyboardButton(text=get_btn_text(1, "1 soat" if lang == "uz" else ("1 час" if lang == "ru" else "1 hour")), callback_data="set_timer_1"),
-            InlineKeyboardButton(text=get_btn_text(2, "2 soat" if lang == "uz" else ("2 часа" if lang == "ru" else "2 hours")), callback_data="set_timer_2"),
-            InlineKeyboardButton(text=get_btn_text(3, "3 soat" if lang == "uz" else ("3 часа" if lang == "ru" else "3 hours")), callback_data="set_timer_3")
-        ],
-        [
-            InlineKeyboardButton(text=get_btn_text(6, "6 soat" if lang == "uz" else ("6 часов" if lang == "ru" else "6 hours")), callback_data="set_timer_6"),
-            InlineKeyboardButton(text=get_btn_text(12, "12 soat" if lang == "uz" else ("12 часов" if lang == "ru" else "12 hours")), callback_data="set_timer_12"),
-            InlineKeyboardButton(text=get_btn_text(24, "24 soat" if lang == "uz" else ("24 часа" if lang == "ru" else "24 hours")), callback_data="set_timer_24")
-        ],
-        [
-            InlineKeyboardButton(text=get_btn_text(48, "48 soat" if lang == "uz" else ("48 часов" if lang == "ru" else "48 hours")), callback_data="set_timer_48"),
-            InlineKeyboardButton(text=get_btn_text(72, "72 soat" if lang == "uz" else ("72 часа" if lang == "ru" else "72 hours")), callback_data="set_timer_72"),
-            InlineKeyboardButton(text=get_btn_text(None, "Cheksiz" if lang == "uz" else ("Без лимита" if lang == "ru" else "Unlimited")), callback_data="set_timer_inf")
-        ],
-        [
-            InlineKeyboardButton(text="← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back"), callback_data="back_to_panel")
-        ]
-    ]
-    
-    timer_text = "Cheksiz ∞" if lang == "uz" else ("Без лимита ∞" if lang == "ru" else "Unlimited ∞")
-    if current_timer is not None:
-        timer_text = f"{current_timer} soat" if lang == "uz" else (f"{current_timer} час(ов)" if lang == "ru" else f"{current_timer} hour(s)")
-    
-    text = (
-        "⏱️ <b>Avto-o'chirish taymerini sozlash</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Joriy o'chish vaqti: <b>{timer_text}</b>\n\n"
-        "Ushbu taymer reklama tarqatish ishga tushganidan so'ng, "
-        "belgilangan muddat o'tgach avtomatik ravishda to'xtatish imkonini beradi. "
-        "Bu guruhlar orasida ko'p reklama tarqatib, spamga tushib qolmaslikka yordam beradi."
-    ) if lang == "uz" else (
-        "⏱️ <b>Настройка автовыключения</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Текущее автовыключение: <b>{timer_text}</b>\n\n"
-        "Этот таймер автоматически остановит рассылку через выбранный промежуток времени. "
-        "Это помогает уберечь ваши аккаунты от спам-блокировок Telegram." if lang == "ru" else
-        "⏱️ <b>Configure Auto-Off Timer</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Current timer setting: <b>{timer_text}</b>\n\n"
-        "This timer allows the bot to automatically stop advertisement campaign after "
-        "the specified duration. This prevents accounts from being flagged or banned by Telegram."
-    )
-    
-    try:
-        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
-    except Exception:
-        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
-
-@router.callback_query(F.data == "refresh_status", StateFilter("*"))
-async def callback_refresh_status(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    user_id = callback_query.from_user.id
-    ensure_user(user_id)
-    user_data = db_users.get(user_id)
-    lang = user_data.get("lang", "uz") or "uz"
-    
-    phone = user_data.get("active_phone")
-    p_status = f"👤 Profil: [ {phone} ]" if phone else (f"👤 Profil: [ {get_text(user_id, 'no_active_conn')} ]")
-    s_status_on = "🟢 Faol (Yuborilmoqda...)" if lang == "uz" else ("🟢 Активно (Идет рассылка...)" if lang == "ru" else "🟢 Active (Sending...)")
-    s_status_off = "🔴 O'chiq" if lang == "uz" else ("🔴 Выключено" if lang == "ru" else "🔴 Disabled")
-    holatStatus = s_status_on if user_data.get("is_sending") else s_status_off
-    
-    auto_off = user_data.get("auto_off_hours")
-    auto_off_text = ("∞ Cheksiz" if lang == "uz" else ("∞ Без ограничений" if lang == "ru" else "∞ Unlimited")) if auto_off is None else f"{auto_off} " + ("soat" if lang == "uz" else ("час" if lang == "ru" else "hours"))
-    
-    guruhlar_count = f"{len(user_data.get('selected_groups', []))} ta" if lang == "uz" else (f"{len(user_data.get('selected_groups', []))} групп" if lang == "ru" else f"{len(user_data.get('selected_groups', []))} groups")
-    interval_text = f"{user_data.get('interval', 15)} " + ("daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes"))
-    msg_type = "Matn" if lang == "uz" else ("Текст" if lang == "ru" else "Text")
-    
-    cabinet_template = LOCALIZATION[lang]["control_panel"]
-    responseText = cabinet_template.format(
-        profil=p_status,
-        holat=holatStatus,
-        turi=msg_type,
-        guruhlar=guruhlar_count,
-        interval=interval_text,
-        avto_ochish=auto_off_text
-    )
-    
-    start_stop_text = ("🛑 To'xtatish" if lang == "uz" else ("🛑 Остановить" if lang == "ru" else "🛑 Stop")) if user_data.get("is_sending") else ("▶️ Ishga tushirish" if lang == "uz" else ("▶️ Запустить" if lang == "ru" else "▶️ Start"))
-    stat_btn_text = "📊 Statistika" if lang == "uz" else ("📊 Статистика" if lang == "ru" else "📊 Statistics")
-    timer_btn_text = "⏳ Avto-o'chirish" if lang == "uz" else ("⏳ Автовыключение" if lang == "ru" else "⏳ Auto-Off")
-    refresh_btn_text = "🔄 Yangilash" if lang == "uz" else ("🔄 Обновить" if lang == "ru" else "🔄 Refresh")
-    
-    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=start_stop_text, callback_data="toggle_sending"),
-            InlineKeyboardButton(text=stat_btn_text, callback_data="statistika")
-        ],
-        [
-            InlineKeyboardButton(text=timer_btn_text, callback_data="timer_setup"),
-            InlineKeyboardButton(text=refresh_btn_text, callback_data="refresh_status")
-        ]
-    ])
-    
-    try:
-        await callback_query.message.edit_text(responseText, reply_markup=inline_kb, parse_mode="HTML")
-        await callback_query.answer(get_text(user_id, "panel_refreshed"))
-    except Exception:
-        await callback_query.answer(get_text(user_id, "panel_reloaded"))
-
-
 # ================= OTHER ACTIONS & LOGIN WIZARD =================
 
 @router.callback_query(F.data == "add_account", StateFilter("*"))
@@ -3077,9 +2864,9 @@ async def main():
     
     bot = Bot(token=BOT_TOKEN)
     
-    # Global majburiy obuna nazoratchisini dispatcherga ulash
-    # dp.message.outer_middleware(MandatorySubMiddleware())
-    # dp.callback_query.outer_middleware(MandatorySubMiddleware())
+    # Global majburiy obuna nazoratchisini dispatcherga ulash (TUZATILDI)
+    dp.message.outer_middleware(MandatorySubMiddleware())
+    dp.callback_query.outer_middleware(MandatorySubMiddleware())
     
     asyncio.create_task(init_existing_sessions())
     asyncio.create_task(auto_sender_worker())
