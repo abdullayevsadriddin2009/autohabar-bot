@@ -13,9 +13,12 @@ import sys
 import shutil
 import json
 import base64
+import random
+import re
+import csv
 from datetime import datetime
 
-# Loggerlarni eng tepada sozlaymiz (barcha xabarlar Renderda adsiz ko'rinishi uchun)
+# Loggerlarni eng tepada sozlaymiz
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -27,8 +30,10 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import StateFilter, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, TelegramObject
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, TelegramObject, BufferedInputFile
 from telethon import TelegramClient, errors, Button
+from telethon.tl.functions.contacts import SearchRequest
+from telethon.tl.functions.channels import JoinChannelRequest
 from aiohttp import web
 
 # Google Firebase Admin SDK import qilish
@@ -99,7 +104,11 @@ DEFAULT_DB = {
         "accounts": [],  # Barcha ulangan akkauntlar ro'yxati
         "auto_sub_active": True,
         "auto_reply_active": False,
-        "lang": "uz"
+        "lang": "uz",
+        "blacklist": [],            # Guruhlar qora ro'yxati
+        "delete_after_hours": None,  # Yuborilgan xabarlarni o'chirish taymeri (None = o'chirilgan)
+        "sent_messages_log": [],    # O'chiriladigan xabarlar jurnali
+        "rotation_index": 0         # Akkauntlar rotatsiyasi uchun indeks
     }
 }
 
@@ -237,7 +246,11 @@ def ensure_user(user_id: int):
             "accounts": [],
             "auto_sub_active": True,
             "auto_reply_active": False,
-            "lang": None
+            "lang": None,
+            "blacklist": [],
+            "delete_after_hours": None,
+            "sent_messages_log": [],
+            "rotation_index": 0
         }
     else:
         # Maydonlarni xavfsiz to'ldirish
@@ -269,6 +282,14 @@ def ensure_user(user_id: int):
             db_users[user_id]["auto_reply_active"] = False
         if "lang" not in db_users[user_id]:
             db_users[user_id]["lang"] = None
+        if "blacklist" not in db_users[user_id]:
+            db_users[user_id]["blacklist"] = []
+        if "delete_after_hours" not in db_users[user_id]:
+            db_users[user_id]["delete_after_hours"] = None
+        if "sent_messages_log" not in db_users[user_id]:
+            db_users[user_id]["sent_messages_log"] = []
+        if "rotation_index" not in db_users[user_id]:
+            db_users[user_id]["rotation_index"] = 0
     save_db()
 
 async def backup_session_to_cloud(user_id, phone):
@@ -325,7 +346,9 @@ class TextStates(StatesGroup):
     waiting_buttons = State()
     waiting_forward = State()
     waiting_support_question = State()
-    waiting_custom_interval = State()  # Qo'lda kiritish holati
+    waiting_custom_interval = State()
+    waiting_blacklist_gids = State()    # Qora ro'yxat uchun state
+    waiting_search_query = State()      # Guruh qidirish uchun state
 
 class AdminStates(StatesGroup):
     waiting_search_id = State()
@@ -533,36 +556,20 @@ LOCALIZATION = {
         "profile_title": "👥 <b>Manage Connected Accounts</b>\n━━━━━━━━━━━━━━━━━━━━\nCurrent active connection: <b>{active}</b>\n\nOn the free plan, you can only connect 1 profile.\n👑 On the PRO plan, you can connect and manage up to 5 profiles!\n━━━━━━━━━━━━━━━━━━━━\nSelect a profile from the list below to activate or disconnect it:",
         "msg_setup": "💬 <b>Configure Message</b>\n\n📝 <b>Current text:</b>\n<i>\"{matn}\"</i>\n\n🖼️ <b>Attached image:</b> <b>{rasm}</b>\n🔘 <b>Inline buttons:</b> <b>{tugmalar}</b>\n📤 <b>Forward Mode status:</b> <b>{status}</b>\n\n📌 <b>Select message type:</b>",
         "groups_setup": "🎯 <b>Setup Groups</b>\n\nWhich groups should messages be sent to?\nCurrent choice: <b>{tanlov}</b>\n\nUse the buttons below to load and configure groups:",
-        "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n<i>Forward posts from your channel to groups. This helps rapidly increase your views!</i>\n\n👤 <b>Multi-Accounts:</b>\n• Up to 5 Telegram accounts connected simultaneously\n\n🔘 <b>Buttoned Inline Messages:</b>\n• Attach custom links & buttons below ads\n\n❌ <b>Ad-Free Interace:</b>\n• Remove default bot watermarks entirely",
-        "already_pro": "👑 You already have PRO status enabled!",
-        "pro_activated": "🎉 Congratulations! PRO status successfully enabled! 👑",
-        "insufficient_funds": "❌ Insufficient funds!\nCurrent balance: {balans} UZS\nPRO price: 10,000 UZS.\n\nInvite 6 friends to unlock PRO for free!",
-        "no_active_conn": "⚠️ No active connection!",
-        "disconnected_success": "⚠️ Profile successfully disconnected!",
-        "acc_limit_free": "⚠️ <b>Free Plan Limit!</b>\n\nYou can only connect <b>1</b> profile.\nFor more accounts (up to 5) buy <b>👑 Pro Plan</b> or invite friends!",
-        "acc_limit_pro": "⚠️ <b>Maximum Account Limit!</b>\n\nUnder PRO plan, you can connect at most <b>5</b> profiles.",
-        "enter_phone": "📱 <b>Connect Real Telegram Account</b>\n\nPlease enter your phone number in international format (e.g. <code>+998901234567</code>):",
-        "invalid_phone": "❌ <b>Invalid phone format!</b>\n\nFormat: <code>+[country_code][number]</code>\n<i>(e.g., Uzbekistan: <code>+998901234567</code>, Russia: <code>+79001234567</code>, USA: <code>+12025550123</code>)</i>",
-        "connecting_tg": "🔄 Establishing a clean connection to Telegram servers. Please wait...",
-        "sms_sent": "💬 <b>SMS verification code sent!</b>\n\n⚠️ <b>IMPORTANT NOTE:</b>\nEnter the code with <b>dots</b> between numbers!\nFormat: <b>1.2.3.4.5</b>\n\nPlease enter the 5-digit code sent to your Telegram app:",
-        "conn_error": "❌ Connection error occurred: {error}",
-        "acc_bound": "<b>Congratulations! Your account has been successfully linked and backed up to the cloud.</b>\n\nYou can now go to the autohabar section to start auto-sending!",
-        "sms_expired": "❌ <b>Verification code expired!</b>\n\nPlease enter your phone number again.",
-        "sms_invalid": "❌ <b>Invalid code!</b>\n\nPlease check and enter again.",
-        "two_fa_required": "🛡️ <b>Two-Factor Authentication (2FA) is enabled on your account!</b>\n\nPlease enter your 2-step verification password:",
-        "two_fa_invalid": "❌ <b>Two-factor password incorrect!</b>\n\nPlease enter again.",
-        "custom_interval_prompt": "<b>Enter custom interval in minutes (e.g. 20):</b>",
-        "min_interval_error": "❌ Minimum interval is 1 minute!",
-        "interval_set_success": "✅ <b>Interval successfully set to {val} minutes!</b>",
-        "invalid_integer": "❌ Please enter valid integers only (e.g. 25):",
-        "groups_all_selected": "✓ All groups selected!",
-        "groups_custom_selected": "✓ Custom selection mode activated!",
-        "groups_cleared": "🚨 Selected groups cleared!",
-        "groups_refreshing": "Group list reload started...",
-        "need_profile_first": "⚠️ You must connect an account first!",
-        "group_cache_empty": "⚠️ List is empty, please click the '+ Reload' button!"
+        "pro_info": "👑 <b>AutoXabar Pro Features:</b>\n\n📤 <b>Forward Messaging:</b>\n<i>Forward posts from your channel to groups. This helps rapidly increase your views!</i>\n\n👤 <b>Multi-Accounts:</b>\n• Up to 5 Telegram accounts connected simultaneously\n\n🔘 <b>Buttoned Inline Messages:</b>\n• Attach custom links & buttons below ads\n\n❌ <b>Ad-Free Interace:</b>\n• Remove default bot watermarks entirely"
     }
 }
+
+# Spintax (Sinonimlar) randomizatsiyasi funksiyasi
+def apply_spintax(text: str) -> str:
+    pattern = re.compile(r"\{([^{}]+)\}")
+    while True:
+        match = pattern.search(text)
+        if not match:
+            break
+        options = match.group(1).split("|")
+        text = text.replace(match.group(0), random.choice(options), 1)
+    return text
 
 # Tillarni qulay olish uchun yordamchi funksiya
 def get_text(user_id: int, key: str) -> str:
@@ -577,7 +584,7 @@ def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
         [KeyboardButton(text=get_text(user_id, "btn_interval")), KeyboardButton(text=get_text(user_id, "btn_groups"))],
         [KeyboardButton(text=get_text(user_id, "btn_profiles")), KeyboardButton(text=get_text(user_id, "btn_guide"))],
         [KeyboardButton(text=get_text(user_id, "btn_cabinet")), KeyboardButton(text=get_text(user_id, "btn_settings"))],
-        [KeyboardButton(text=get_text(user_id, "btn_support"))]  # Savol va Yordam tugmasi
+        [KeyboardButton(text=get_text(user_id, "btn_support"))]
     ]
     if user_id == ADMIN_ID:
         kb.append([KeyboardButton(text="🛡️ Admin Panel")])
@@ -642,7 +649,6 @@ class MandatorySubMiddleware(BaseMiddleware):
                     unsubscribed_channels.append(channel)
             except Exception as e:
                 logging.error(f"[Xavfsizlik] {channel} obunasini tekshirishda xato: {e}")
-                # Agar bot kanalda admin bo'lmasa, uni obunadan chiqmagan deb hisoblaymiz
                 pass
 
         if unsubscribed_channels:
@@ -804,7 +810,6 @@ async def callback_check_sub_status(callback_query: types.CallbackQuery, state: 
     user_id = callback_query.from_user.id
     ensure_user(user_id)
     
-    # Agar middleware'dan muvaffaqiyatli o'tib kelsa (ya'ni obuna bo'lgan bo'lsa):
     await callback_query.answer(get_text(user_id, "sub_confirmed"), show_alert=True)
     try:
         await callback_query.message.delete()
@@ -1006,15 +1011,21 @@ async def show_sozlamalar_menu(message: types.Message, user_id: int):
         antiban=anti_ban_text
     )
     
-    btn_sub = "🤖 Avto-obunani o'zgartirish" if lang == "uz" else ("🤖 Автоподписка" if lang == "ru" else "🤖 Auto-subscribe")
-    btn_reply = "↩️ Auto Reply o'zgartirish" if lang == "uz" else ("↩️ Автоответ" if lang == "ru" else "↩️ Auto Reply")
+    btn_sub = "🤖 Avto-obuna" if lang == "uz" else ("🤖 Автоподписка" if lang == "ru" else "🤖 Auto-sub")
+    btn_reply = "↩️ Auto Reply" if lang == "uz" else ("↩️ Автоответ" if lang == "ru" else "↩️ Auto Reply")
     btn_lang = "🌐 Tilni o'zgartirish" if lang == "uz" else ("🌐 Сменить язык" if lang == "ru" else "🌐 Change Language")
+    btn_blacklist = "🚫 Qora Ro'yxat" if lang == "uz" else ("🚫 Черный список" if lang == "ru" else "🚫 Blacklist")
+    btn_del_msg = "🗑️ Avto-O'chirish" if lang == "uz" else ("🗑️ Автоудаление" if lang == "ru" else "🗑️ Auto-Delete")
     btn_close = "❌ Yopish" if lang == "uz" else ("❌ Закрыть" if lang == "ru" else "❌ Close")
     
     kb = [
         [
             InlineKeyboardButton(text=btn_sub, callback_data="toggle_auto_sub"),
             InlineKeyboardButton(text=btn_reply, callback_data="toggle_auto_reply")
+        ],
+        [
+            InlineKeyboardButton(text=btn_blacklist, callback_data="manage_blacklist"),
+            InlineKeyboardButton(text=btn_del_msg, callback_data="manage_del_msg_timer")
         ],
         [
             InlineKeyboardButton(text=btn_lang, callback_data="change_language_settings")
@@ -1063,6 +1074,128 @@ async def callback_close_menu(callback_query: types.CallbackQuery):
     except Exception:
         pass
     await callback_query.answer()
+
+# ================= BLACKLIST & AUTO-DELETE SETTINGS =================
+
+@router.callback_query(F.data == "manage_blacklist", StateFilter("*"))
+async def callback_manage_blacklist(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    blacklist = db_users[user_id].get("blacklist", [])
+    
+    text = (
+        "🚫 <b>Guruhlar Qora Ro'yxati (Blacklist)</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        "Quyidagi guruhlarga xabarlar mutlaqo yuborilmaydi va sikllarda tashlab ketiladi.\n\n"
+        f"Joriy guruh ID lari: <code>{', '.join(map(str, blacklist)) if blacklist else 'Bo`sh'}</code>\n\n"
+        "Yangi ID kiritish uchun quyidagi tugmani bosing:"
+    ) if lang == "uz" else (
+        "🚫 <b>Черный список групп (Blacklist)</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        "В эти группы авторассылка не будет отправлять сообщения.\n\n"
+        f"Текущие ID групп: <code>{', '.join(map(str, blacklist)) if blacklist else 'Пусто'}</code>"
+    )
+    
+    kb = [
+        [InlineKeyboardButton(text="➕ ID qo'shish / o'chirish", callback_data="add_blacklist_prompt")],
+        [InlineKeyboardButton(text="🧹 Tozalash", callback_data="clear_blacklist")],
+        [InlineKeyboardButton(text="← Orqaga", callback_data="back_to_settings")]
+    ]
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data == "add_blacklist_prompt", StateFilter("*"))
+async def callback_add_blacklist_prompt(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    await state.set_state(TextStates.waiting_blacklist_gids)
+    await callback_query.message.answer("✍️ <b>Qora ro'yxatga qo'shish yoki undan olib tashlash uchun guruh ID raqamini yuboring (masalan: -100123456789):</b>", parse_mode="HTML")
+    await callback_query.answer()
+
+@router.message(StateFilter(TextStates.waiting_blacklist_gids))
+async def state_save_blacklist_gid(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    try:
+        gid = int(message.text.strip())
+        blacklist = db_users[user_id].get("blacklist", [])
+        if gid in blacklist:
+            blacklist.remove(gid)
+            await message.answer(f"✅ Guruh ID (<code>{gid}</code>) qora ro'yxatdan olib tashlandi!", parse_mode="HTML")
+        else:
+            blacklist.append(gid)
+            await message.answer(f"✅ Guruh ID (<code>{gid}</code>) qora ro'yxatga muvaffaqiyatli qo'shildi!", parse_mode="HTML")
+        db_users[user_id]["blacklist"] = blacklist
+        save_db()
+    except ValueError:
+        await message.answer("❌ Noto'g'ri ID. Iltimos, faqat butun son yuboring.")
+    await state.clear()
+
+@router.callback_query(F.data == "clear_blacklist", StateFilter("*"))
+async def callback_clear_blacklist(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    db_users[user_id]["blacklist"] = []
+    save_db()
+    await callback_query.answer("🧹 Qora ro'yxat tozalandi!", show_alert=True)
+    await callback_manage_blacklist(callback_query, FSMContext(storage=MemoryStorage()))
+
+@router.callback_query(F.data == "back_to_settings", StateFilter("*"))
+async def callback_back_to_settings(callback_query: types.CallbackQuery):
+    await show_sozlamalar_menu(callback_query.message, callback_query.from_user.id)
+    await callback_query.answer()
+
+@router.callback_query(F.data == "manage_del_msg_timer", StateFilter("*"))
+async def callback_manage_del_msg_timer(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    timer = db_users[user_id].get("delete_after_hours")
+    
+    current_val_text = f"{timer} soat" if timer else "O'chirilgan 🔴"
+    
+    text = (
+        "🗑️ <b>Xabarlarni Avtomatik O'chirish Taymeri</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        "Guruhlar adminlari reklamalarni ko'rib bloklab yubormasligi va guruhlarda xabarlaringiz tartibli bo'lib turishi uchun "
+        "yuborilgan reklama xabarlarini belgilangan vaqtdan so'ng o'chirib tashlaydi.\n\n"
+        f"Joriy holat: <b>{current_val_text}</b>"
+    )
+    
+    def check_mark(val):
+        return "✓ " if timer == val else ""
+        
+    kb = [
+        [
+            InlineKeyboardButton(text=f"{check_mark(1)}1 soat", callback_data="set_del_timer_1"),
+            InlineKeyboardButton(text=f"{check_mark(2)}2 soat", callback_data="set_del_timer_2"),
+            InlineKeyboardButton(text=f"{check_mark(6)}6 soat", callback_data="set_del_timer_6")
+        ],
+        [
+            InlineKeyboardButton(text=f"{check_mark(12)}12 soat", callback_data="set_del_timer_12"),
+            InlineKeyboardButton(text=f"{check_mark(24)}24 soat", callback_data="set_del_timer_24"),
+            InlineKeyboardButton(text=f"{check_mark(None)}O'chirish", callback_data="set_del_timer_none")
+        ],
+        [InlineKeyboardButton(text="← Orqaga", callback_data="back_to_settings")]
+    ]
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
+    await callback_query.answer()
+
+@router.callback_query(F.data.startswith("set_del_timer_"), StateFilter("*"))
+async def callback_set_del_timer(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    val_part = callback_query.data.split("_")[3]
+    
+    if val_part == "none":
+        db_users[user_id]["delete_after_hours"] = None
+        alert = "✓ Avto-o'chirish taymeri o'chirildi!"
+    else:
+        hours = int(val_part)
+        db_users[user_id]["delete_after_hours"] = hours
+        alert = f"✓ Xabarlarni yuborilgach {hours} soatdan keyin o'chirish faollashdi!"
+        
+    save_db()
+    await callback_query.answer(alert, show_alert=True)
+    await callback_manage_del_msg_timer(callback_query)
 
 # ================= ADMIN PANEL HANDLERS =================
 
@@ -1420,7 +1553,6 @@ async def state_process_broadcast(message: types.Message, state: FSMContext):
 
 # ================= ⚪ AUTOHABAR YUBORISH MENYUSI =================
 
-# CRITICAL FIX: Biz endi xabarni inline callback orqali tahrirlayotganda ham kutilmagan asinxron FSMContext bilan muammo chiqmasligi uchun menu_autohabar ni xavfsiz qildik.
 async def generate_control_panel_text(user_id: int):
     user_data = db_users.get(user_id)
     lang = user_data.get("lang", "uz") or "uz"
@@ -1502,7 +1634,7 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery, state: FS
     
     if is_sending:
         db_users[user_id]["is_sending_started_at"] = datetime.now().timestamp()
-        db_users[user_id]["next_run_timestamp"] = datetime.now().timestamp() # Darhol jo'natish tsiklini yoqish
+        db_users[user_id]["next_run_timestamp"] = datetime.now().timestamp()
         alert = "▶️ Reklama yuborish muvaffaqiyatli ishga tushirildi!" if lang == "uz" else ("▶️ Рассылка успешно запущена!" if lang == "ru" else "▶️ Broadcasting started!")
     else:
         db_users[user_id]["is_sending_started_at"] = 0
@@ -1511,7 +1643,6 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery, state: FS
     save_db()
     await callback_query.answer(alert, show_alert=True)
     
-    # CRITICAL FIX: Yangi xabar yuborish o'rniga joriy panel matni va klaviaturasini toza tarzda edit qilib yangilaymiz!
     responseText, _ = await generate_control_panel_text(user_id)
     inline_kb = await get_control_panel_markup(user_id)
     try:
@@ -1519,7 +1650,7 @@ async def callback_toggle_sending(callback_query: types.CallbackQuery, state: FS
     except Exception:
         pass
 
-# Statistika oynasi
+# Statistika oynasi (CSV eksport integratsiyasi bilan)
 @router.callback_query(F.data == "statistika", StateFilter("*"))
 async def callback_user_statistika(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
@@ -1539,18 +1670,57 @@ async def callback_user_statistika(callback_query: types.CallbackQuery):
         f"📊 <b>Ваша статистика рассылки:</b>\n\n"
         f"✔️ Отправлено сегодня: <b>{today_sent} шт.</b>\n"
         f"🔄 Всего отправлено: <b>{total_sent} шт.</b>\n\n"
-        f"🕒 Обновлено: <i>{datetime.now().strftime('%d.%m.%Y %H:%M')}</i>" if lang == "ru" else
-        f"📊 <b>Your Broadcasting Statistics:</b>\n\n"
-        f"✔️ Sent today: <b>{today_sent}</b>\n"
-        f"🔄 Total sent: <b>{total_sent}</b>\n\n"
-        f"🕒 Updated: <i>{datetime.now().strftime('%d.%m.%Y %H:%M')}</i>"
+        f"🕒 Обновлено: <i>{datetime.now().strftime('%d.%m.%Y %H:%M')}</i>"
     )
 
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📥 CSV Hisobot yuklash", callback_data="export_stats_csv")],
         [InlineKeyboardButton(text="← " + ("Orqaga" if lang == "uz" else ("Назад" if lang == "ru" else "Back")), callback_data="back_to_panel")]
     ])
     await callback_query.message.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")
     await callback_query.answer()
+
+# CSV Excel Hisobot Eksport Drayveri
+@router.callback_query(F.data == "export_stats_csv", StateFilter("*"))
+async def callback_export_stats_csv(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    lang = user_data.get("lang", "uz") or "uz"
+    
+    # CSV fayl yaratish
+    csv_data = [
+        ["Guruh Nomi / ID", "Holat", "Vaqt"],
+    ]
+    
+    # Agar foydalanuvchida guruhlar kesh bo'lsa
+    groups = user_data.get("cached_groups", [])
+    selected_gids = user_data.get("selected_groups", [])
+    for g in groups:
+        gid = g.get("id")
+        gname = g.get("name", "Noma'lum Guruh")
+        status = "Faol Tarqatilmoqda" if gid in selected_gids else "Navbatda Yo'q"
+        if gid in user_data.get("blacklist", []):
+            status = "Qora Ro'yxatda (Bloklangan)"
+        csv_data.append([gname, status, datetime.now().strftime("%Y-%m-%d %H:%M")])
+        
+    output = ""
+    for row in csv_data:
+        output += ",".join([f'"{str(cell)}"' for cell in row]) + "\n"
+        
+    csv_bytes = output.encode('utf-8-sig') # Excel to'g'ri o'qishi uchun UTF-8-BOM bilan kodlaymiz
+    input_file = BufferedInputFile(csv_bytes, filename=f"AutoHabar_Hisobot_{user_id}.csv")
+    
+    try:
+        await bot.send_document(
+            chat_id=user_id,
+            document=input_file,
+            caption="📊 <b>Sizning guruhlaringiz va tarqatish holatlari jadvali (Excel formatda)</b>",
+            parse_mode="HTML"
+        )
+        await callback_query.answer("✅ Hisobot muvaffaqiyatli yuborildi!", show_alert=True)
+    except Exception as e:
+        await callback_query.answer(f"❌ Yuklashda xatolik: {e}", show_alert=True)
 
 # Holatni yangilash drayveri
 @router.callback_query(F.data == "refresh_status", StateFilter("*"))
@@ -1560,7 +1730,6 @@ async def callback_refresh_status(callback_query: types.CallbackQuery, state: FS
     
     await callback_query.answer(get_text(user_id, "panel_refreshed"))
     
-    # CRITICAL FIX: Yangi xabar yuborish o'rniga, joriy panelni edit_text qilamiz!
     responseText, _ = await generate_control_panel_text(user_id)
     inline_kb = await get_control_panel_markup(user_id)
     try:
@@ -1569,7 +1738,7 @@ async def callback_refresh_status(callback_query: types.CallbackQuery, state: FS
         pass
 
 
-# ================= ⏳ AVTO-O'CHIRISH TAYMERINI SOZLASH (RASMDEK) =================
+# ================= ⏳ AVTO-O'CHIRISH TAYMERINI SOZLASH =================
 
 @router.callback_query(F.data == "timer_setup", StateFilter("*"))
 async def callback_timer_setup(callback_query: types.CallbackQuery):
@@ -1588,17 +1757,6 @@ async def callback_timer_setup(callback_query: types.CallbackQuery):
         "Ushbu taymer reklama tarqatish ishga tushganidan so'ng, "
         "belgilangan muddat o'tgach avtomatik ravishda to'xtatish imkonini beradi. "
         "Bu guruhlar orasida ko'p reklama tarqatib, spamga tushib qolmaslikka yordam beradi."
-    ) if lang == "uz" else (
-        "⏱️ <b>Настройка таймера автовыключения</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Текущее время автовыключения: <b>{current_val_text}</b>\n\n"
-        "Этот таймер позволяет автоматически остановить рассылку рекламы после истечения заданного времени. "
-        "Это помогает избежать спам-блока, предотвращая бесконечную рассылку." if lang == "ru" else
-        "⏱️ <b>Setup Auto-Off Timer</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Current auto-off delay: <b>{current_val_text}</b>\n\n"
-        "This timer automatically turns off the broadcasting engine after a custom period. "
-        "It prevents endless postings and minimizes Telegram spam limits."
     )
 
     def check_mark(val):
@@ -1691,6 +1849,7 @@ async def show_message_settings(message: types.Message, user_id: int):
     btn_edit_buttons = "🔘 Tugmali xabar (Inline PRO)" if lang == "uz" else ("🔘 Кнопочное сообщение (Inline PRO)" if lang == "ru" else "🔘 Buttoned message (Inline PRO)")
     btn_toggle = "🔄 Rejimni almashtirish (Matn/Forward)" if lang == "uz" else ("🔄 Сменить режим (Текст/Forward)" if lang == "ru" else "🔄 Toggle mode (Text/Forward)")
     btn_clear = "❌ Rasm va tugmalarni tozalash" if lang == "uz" else ("❌ Очистить медиа и кнопки" if lang == "ru" else "❌ Clear media & buttons")
+    btn_preview = "👁️ Xabarni ko'rish" if lang == "uz" else ("👁️ Посмотреть сообщение" if lang == "ru" else "👁️ Preview message")
     btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -1700,12 +1859,70 @@ async def show_message_settings(message: types.Message, user_id: int):
         [InlineKeyboardButton(text=btn_edit_buttons, callback_data="edit_buttons_pro")], 
         [InlineKeyboardButton(text=btn_toggle, callback_data="toggle_forward_mode")],
         [InlineKeyboardButton(text=btn_clear, callback_data="clear_media_buttons")],
+        [InlineKeyboardButton(text=btn_preview, callback_data="preview_ad_post")],
         [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
     ])
 
     await message.answer(textDetail, reply_markup=inline_kb, parse_mode="HTML")
 
 # ================= AD REKLAMA EDIT CALLBACK HANDLERS =================
+
+# 👁️ Xabarni Oldindan Ko'rish (Preview Post) Callback Handler
+@router.callback_query(F.data == "preview_ad_post", StateFilter("*"))
+async def callback_preview_ad_post(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    user_data = db_users.get(user_id)
+    lang = user_data.get("lang", "uz") or "uz"
+    
+    # Matndagi "===" va sinonimlarni hisobga olib namuna tayyorlash
+    parts = user_data.get("reklama_matni", "").split("===")
+    raw_text = parts[0].strip() if parts else "Xabar matni bo'sh"
+    spin_text = apply_spintax(raw_text)
+    
+    # Yashirin havola integratsiyasi
+    bot_link = "https://t.me/Auto_Xabar_Yuborish_Bot"
+    watermark = f'\n\n<a href="{bot_link}">bu bot orqali yuborildi</a>'
+    final_preview_text = f"{spin_text}{watermark}"
+    
+    await callback_query.message.answer("👁️ <b>Xabaringiz guruhlarda quyidagi chiroyli ko'rinishda chiqadi:</b>\n━━━━━━━━━━━━━━━━━━━━", parse_mode="HTML")
+    
+    # Inline tugmalar mavjud bo'lsa klaviatura yasash
+    buttons_data = user_data.get("inline_buttons", [])
+    kb_list = []
+    for btn in buttons_data:
+        kb_list.append([InlineKeyboardButton(text=btn["text"], url=btn["url"])])
+    kb_markup = InlineKeyboardMarkup(inline_keyboard=kb_list) if kb_list else None
+    
+    photo_path = user_data.get("reklama_rasm")
+    if photo_path and os.path.exists(photo_path):
+        try:
+            # Mahalliy rasmni yuborish
+            from aiogram.types import FSInputFile
+            photo_file = FSInputFile(photo_path)
+            await bot.send_photo(
+                chat_id=user_id,
+                photo=photo_file,
+                caption=final_preview_text,
+                reply_markup=kb_markup,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            await bot.send_message(
+                chat_id=user_id,
+                text=final_preview_text,
+                reply_markup=kb_markup,
+                parse_mode="HTML"
+            )
+    else:
+        await bot.send_message(
+            chat_id=user_id,
+            text=final_preview_text,
+            reply_markup=kb_markup,
+            parse_mode="HTML"
+        )
+        
+    await callback_query.answer()
 
 @router.callback_query(F.data == "edit_text", StateFilter("*"))
 async def callback_edit_text(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1820,13 +2037,6 @@ async def callback_edit_buttons_pro(callback_query: types.CallbackQuery, state: 
         "🔘 <b>Tugmalarni quyidagi formatda yozib yuboring:</b>\n\n"
         "<code>Mening saytim | https://havola.uz</code>\n\n"
         "<i>Agar tugmalar soni bir nechta bo'lsa, har birini yangi qatordan kiriting.</i>"
-    ) if lang == "uz" else (
-        "🔘 <b>Отправьте кнопки в следующем формате:</b>\n\n"
-        "<code>Мой сайт | https://url.ru</code>\n\n"
-        "<i>Если кнопок несколько, вводите каждую с новой строки.</i>" if lang == "ru" else
-        "🔘 <b>Send buttons in the following format:</b>\n\n"
-        "<code>My website | https://url.com</code>\n\n"
-        "<i>If there are multiple buttons, enter each on a new line.</i>"
     )
     
     await callback_query.message.answer(prompt, parse_mode="HTML")
@@ -1852,15 +2062,12 @@ async def message_receive_buttons(message: types.Message, state: FSMContext):
     if buttons:
         db_users[user_id]["inline_buttons"] = buttons
         save_db()
-        success = f"✅ <b>{len(buttons)} ta tugma muvaffaqiyatli saqlandi!</b>" if lang == "uz" else (f"✅ <b>{len(buttons)} кнопок успешно сохранены!</b>" if lang == "ru" else f"✅ <b>{len(buttons)} buttons successfully saved!</b>")
+        success = f"✅ <b>{len(buttons)} ta tugma muvaffaqiyatli saqlandi!</b>"
         await message.answer(success, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
         await show_message_settings(message, user_id)
         await state.clear()
     else:
-        err = "❌ <b>Format xato!</b> Namunadagidek yozing:\n<code>Telegram | https://t.me/kanal</code>" if lang == "uz" else (
-            "❌ <b>Неверный формат!</b> Напишите по шаблону:\n<code>Telegram | https://t.me/channel</code>" if lang == "ru" else
-            "❌ <b>Invalid format!</b> Use the template:\n<code>Telegram | https://t.me/channel</code>"
-        )
+        err = "❌ <b>Format xato!</b> Namunadagidek yozing:\n<code>Telegram | https://t.me/kanal</code>"
         await message.answer(err, parse_mode="HTML")
 
 # ================= AD FORWARD EDIT CALLBACK HANDLERS =================
@@ -1883,13 +2090,6 @@ async def callback_edit_forward(callback_query: types.CallbackQuery, state: FSMC
         "📤 <b>Forward xabar sozlash bo'limi (Faqat PRO)</b>\n\n"
         "Iltimos, o'zingizning kanalingizdan istalgan xabarni (rasmli, tugmali, matnli) **ushbu botga forward (uzatish)** qiling.\n\n"
         "<i>Bot o'sha xabarni guruhlarga ko'rishlar sonini oshiradigan va kanal havolasini saqlaydigan qibly yuboradi.</i>"
-    ) if lang == "uz" else (
-        "📤 <b>Раздел настройки пересылаемого сообщения Forward (Только PRO)</b>\n\n"
-        "Пожалуйста, **перешлите (forward)** любое сообщение из вашего канала в этот бот.\n\n"
-        "<i>Бот будет отправлять его в группы так, что просмотры канала будут расти!</i>" if lang == "ru" else
-        "📤 <b>Forward Message Setup Section (PRO Only)</b>\n\n"
-        "Please **forward** any message from your channel to this bot.\n\n"
-        "<i>The bot will post it to groups in a way that increases channel views!</i>"
     )
     
     await callback_query.message.answer(prompt, parse_mode="HTML")
@@ -1902,7 +2102,7 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
     if not message.forward_origin:
-        err = "⚠️ Iltimos, xabarni o'zingiz yozmang! Kanaldan **forward (uzatish)** qiling." if lang == "uz" else ("⚠️ Пожалуйста, не пишите текст сами! Сделайте **пересылку (forward)** из канала." if lang == "ru" else "⚠️ Please do not type manually! You must **forward** it from a channel.")
+        err = "⚠️ Iltimos, xabarni o'zingiz yozmang! Kanaldan **forward (uzatish)** qiling."
         await message.answer(err)
         return
         
@@ -1927,11 +2127,6 @@ async def message_receive_forward(message: types.Message, state: FSMContext):
     success = (
         "✅ <b>Uzatilgan (Forward) xabaringiz muvaffaqiyatli saqlandi!</b>\n\n"
         "Endi bot guruhlarga ushbu xabarni ko'rishlar sonini ko'paytiradigan va kanal havolasini saqlab qoladigan qibly yuboradi."
-    ) if lang == "uz" else (
-        "✅ <b>Пересланное сообщение успешно сохранено!</b>\n\n"
-        "Теперь бот будет отправлять его в группы так, чтобы увеличивать количество просмотров." if lang == "ru" else
-        "✅ <b>Forward message successfully saved!</b>\n\n"
-        "Now the bot will post it to groups to naturally increase channel views."
     )
     
     await message.answer(success, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
@@ -1952,10 +2147,7 @@ async def callback_toggle_forward_mode(callback_query: types.CallbackQuery):
     db_users[user_id]["is_forward_mode"] = not db_users[user_id].get("is_forward_mode", False)
     save_db()
     
-    status_msg = ("Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝") if lang == "uz" else (
-        ("Включен режим Forward! 📤" if db_users[user_id]["is_forward_mode"] else "Включен обычный режим текста! 📝") if lang == "ru" else
-        ("Forward mode enabled! 📤" if db_users[user_id]["is_forward_mode"] else "Text/Media mode enabled! 📝")
-    )
+    status_msg = ("Forward rejimga o'tkazildi! 📤" if db_users[user_id]["is_forward_mode"] else "Matn/Media rejimga o'tkazildi! 📝")
     await callback_query.answer(f"✓ {status_msg}", show_alert=True)
     await show_message_settings(callback_query.message, user_id)
 
@@ -1984,7 +2176,8 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
     btn_all = "+ Hamma guruhlarga" if lang == "uz" else ("+ Во все группы" if lang == "ru" else "+ All groups")
     btn_custom = "✓ O'zim tanlayman" if lang == "uz" else ("✓ Выбираю сам" if lang == "ru" else "✓ Custom selection")
     btn_lists = "📊 Ro'yxatlar" if lang == "uz" else ("📊 Списки" if lang == "ru" else "📊 Lists")
-    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Обновить" if lang == "ru" else "+ Reload")
+    btn_add = "+ Qo'shish" if lang == "uz" else ("+ Obновить" if lang == "ru" else "+ Reload")
+    btn_search = "🔍 Guruh Qidirish" if lang == "uz" else ("🔍 Поиск Групп" if lang == "ru" else "🔍 Group Scraper")
     btn_clear = "🚨 O'chirish" if lang == "uz" else ("🚨 Очистить" if lang == "ru" else "🚨 Clear")
     btn_back = "← Orqaga" if lang == "uz" else ("← Назад" if lang == "ru" else "← Back")
     
@@ -1996,9 +2189,67 @@ async def menu_guruhlar(message: types.Message, state: FSMContext):
             InlineKeyboardButton(text=btn_add, callback_data="refresh_groups_force"),  
             InlineKeyboardButton(text=btn_clear, callback_data="clear_selected_groups") 
         ],
+        [InlineKeyboardButton(text=btn_search, callback_data="open_group_scraper")],
         [InlineKeyboardButton(text=btn_back, callback_data="back_to_panel")]
     ])
     await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+
+# Avtomatik Guruh Qidirgich (Group Scraper/Finder) Handlers
+@router.callback_query(F.data == "open_group_scraper", StateFilter("*"))
+async def callback_open_group_scraper(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    ensure_user(user_id)
+    lang = db_users[user_id].get("lang", "uz") or "uz"
+    
+    if not db_users[user_id].get("active_phone"):
+        await callback_query.answer("⚠️ Avval profil bog'lashingiz kerak!", show_alert=True)
+        return
+        
+    await state.set_state(TextStates.waiting_search_query)
+    await callback_query.message.answer(
+        "🔍 <b>Avtomatik Guruh Qidirish va A'zo Bo'lish (Group Scraper)</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        "Kalit so'z kiriting (masalan: <i>reklama, bozor, vakansiya</i>) "
+        "va bot ochiq Telegram guruhlarini qidirib, sizning profilga avtomatik a'zo qilib beradi!",
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
+
+@router.message(StateFilter(TextStates.waiting_search_query))
+async def state_save_search_query(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    ensure_user(user_id)
+    query = message.text.strip()
+    active_phone = db_users[user_id].get("active_phone")
+    
+    progress_msg = await message.answer("🔍 <b>Telegram tarmoqlari qidirilmoqda, kuting...</b>", parse_mode="HTML")
+    
+    try:
+        client = await get_client(user_id, active_phone)
+        result = await client(SearchRequest(q=query, limit=10))
+        joined_count = 0
+        
+        for chat in result.chats:
+            # Agar ochiq guruh yoki kanal bo'lsa a'zo bo'lamiz
+            try:
+                await client(JoinChannelRequest(chat))
+                joined_count += 1
+                await asyncio.sleep(2)  # Ban bo'lmasligi uchun tanaffus
+            except Exception:
+                continue
+                
+        await progress_msg.delete()
+        await message.answer(
+            f"✅ <b>Guruh qidirish yakunlandi!</b>\n"
+            f"🔍 Kalit so'z: <b>\"{query}\"</b>\n"
+            f"➕ Muvaffaqiyatli a'zo bo'lindi: <b>{joined_count} ta guruhga</b>\n\n"
+            f"💡 <i>Guruhlarni sozlash bo'limidan '+ Qo'shish' (Yangilash) tugmasini bosing!</i>",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await progress_msg.delete()
+        await message.answer(f"❌ Qidiruv xatosi: {e}")
+        
+    await state.clear()
 
 @router.callback_query(F.data == "set_groups_all", StateFilter("*"))
 async def callback_groups_all(callback_query: types.CallbackQuery, state: FSMContext):
@@ -2255,15 +2506,6 @@ async def callback_manage_acc(callback_query: types.CallbackQuery):
         "🏷️ Ism: <b>" + target_acc['name'] + "</b>\n"
         "🌐 Username: <b>" + target_acc['username'] + "</b>\n\n"
         "Ushbu profilni nima qilishni xohlajesiz?"
-    ) if lang == "uz" else (
-        "📱 <b>Настройки профиля: " + phone + "</b>\n"
-        "🏷️ Имя: <b>" + target_acc['name'] + "</b>\n"
-        "🌐 Username: <b>" + target_acc['username'] + "</b>\n\n"
-        "Что вы хотите сделать с этим профилем?" if lang == "ru" else
-        "📱 <b>Profile Settings: " + phone + "</b>\n"
-        "🏷️ Name: <b>" + target_acc['name'] + "</b>\n"
-        "🌐 Username: <b>" + target_acc['username'] + "</b>\n\n"
-        "What do you want to do with this profile?"
     )
     
     btn_active = "🟢 Faol qilish" if lang == "uz" else ("🟢 Сделать активным" if lang == "ru" else "🟢 Make active")
@@ -2304,7 +2546,7 @@ async def callback_activate_acc(callback_query: types.CallbackQuery):
         db_users[user_id]["active_name"] = target_acc["name"]
         db_users[user_id]["active_username"] = target_acc["username"]
         save_db()
-        alert = "✓ " + phone + " muvaffaqiyatli faollashtirildi!" if lang == "uz" else (f"✓ {phone} успешно активирован!" if lang == "ru" else f"✓ {phone} successfully activated!")
+        alert = "✓ " + phone + " muvaffaqiyatli faollashtirildi!"
         await callback_query.answer(alert, show_alert=True)
     
     await show_profillar_settings(callback_query.message, user_id)
@@ -2356,7 +2598,7 @@ async def callback_delete_acc(callback_query: types.CallbackQuery):
         except Exception:
             pass
 
-    alert = "⚠️ Profil muvaffaqiyatli o'chirildi!" if lang == "uz" else ("⚠️ Профиль успешно удален!" if lang == "ru" else "⚠️ Profile successfully deleted!")
+    alert = "⚠️ Profil muvaffaqiyatli o'chirildi!"
     await callback_query.answer(alert, show_alert=True)
     await show_profillar_settings(callback_query.message, user_id)
 
@@ -2402,7 +2644,7 @@ async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
         db_users[user_id]["balans"] = user_data["balans"] - 10000
         db_users[user_id]["is_pro"] = True
         save_db()
-        success = "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑" if lang == "uz" else ("🎉 Поздравляем! Тариф PRO успешно активирован! 👑" if lang == "ru" else "🎉 Congratulations! PRO status successfully enabled! 👑")
+        success = "🎉 Tabriklaymiz! PRO tarif muvaffaqiyatli faollashtirildi! 👑"
         await callback_query.answer(success, show_alert=True)
         await menu_kabinet_msg(callback_query.message, user_id)
     else:
@@ -2411,15 +2653,6 @@ async def callback_buy_pro_balance(callback_query: types.CallbackQuery):
             f"Joriy balans: {user_data.get('balans', 0):,} so'm\n"
             f"PRO narxi: 10,000 so'm.\n\n"
             f"Botga 6 ta yangi odam taklif qibly, bepul PRO oling!"
-        ) if lang == "uz" else (
-            f"❌ Недостаточно средств на балансе!\n"
-            f"Текущий баланс: {user_data.get('balans', 0):,} сум\n"
-            f"Стоимость PRO: 10,000 сум.\n\n"
-            f"Пригласите 6 друзей и получите PRO бесплатно!" if lang == "ru" else
-            f"❌ Insufficient funds!\n"
-            f"Current balance: {user_data.get('balans', 0):,} UZS\n"
-            f"PRO price: 10,000 UZS.\n\n"
-            f"Invite 6 friends to unlock PRO for free!"
         )
         await callback_query.answer(err, show_alert=True)
 
@@ -2446,13 +2679,6 @@ async def menu_interval(message: types.Message, state: FSMContext):
         "⏱️ <b>Habar oraligi</b>\n\n"
         f"Joriy interval: <b>{interval_text}</b>\n\n"
         "Kerakli vaqtni tanlang:"
-    ) if lang == "uz" else (
-        "⏱️ <b>Интервал отправки сообщений</b>\n\n"
-        f"Текущий интервал: <b>{interval_text}</b>\n\n"
-        "Выберите необходимое время:" if lang == "ru" else
-        "⏱️ <b>Message Sending Delay (Interval)</b>\n\n"
-        f"Current active interval: <b>{interval_text}</b>\n\n"
-        "Please select interval:"
     )
     
     await message.answer(text, reply_markup=get_interval_keyboard(current_interval), parse_mode="HTML")
@@ -2476,20 +2702,13 @@ async def callback_set_interval(callback_query: types.CallbackQuery):
         unit = "daqiqa" if lang == "uz" else ("минут" if lang == "ru" else "minutes")
         interval_text = f"{val} {unit}"
 
-    alert = f"✓ Interval {interval_text} ga sozlandi!" if lang == "uz" else (f"✓ Интервал настроен на {interval_text}!" if lang == "ru" else f"✓ Interval set to {interval_text}!")
+    alert = f"✓ Interval {interval_text} ga sozlandi!"
     await callback_query.answer(alert, show_alert=True)
     
     text = (
         "⏱️ <b>Habar oraligi</b>\n\n"
         f"Joriy interval: <b>{interval_text}</b>\n\n"
         "Kerakli vaqtni tanlang:"
-    ) if lang == "uz" else (
-        "⏱️ <b>Интервал отправки сообщений</b>\n\n"
-        f"Текущий интервал: <b>{interval_text}</b>\n\n"
-        "Выберите необходимое время:" if lang == "ru" else
-        "⏱️ <b>Message Sending Delay (Interval)</b>\n\n"
-        f"Current active interval: <b>{interval_text}</b>\n\n"
-        "Please select interval:"
     )
     try:
         await callback_query.message.edit_text(text, reply_markup=get_interval_keyboard(val), parse_mode="HTML")
@@ -2505,13 +2724,6 @@ async def callback_explain_interval(callback_query: types.CallbackQuery):
         "⁉️ <b>Interval nima va u nega kerak?</b>\n\n"
         "<b>Interval</b> — bu siz ulatgan profilingiz barcha tanlangan guruhlarga reklama xabaringizni yuborib bo'lgandan so'ng, keyingi sikl boshlanguncha **qancha vaqt kutishini** belgilaydi.\n\n"
         "💡 <i>Tavsiya: Telegram spam-filtrlaridan (Spam-blok) saqlanish uchun intervalni kamida 10-15 daqiqa qibly belgilash tavsiya etiladi.</i>"
-    ) if lang == "uz" else (
-        "⁉️ <b>Что такое интервал и зачем он нужен?</b>\n\n"
-        "<b>Интервал</b> — это время ожидания вашего профиля перед следующим циклом рассылки, после того как он отправит сообщения во все выбранные группы.\n\n"
-        "💡 <i>Совет: Чтобы избежать спам-блока со стороны Telegram, рекомендуется ставить интервал не менее 10-15 минут.</i>" if lang == "ru" else
-        "⁉️ <b>What is interval and why is it needed?</b>\n\n"
-        "<b>Interval</b> — defines how long your profile will pause after successfully posting to all selected groups before starting the next loop.\n\n"
-        "💡 <i>Tip: To avoid Telegram spam limits, we highly recommend setting the interval to at least 10-15 minutes.</i>"
     )
     await callback_query.message.answer(explanation, parse_mode="HTML")
     await callback_query.answer()
@@ -2522,10 +2734,7 @@ async def callback_custom_interval(callback_query: types.CallbackQuery, state: F
     user_id = callback_query.from_user.id
     lang = db_users[user_id].get("lang", "uz") or "uz"
     
-    prompt = "✍️ <b>Xabar yuborish oralig'ini (Intervalni) daqiqalarda kiriting (masalan: 20):</b>" if lang == "uz" else (
-        "✍️ <b>Введите задержку отправки (Интервал) в минутах (например: 20):</b>" if lang == "ru" else
-        "✍️ <b>Enter the sending delay (Interval) in minutes (e.g. 20):</b>"
-    )
+    prompt = "✍️ <b>Xabar yuborish oralig'ini (Intervalni) daqiqalarda kiriting (masalan: 20):</b>"
     await state.set_state(TextStates.waiting_custom_interval)
     await callback_query.message.answer(prompt, parse_mode="HTML")
     await callback_query.answer()
@@ -2538,18 +2747,18 @@ async def message_receive_custom_interval(message: types.Message, state: FSMCont
     try:
         val = int(message.text.strip())
         if val < 1:
-            err = "❌ Minimal interval vaqti - 1 daqiqa!" if lang == "uz" else ("❌ Минимальный интервал - 1 минута!" if lang == "ru" else "❌ Minimum interval is 1 minute!")
+            err = "❌ Minimal interval vaqti - 1 daqiqa!"
             await message.answer(err)
             return
         db_users[user_id]["interval"] = val
         save_db()
         
-        success = f"✅ <b>Interval {val} daqiqaga sozlandi!</b>" if lang == "uz" else (f"✅ <b>Интервал настроен на {val} минут!</b>" if lang == "ru" else f"✅ <b>Interval set to {val} minutes!</b>")
+        success = f"✅ <b>Interval {val} daqiqaga sozlandi!</b>"
         await message.answer(success, reply_markup=get_main_keyboard(user_id), parse_mode="HTML")
         await state.clear()
         await menu_interval(message, state)
     except ValueError:
-        err = "❌ Iltimos, faqat butun son kiriting (masalan: 25):" if lang == "uz" else ("❌ Пожалуйста, вводите только целые числа (например: 25):" if lang == "ru" else "❌ Please enter valid integers only (e.g. 25):")
+        err = "❌ Iltimos, faqat butun son kiriting (masalan: 25):"
         await message.answer(err)
 
 
@@ -2584,7 +2793,6 @@ async def callback_back_to_kabinet(callback_query: types.CallbackQuery, state: F
     await menu_kabinet_msg(callback_query.message, callback_query.from_user.id)
     await callback_query.answer()
 
-# CRITICAL FIX: "Ortga" qaytish inline callback yo'li orqali xabar tahrirlanadigan qilindi (image_918903 dagi ko'payib ketuvchi xabar muammosi hal etildi)
 @router.callback_query(F.data == "back_to_panel", StateFilter("*"))
 async def callback_back_panel(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
@@ -2664,28 +2872,40 @@ async def init_existing_sessions():
                 logging.error(f"Sessiya yuklashda xatolik ({file}): {e}")
 
 
-# ================= SENDER ENGINE (REAL VAQT INTERVALLI) =================
+# ================= SENDER ENGINE (REAL VAQT INTERVALLI & ROTATSIYA) =================
 
 async def send_reklama_message(client, chat_id, user_data, user_id):
     lang = user_data.get("lang", "uz") or "uz"
     
-    # MUHIM O'ZGARTIRISH: Watermark endi hammasida (PRO rejimdan qat'iy nazar) majburiy yuboriladi
-    watermark = "\n\n@Auto_Xabar_Yuborish_Bot orqali yuborildi" if lang == "uz" else (
-        "\n\nОтправлено через @Auto_Xabar_Yuborish_Bot" if lang == "ru" else
-        "\n\nSent via @Auto_Xabar_Yuborish_Bot"
-    )
+    # 🔗 Strictly: Barcha foydalanuvchilar (Free va PRO) xabar tarqatganida, tagiga yashirin havola qo'shiladi
+    bot_link = "https://t.me/Auto_Xabar_Yuborish_Bot"
+    watermark = f'\n\n<a href="{bot_link}">bu bot orqali yuborildi</a>'
+
+    # Multi-Post: === orqali ajratilgan xabarlardan birini tasodifiy aylanma usulda tanlash
+    text_field = user_data.get("reklama_matni", "")
+    parts = text_field.split("===")
+    selected_raw_text = random.choice(parts).strip()
+    
+    # Sinonimlar (Spintax) randomizatsiyasini matnga qo'llaymiz
+    final_text_part = apply_spintax(selected_raw_text)
+
+    # Yakuniy yuboriladigan matn
+    final_text = f"{final_text_part}{watermark}"
+
+    sent_message_obj = None
 
     if user_data.get("is_pro") and user_data.get("is_forward_mode") and user_data.get("forward_msg_id") and user_data.get("forward_chat_id"):
         try:
-            # Forward xabar uzatilganda uning matni pastidan watermark qo'shib bo'lmasligi tufayli ketidan alohida xabar yuboradi
-            await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
-            await client.send_message(chat_id, watermark)
+            # Forward qilinganda matn HTML parse rejimida uzatiladi
+            f_msgs = await client.forward_messages(chat_id, user_data.get("forward_msg_id"), user_data.get("forward_chat_id"))
+            if f_msgs:
+                sent_message_obj = f_msgs[0] if isinstance(f_msgs, list) else f_msgs
+            # Yashirin havolani post tagidan alohida xabar ko'rinishida qo'shimcha yuboramiz
+            await client.send_message(chat_id, watermark, parse_mode="html")
         except Exception as e:
             logging.error(f"[Forward] Postni uzatishda xatolik: {e}")
-            text = user_data.get("reklama_matni", "") + watermark
-            await client.send_message(chat_id, text)
+            sent_message_obj = await client.send_message(chat_id, final_text, parse_mode="html")
     else:
-        text = user_data.get("reklama_matni", "") + watermark
         photo_path = user_data.get("reklama_rasm") 
         buttons_data = user_data.get("inline_buttons", [])
         
@@ -2698,99 +2918,172 @@ async def send_reklama_message(client, chat_id, user_data, user_id):
                 except Exception:
                     continue
                     
+        # Barcha Telethon yuborish drayverlari strictly parse_mode="html" rejimida ishlaydi!
         if photo_path and os.path.exists(photo_path):
             try:
-                await client.send_message(chat_id, text, file=photo_path, buttons=telethon_buttons)
+                sent_message_obj = await client.send_message(chat_id, final_text, file=photo_path, buttons=telethon_buttons, parse_mode="html")
             except Exception as e:
                 logging.warning(f"Rasm bilan yuborishda muammo: {e}. Faqat matn ko'rinishida yuborilmoqda.")
-                await client.send_message(chat_id, text, buttons=telethon_buttons)
+                sent_message_obj = await client.send_message(chat_id, final_text, buttons=telethon_buttons, parse_mode="html")
         else:
-            await client.send_message(chat_id, text, buttons=telethon_buttons)
+            sent_message_obj = await client.send_message(chat_id, final_text, buttons=telethon_buttons, parse_mode="html")
+
+    # Avtomatik o'chirish taymeri jurnali uchun yozib qo'yamiz
+    if sent_message_obj and user_data.get("delete_after_hours"):
+        log_entry = {
+            "chat_id": int(chat_id),
+            "msg_id": int(sent_message_obj.id),
+            "sent_at": datetime.now().timestamp(),
+            "phone_used": client.phone if hasattr(client, 'phone') else user_data.get("active_phone")
+        }
+        if "sent_messages_log" not in db_users[user_id]:
+            db_users[user_id]["sent_messages_log"] = []
+        db_users[user_id]["sent_messages_log"].append(log_entry)
+        save_db()
 
 async def auto_sender_worker():
+    """Tizim asinxron motori va xabarlarni o'chiruvchi background task"""
     while True:
         current_time = datetime.now().timestamp()
         
         for user_id, user_data in list(db_users.items()):
-            if user_data.get("is_sending") and user_data.get("active_phone"):
-                # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
-                started_at = user_data.get("is_sending_started_at", 0)
-                auto_off_hours = user_data.get("auto_off_hours")  # None yoki int
-                
-                if auto_off_hours and started_at:
-                    elapsed_hours = (current_time - started_at) / 3600.0
-                    if elapsed_hours >= auto_off_hours:
-                        db_users[user_id]["is_sending"] = False
-                        db_users[user_id]["is_sending_started_at"] = 0
-                        save_db()
-                        logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi ({auto_off_hours} soat).")
-                        try:
-                            await bot.send_message(
-                                user_id, 
-                                f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
-                                f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
-                                parse_mode="HTML"
-                            )
-                        except Exception:
-                            pass
-                        continue
-                # =====================================================================
+            # ================= AVTO-O'CHIRISH TAYMERINI TEKSHIRISH =================
+            started_at = user_data.get("is_sending_started_at", 0)
+            auto_off_hours = user_data.get("auto_off_hours")
+            
+            if auto_off_hours and started_at:
+                elapsed_hours = (current_time - started_at) / 3600.0
+                if elapsed_hours >= auto_off_hours:
+                    db_users[user_id]["is_sending"] = False
+                    db_users[user_id]["is_sending_started_at"] = 0
+                    save_db()
+                    logging.info(f"[Timer] Foydalanuvchi {user_id} uchun avto-o'chirish taymeri ishladi.")
+                    try:
+                        await bot.send_message(
+                            user_id, 
+                            f"⏱️ <b>Avto-o'chirish taymeri ishladi!</b>\n\n"
+                            f"Belgilangan <b>{auto_off_hours} soatlik</b> muddat tugagani sababli reklama tarqatish avtomatik ravishda to'xtatildi. 🛑", 
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+                    continue
 
+            # ================= YUBORILGAN XABARLARNI AVTOMATIK O'CHIRISH =================
+            del_timer_hours = user_data.get("delete_after_hours")
+            msg_logs = user_data.get("sent_messages_log", [])
+            if del_timer_hours and msg_logs:
+                remaining_logs = []
+                for entry in msg_logs:
+                    sent_age_hours = (current_time - entry["sent_at"]) / 3600.0
+                    if sent_age_hours >= del_timer_hours:
+                        # Akkaunt sessiyasini tiklab xabarni o'chirishga urinamiz
+                        try:
+                            client = await get_client(user_id, entry["phone_used"])
+                            if await client.is_user_authorized():
+                                await client.delete_messages(entry["chat_id"], entry["msg_id"])
+                                logging.info(f"[Auto-Delete] Guruh {entry['chat_id']} dagi xabar {entry['msg_id']} o'chirildi.")
+                        except Exception as e:
+                            logging.error(f"[Auto-Delete] Xabarni o'chirishda xatolik: {e}")
+                    else:
+                        remaining_logs.append(entry)
+                db_users[user_id]["sent_messages_log"] = remaining_logs
+                save_db()
+
+            # ================= SIKLNI YOQISH =================
+            if user_data.get("is_sending"):
                 next_run = user_data.get("next_run_timestamp", 0)
                 if current_time >= next_run:
                     interval_minutes = user_data.get("interval", 15)
                     db_users[user_id]["next_run_timestamp"] = current_time + (interval_minutes * 60)
                     save_db()
-                    
                     asyncio.create_task(run_sending_cycle_for_user(user_id))
                         
         await asyncio.sleep(10)
 
 async def run_sending_cycle_for_user(user_id):
+    """Guruhlarga xabarlarni aylanma akkauntlar rotatsiyasi va qora ro'yxatni tekshirib yuboruvchi asinxron drayver"""
     user_data = db_users.get(user_id)
     if not user_data or not user_data.get("is_sending"):
         return
         
     try:
-        active_phone = user_data.get("active_phone")
-        if not active_phone:
+        accounts_list = user_data.get("accounts", [])
+        if not accounts_list:
+            logging.warning(f"[Rotatsiya] Foydalanuvchi {user_id} da ulangan akkauntlar topilmadi.")
             return
             
-        client = await get_client(user_id, active_phone)
-        if await client.is_user_authorized():
-            guruhlar = []
-            choice = user_data.get("groups_choice", "custom")
-            
-            if choice == "custom":
-                guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
-            else:
-                async for dialog in client.iter_dialogs():
-                    if dialog.is_group:
-                        guruhlar.append(int(dialog.id))
-            
-            if not guruhlar:
-                logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun guruh topilmadi.")
-                return
-                
-            logging.info(f"[Sender] Foydalanuvchi {user_id} ({active_phone}) uchun {len(guruhlar)} ta guruhga tarqatish boshlandi...")
-            
-            for g_id in guruhlar:
-                if not db_users.get(user_id, {}).get("is_sending"):
-                    break
+        guruhlar = []
+        choice = user_data.get("groups_choice", "custom")
+        blacklist = user_data.get("blacklist", [])
+        
+        # Rotatsiya indeksi
+        rot_idx = user_data.get("rotation_index", 0)
+        
+        # Qaysi profil orqali ulanishimizni tanlaymiz (default: rotation_index ga mos)
+        active_phone = user_data.get("active_phone")
+        
+        # Agar custom yoki all tanlangan bo'lsa
+        if choice == "custom":
+            raw_guruhlar = [int(x) for x in user_data.get("selected_groups", [])]
+            guruhlar = [g for g in raw_guruhlar if g not in blacklist]
+        else:
+            # Guruhlarni barcha ulangan dialoglardan yig'ib olish (qora ro'yxatdagilarsiz)
+            temp_client = await get_client(user_id, active_phone)
+            async for dialog in temp_client.iter_dialogs():
+                if dialog.is_group and int(dialog.id) not in blacklist:
+                    guruhlar.append(int(dialog.id))
                     
-                try:
+        if not guruhlar:
+            logging.warning(f"[Sender] Foydalanuvchi {user_id} uchun yuborishga guruh qolmadi (Yoki hammasi qora ro'yxatda).")
+            return
+            
+        logging.info(f"[Sender] Foydalanuvchi {user_id} uchun {len(guruhlar)} ta guruhga tarqatish tsikli boshlandi...")
+        
+        for g_id in guruhlar:
+            if not db_users.get(user_id, {}).get("is_sending"):
+                break
+                
+            # 🔄 AKKAUNTLAR ROTATSIYASI (Account Rotation)
+            # Har bir xabarni navbatdagi akkauntdan yuboramiz
+            target_acc = accounts_list[rot_idx % len(accounts_list)]
+            rot_phone = target_acc["phone"]
+            
+            try:
+                client = await get_client(user_id, rot_phone)
+                # Client ob'ektiga phone qiymatini keyinchalik o'chirish uchun biriktirib qo'yamiz
+                client.phone = rot_phone
+                
+                if await client.is_user_authorized():
                     await send_reklama_message(client, g_id, user_data, user_id)
                     user_data["today_sent"] = user_data.get("today_sent", 0) + 1
                     user_data["total_sent"] = user_data.get("total_sent", 0) + 1
                     save_db()
-                    logging.info(f"[Sender] {user_id} -> Guruh {g_id} ga reklama yuborildi.")
-                    await asyncio.sleep(15)
-                except errors.FloodWaitError as e:
-                    logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
-                    await asyncio.sleep(e.seconds)
-                except Exception as e:
-                    continue
+                    logging.info(f"[Sender] {user_id} ({rot_phone}) -> Guruh {g_id} ga xabar ketdi.")
                     
+                    # Rotatsiya indeksini oshiramiz
+                    rot_idx += 1
+                    db_users[user_id]["rotation_index"] = rot_idx
+                    save_db()
+                    
+                    # 🎲 TASODIFIY KECHIKISH (Random Delay) — Anti-Ban Himoyasi strictly 12 dan 25 soniyagacha
+                    delay_time = random.randint(12, 25)
+                    await asyncio.sleep(delay_time)
+                    
+            except errors.FloodWaitError as e:
+                logging.warning(f"FloodWait cheklovi! {e.seconds} soniya kutiladi...")
+                # Ban xavfini kamaytirish uchun keyingi akkauntga o'tamiz
+                rot_idx += 1
+                db_users[user_id]["rotation_index"] = rot_idx
+                save_db()
+                await asyncio.sleep(5)
+            except Exception as e:
+                logging.error(f"Xabar yuborishda xato (Guruh: {g_id}): {e}")
+                rot_idx += 1
+                db_users[user_id]["rotation_index"] = rot_idx
+                save_db()
+                continue
+                
     except Exception as e:
         logging.error(f"Sender asinxron xatolik user {user_id}: {str(e)}")
 
