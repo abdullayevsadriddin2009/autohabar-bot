@@ -1,28 +1,27 @@
-# Python rasmiy va yengil versiyasini tanlaymiz
+# Python rasmiy va yengil versiyasi
 FROM python:3.10-slim
 
-# Terminalda yozuvlar darhol ko'rinishi uchun muhitni sozlaymiz
 ENV PYTHONUNBUFFERED=1
+# Render web server porti (kodda os.environ.get("PORT", 7860) o'qiladi)
+ENV PORT=7860
 
-# Tizim xavfsizligi uchun foydalanuvchi yaratamiz (Hugging Face talabi)
+# Xavfsizlik uchun root emas foydalanuvchi
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
 
-# Ishchi papkani yaratamiz va unga o'tamiz
 WORKDIR /app
 
-# Avval kutubxonalar ro'yxatini nusxalab olamiz (TUZATILDI: talablar.txt o'rniga requirements.txt)
+# Avval kutubxonalar ro'yxatini nusxalaymiz (cache uchun)
 COPY --chown=user requirements.txt /app/
-
-# Kutubxonalarni o'rnatamiz
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Barcha qolgan loyiha fayllarini nusxalaymiz
+# Loyiha fayllarini nusxalaymiz (.dockerignore maxfiy fayllarni chiqarib tashlaydi)
 COPY --chown=user . /app/
 
-# Standart portni ochamiz
+# Sessiya va yuklamalar papkalari uchun ruxsat
+RUN mkdir -p /app/sessions /app/downloads
+
 EXPOSE 7860
 
-# Botni ishga tushirish buyrug'i
 CMD ["python", "telegram_real_connection_script.py"]
